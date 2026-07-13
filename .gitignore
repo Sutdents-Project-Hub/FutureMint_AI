@@ -12,9 +12,12 @@ secrets/
 private/
 
 # Sensitive business or legal material
-contracts/
-legal/
-quotations/
+/contracts/
+/legal/
+/quotations/
+*合約*
+*協議*
+*報價*
 
 # Dependencies, build, and local tools
 node_modules/
@@ -24,8 +27,12 @@ venv/
 dist/
 build/
 coverage/
+output/
+.playwright-cli/
 .DS_Store
 *.log
+local.settings.json
+.azure/
 
 # IDE
 .idea/

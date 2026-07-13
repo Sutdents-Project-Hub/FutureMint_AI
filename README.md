@@ -1,58 +1,197 @@
 # FutureMint AI
 
-> 目前階段：競賽／展示｜部署：其他平台（待專案文件確認）
+> 第六屆中學生黑客松決賽原型｜Flutter + Microsoft Azure｜產品系統已可於本機完整展示，Azure 尚未部署
 
-## 專案簡介
+FutureMint AI 是青少年的 AI 金錢決策教練。使用者主動輸入收入、支出或訂閱，系統先整理成可修改草稿；只有確認後才保存，並以確定性程式更新預算、訂閱比較、金融微課程與 FutureSeed 教育試算。
 
-青少年 AI 金錢決策教練，將主動輸入的收入、支出與訂閱轉為預算回饋、個人化金融微課程與教育性複利預覽。
+## 現在可以做什麼
 
-## 目標與主要功能
+- 用繁體中文輸入「今天買珍奶 75」、「打工薪水 1500」或「Netflix 390 四個人分」。
+- 查看解析來源、修正金額／項目／分類，再確認保存；解析本身不會寫入帳本。
+- 查看本月可用預算、目標進度、近期事件與非責備式教練提醒。
+- 比較合成訂閱方案的每月成本、節省差額與資格提醒。
+- 完成依合成紀錄挑選的金融微課，留下下一個可行動選擇。
+- 以每月投入、期間及公開假設年化率預覽本金、假設成長與年度數值。
+- 在無網路、無 Azure key 的 `offline-demo` 模式完成同一條 Demo 主線並重設合成資料。
+- 以 `connected` 模式呼叫同 repository 契約的 Azure Functions API；失敗時不會假裝成離線成功。
 
-- 專案目標與使用對象尚待依需求確認。
-- 只列入本階段已確認、可展示或可驗收的功能；構想與未來功能請明確標示為非本階段範圍。
+決賽只使用固定合成資料，不串接支付、銀行、電子發票、證券交易或真實未成年人金融服務。
 
-## 技術與元件
+## 專案資訊
 
-目前尚未建立可辨識的執行元件；確認技術與產品表面後再建立必要結構。
+- Repository：`FutureMint_AI`
+- Project slug：`futuremint-ai`
+- Stage：`competition`
+- Product type：`hybrid`
+- Bootstrap mode：`executable`
+- Executable components：`apps/client`、`services/api`
+- Supporting asset：`design-system`（設計規範，沒有 runtime 或部署生命週期）
+- Deployment：Microsoft Azure（已規劃，尚未部署）
+- Collaboration：學生團隊／Pull Request 工作流
+
+完整分類、限制、假設與未決事項見 [學生專案 Profile](docs/project-profile.md)。
+
+## 系統架構與狀態
+
+| 元件 | 路徑 | 實作 | 本機狀態 | 雲端狀態 |
+|---|---|---|---|---|
+| Flutter Client | `apps/client/` | Material 3、Provider、go_router、HTTP、SharedPreferences | Web build 與自動化測試通過 | Static Web Apps 尚未部署 |
+| Functions API | `services/api/` | Functions v4、TypeScript、Zod、Vitest | 全部端點、domain 與 adapters 可建置／測試 | Functions 尚未部署 |
+| AI providers | `services/api/src/adapters/` | Azure OpenAI structured output + deterministic demo | mock 與離線 provider 已驗證 | 未驗證即時 Azure 連線 |
+| Data providers | `services/api/src/adapters/` | Cosmos DB + in-memory repository | mock／memory 已驗證 | Cosmos 資源尚未建立 |
+| Design System | `design-system/` | 色彩、字體、響應式、元件與可及性規範 | 文件已建立，由人工檢查 | 非部署元件 |
+| Evidence | `services/api/reports/` | 30 筆合成繁中解析評估 | 30/30 完整通過 | 不代表 Azure AI 成效 |
+
+```mermaid
+flowchart LR
+    U["青少年使用者"] --> C["Flutter Client"]
+    C -->|"Connected HTTPS/JSON"| F["Azure Functions API"]
+    C -->|"明確選擇 Offline demo"| L["SharedPreferences 合成資料"]
+    F --> D["確定性 Domain Services"]
+    D --> A["Azure OpenAI 或 Demo AI"]
+    D --> R["Cosmos DB 或 Memory Repository"]
+```
+
+金額、預算、訂閱成本與 FutureSeed 都由確定性程式計算；模型輸出永遠視為待驗證資料。詳細邊界見 [系統架構](docs/architecture.md)。
 
 ## 專案結構
 
-- 目前只記錄實際存在的元件；不建立未使用的空資料夾。
-- 每個獨立元件依自己的 manifest、README 與框架慣例安裝、啟動、測試及建置。
+```text
+FutureMint_AI/
+├── apps/client/                  # Flutter Android／iOS／Web
+├── services/api/                 # Azure Functions TypeScript API
+│   ├── src/contracts/            # 共享資料契約與 Zod 驗證
+│   ├── src/domain/               # 確定性財務計算
+│   ├── src/application/          # Use cases 與 ports
+│   ├── src/adapters/             # Azure／Demo／Cosmos／Memory adapters
+│   └── src/functions/            # HTTP Functions v4 routes
+├── design-system/futuremint-ai/  # 經 UI/UX skill 整理的設計規範
+├── docs/                         # 產品、架構、競賽、測試與部署文件
+└── AGENTS.md                     # 開發、資料與 Git 安全規則
+```
 
-## 快速開始
+## 快速啟動
 
-初始化未執行框架安裝或服務啟動，因此目前沒有經驗證的通用啟動指令。請從實際 manifest 與元件 README 驗證後補上前置需求、安裝、啟動方式、port 與本機 URL。
+### 1. 離線 Demo（建議先跑）
 
-## 測試與品質
+前置需求為 Flutter 3.41.x／Dart 3.11.x 與 Chrome：
 
-只記錄實際存在且已執行成功的 lint、typecheck、test、build 或手動驗收方式。若目前沒有自動化測試，請明確記錄主要人工驗收流程與限制。
+```bash
+cd apps/client
+flutter pub get
+flutter run -d chrome
+```
 
-## 環境變數與敏感資訊
+`APP_MODE` 預設為 `offline-demo`，不需要 `.env`、Azure 帳號或網路服務。
 
-- 真實值只存放於本機或部署平台，不提交 `.env`。
-- 以 `.env.example` 記錄必要的變數名稱、用途與安全 placeholder；公開前端設定不可用來保存秘密。
+### 2. 本機 Functions
+
+前置需求為 Node.js 22.x 與 Azure Functions Core Tools 4.x：
+
+```bash
+cd services/api
+npm ci
+npm run build
+npm start
+```
+
+本機實際 provider 設定放在已忽略的 `services/api/local.settings.json`。最簡單的無雲端組合是：
+
+```json
+{
+  "IsEncrypted": false,
+  "Values": {
+    "FUNCTIONS_WORKER_RUNTIME": "node",
+    "AI_PROVIDER": "demo",
+    "DATA_PROVIDER": "memory",
+    "DEMO_RESET_ENABLED": "true",
+    "ALLOWED_ORIGINS": "http://localhost:4173"
+  }
+}
+```
+
+HTTP-only demo routes 在未設定 Storage 時仍可本機執行；若要讓 Functions Host 的 storage health probe 也正常，請另啟動 Azurite 並設定 `AzureWebJobsStorage=UseDevelopmentStorage=true`。不得把真實 storage connection string 寫入 repository。
+
+再讓 Flutter 連到 Functions（URL 需指向 `/api/`）：
+
+```bash
+flutter run -d chrome \
+  --web-port=4173 \
+  --dart-define=APP_MODE=connected \
+  --dart-define=API_BASE_URL=http://localhost:7071/api/
+```
+
+Functions 只會對 `ALLOWED_ORIGINS` 內的完整 origin 回傳 CORS headers，因此 Connected Web 的 port 必須與設定一致；多個 origin 以逗號分隔，不使用任意 `*`。
+
+## 品質與證據
+
+Functions：
+
+```bash
+cd services/api
+npm ci
+npm test
+npm run typecheck
+npm run build
+npm run evaluate:captures
+npm audit --omit=dev
+```
+
+Flutter：
+
+```bash
+cd apps/client
+flutter pub get
+dart format --output=none --set-exit-if-changed lib test integration_test
+flutter analyze
+flutter test
+flutter build web
+```
+
+已實際驗證的最新結果與尚未驗證項目見 [測試與證據](docs/testing-and-evidence.md)。固定展示流程見 [Demo 腳本](docs/demo-script.md)。
+
+## 公開設定與秘密
+
+Flutter 只有兩個 Dart defines，兩者都不是秘密：
+
+- `APP_MODE=offline-demo|connected`
+- `API_BASE_URL`：Connected mode 的 Functions `/api/` base URL
+
+Functions 的變數名稱索引在 `services/api/.env.example`。真實 key、token、connection string、production `.env`、`local.settings.json`、真實學生資料與商業／法務文件不得提交。能取得 RBAC 時，Azure OpenAI 與 Cosmos 優先使用 Managed Identity。
 
 ## 部署狀態
 
-目前狀態：其他平台（待專案文件確認）。只有在設定與流程實際驗證後，才補上平台、base directory、build/start command、port、healthcheck、資料與回滾方式。
-
-## Git 與版本控制
-
-- Repository 名稱：`FutureMint_AI`
-- 全新專案由初始化器建立本機 `main` branch，並在安全掃描後以 `chore(init): 初始化學生專案結構` 提交本次初始化產物。
-- 既有 Git repository 保留原 branch 與歷史，不自動 commit。
-- 初始化不設定 `user.name`／`user.email`，不建立 remote，也不 push；後續 Git 操作遵守 [AGENTS.md](AGENTS.md)。
-- 後續操作先以 `git remote -v` 判斷本機或遠端模式；只要求 commit 時維持目前分支，獲准合併並驗證 `main` 後才安全關閉已完整合併的任務 branch。
+沒有建立、修改或部署任何 Azure 資源，也沒有可宣稱的 production URL。目標架構是 Azure Static Web Apps、Functions、Cosmos DB、Azure OpenAI／Foundry 與 Application Insights；部署前仍須確認主辦方 RBAC、quota、區域、CORS、費用與回滾。詳見 [部署說明](docs/deployment.md)。
 
 ## 文件索引
 
+- [學生專案 Profile](docs/project-profile.md)
 - [專案範圍與驗收](docs/project-overview.md)
+- [產品規格與決賽策略](docs/product-spec.md)
+- [系統架構](docs/architecture.md)
+- [Azure 資源規劃](docs/azure-resources.md)
+- [資料與儲存](docs/data-and-storage.md)
+- [外部整合與 AI](docs/integrations.md)
+- [安全、身份與隱私](docs/security-and-privacy.md)
+- [測試與證據](docs/testing-and-evidence.md)
+- [Demo 腳本](docs/demo-script.md)
 - [競賽與展示準備](docs/competition.md)
 - [部署說明](docs/deployment.md)
+- [Flutter Client](apps/client/README.md)
+- [Functions API](services/api/README.md)
+- [Design System](design-system/README.md)
+- [團隊開發規則](AGENTS.md)
+
+## Git 與授權
+
+- Repository：`FutureMint_AI`；目前 branch：`main`。
+- 初始化固定 commit：`feb7938 chore(init): 初始化學生專案結構`。
+- 目前沒有設定 remote；後續產品與文件變更尚未 commit、push、建立 PR 或部署。
+- 進行任何版本控制提交前，必須依 [AGENTS.md](AGENTS.md) 檢查 staged、unstaged 與 untracked 內容，排除 secrets、個資、合約與商業文件。
 
 ## 維護與交接
 
-- 開發規則請見 [AGENTS.md](AGENTS.md)。
-- 功能、架構、指令、環境變數、部署或限制改變時，需同步更新相關文件。
-- LICENSE、資料集、模型與素材授權須依作者、學校及競賽規則確認，不由初始化工具自行決定。
+- 功能、資料契約、品質指令或驗證結果改變時，同步更新根 README、元件 README 與 [測試與證據](docs/testing-and-evidence.md)。
+- 視覺 token、響應式規則或可及性要求改變時，同步更新 [Design System](design-system/README.md) 與 Flutter `lib/design/`。
+- Azure provider、資料庫、環境變數或部署狀態改變時，同步更新整合、資料、安全與部署文件。
+- LICENSE 尚未選定；需先確認團隊作者、學校、競賽、套件、模型、資料與素材授權。

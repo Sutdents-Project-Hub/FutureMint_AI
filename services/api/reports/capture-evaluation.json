@@ -1,0 +1,254 @@
+{
+  "generatedAt": "2026-07-13T06:06:01.704Z",
+  "provider": "deterministic-demo",
+  "syntheticCases": 30,
+  "passedCases": 30,
+  "casePassRate": 1,
+  "schemaValidCases": 30,
+  "schemaValidityRate": 1,
+  "checksPassed": 225,
+  "checksTotal": 225,
+  "fieldAccuracyRate": 1,
+  "results": [
+    {
+      "id": "expense-food-breakfast",
+      "passed": true,
+      "schemaValid": true,
+      "checksPassed": 8,
+      "checksTotal": 8,
+      "failures": []
+    },
+    {
+      "id": "expense-food-drink",
+      "passed": true,
+      "schemaValid": true,
+      "checksPassed": 8,
+      "checksTotal": 8,
+      "failures": []
+    },
+    {
+      "id": "expense-food-lunch",
+      "passed": true,
+      "schemaValid": true,
+      "checksPassed": 8,
+      "checksTotal": 8,
+      "failures": []
+    },
+    {
+      "id": "expense-transport-bus",
+      "passed": true,
+      "schemaValid": true,
+      "checksPassed": 8,
+      "checksTotal": 8,
+      "failures": []
+    },
+    {
+      "id": "expense-transport-metro",
+      "passed": true,
+      "schemaValid": true,
+      "checksPassed": 8,
+      "checksTotal": 8,
+      "failures": []
+    },
+    {
+      "id": "expense-entertainment-game",
+      "passed": true,
+      "schemaValid": true,
+      "checksPassed": 8,
+      "checksTotal": 8,
+      "failures": []
+    },
+    {
+      "id": "expense-entertainment-movie",
+      "passed": true,
+      "schemaValid": true,
+      "checksPassed": 8,
+      "checksTotal": 8,
+      "failures": []
+    },
+    {
+      "id": "expense-education-book",
+      "passed": true,
+      "schemaValid": true,
+      "checksPassed": 8,
+      "checksTotal": 8,
+      "failures": []
+    },
+    {
+      "id": "expense-education-stationery",
+      "passed": true,
+      "schemaValid": true,
+      "checksPassed": 8,
+      "checksTotal": 8,
+      "failures": []
+    },
+    {
+      "id": "expense-shopping-shoes",
+      "passed": true,
+      "schemaValid": true,
+      "checksPassed": 8,
+      "checksTotal": 8,
+      "failures": []
+    },
+    {
+      "id": "income-salary",
+      "passed": true,
+      "schemaValid": true,
+      "checksPassed": 8,
+      "checksTotal": 8,
+      "failures": []
+    },
+    {
+      "id": "income-allowance",
+      "passed": true,
+      "schemaValid": true,
+      "checksPassed": 8,
+      "checksTotal": 8,
+      "failures": []
+    },
+    {
+      "id": "income-bonus",
+      "passed": true,
+      "schemaValid": true,
+      "checksPassed": 8,
+      "checksTotal": 8,
+      "failures": []
+    },
+    {
+      "id": "subscription-netflix",
+      "passed": true,
+      "schemaValid": true,
+      "checksPassed": 8,
+      "checksTotal": 8,
+      "failures": []
+    },
+    {
+      "id": "subscription-spotify",
+      "passed": true,
+      "schemaValid": true,
+      "checksPassed": 8,
+      "checksTotal": 8,
+      "failures": []
+    },
+    {
+      "id": "subscription-generic",
+      "passed": true,
+      "schemaValid": true,
+      "checksPassed": 8,
+      "checksTotal": 8,
+      "failures": []
+    },
+    {
+      "id": "split-four",
+      "passed": true,
+      "schemaValid": true,
+      "checksPassed": 8,
+      "checksTotal": 8,
+      "failures": []
+    },
+    {
+      "id": "split-three",
+      "passed": true,
+      "schemaValid": true,
+      "checksPassed": 8,
+      "checksTotal": 8,
+      "failures": []
+    },
+    {
+      "id": "split-arabic",
+      "passed": true,
+      "schemaValid": true,
+      "checksPassed": 8,
+      "checksTotal": 8,
+      "failures": []
+    },
+    {
+      "id": "missing-food-amount",
+      "passed": true,
+      "schemaValid": true,
+      "checksPassed": 8,
+      "checksTotal": 8,
+      "failures": []
+    },
+    {
+      "id": "missing-subscription-amount",
+      "passed": true,
+      "schemaValid": true,
+      "checksPassed": 8,
+      "checksTotal": 8,
+      "failures": []
+    },
+    {
+      "id": "denied-purchase",
+      "passed": true,
+      "schemaValid": true,
+      "checksPassed": 3,
+      "checksTotal": 3,
+      "failures": []
+    },
+    {
+      "id": "cancelled-transaction",
+      "passed": true,
+      "schemaValid": true,
+      "checksPassed": 3,
+      "checksTotal": 3,
+      "failures": []
+    },
+    {
+      "id": "irrelevant-code",
+      "passed": true,
+      "schemaValid": true,
+      "checksPassed": 3,
+      "checksTotal": 3,
+      "failures": []
+    },
+    {
+      "id": "irrelevant-ad",
+      "passed": true,
+      "schemaValid": true,
+      "checksPassed": 3,
+      "checksTotal": 3,
+      "failures": []
+    },
+    {
+      "id": "discount-paid",
+      "passed": true,
+      "schemaValid": true,
+      "checksPassed": 8,
+      "checksTotal": 8,
+      "failures": []
+    },
+    {
+      "id": "relative-yesterday",
+      "passed": true,
+      "schemaValid": true,
+      "checksPassed": 8,
+      "checksTotal": 8,
+      "failures": []
+    },
+    {
+      "id": "relative-before-yesterday",
+      "passed": true,
+      "schemaValid": true,
+      "checksPassed": 8,
+      "checksTotal": 8,
+      "failures": []
+    },
+    {
+      "id": "synthetic-notification",
+      "passed": true,
+      "schemaValid": true,
+      "checksPassed": 8,
+      "checksTotal": 8,
+      "failures": []
+    },
+    {
+      "id": "multiple-purchases",
+      "passed": true,
+      "schemaValid": true,
+      "checksPassed": 13,
+      "checksTotal": 13,
+      "failures": []
+    }
+  ]
+}

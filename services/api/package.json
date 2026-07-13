@@ -1,0 +1,35 @@
+{
+  "name": "futuremint-api",
+  "version": "1.0.0",
+  "description": "FutureMint AI Azure Functions API",
+  "private": true,
+  "engines": {
+    "node": "22.x"
+  },
+  "main": "dist/src/functions/*.js",
+  "scripts": {
+    "build": "npm run clean && tsc",
+    "typecheck": "tsc --noEmit",
+    "test": "vitest run",
+    "test:watch": "vitest",
+    "evaluate:captures": "npm run build --silent && node dist/scripts/evaluateCaptures.js",
+    "seed:cosmos-demo": "npm run build --silent && node dist/scripts/seedCosmosDemo.js",
+    "watch": "tsc -w",
+    "clean": "rimraf dist",
+    "prestart": "npm run build",
+    "start": "func start"
+  },
+  "dependencies": {
+    "@azure/cosmos": "^4.9.3",
+    "@azure/functions": "^4.0.0",
+    "@azure/identity": "^4.13.1",
+    "openai": "^6.46.0",
+    "zod": "^4.4.3"
+  },
+  "devDependencies": {
+    "@types/node": "22.x",
+    "rimraf": "^6.1.3",
+    "typescript": "^5.0.0",
+    "vitest": "^4.1.10"
+  }
+}
