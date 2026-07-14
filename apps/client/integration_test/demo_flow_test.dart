@@ -2,7 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:futuremint_app/app/future_mint_app.dart';
 import 'package:futuremint_app/core/models.dart';
-import 'package:futuremint_app/data/demo_repository.dart';
+import 'package:futuremint_app/data/guest_repository.dart';
 import 'package:futuremint_app/state/app_controller.dart';
 import 'package:integration_test/integration_test.dart';
 import 'package:shared_preferences/shared_preferences.dart';
@@ -10,19 +10,19 @@ import 'package:shared_preferences/shared_preferences.dart';
 void main() {
   IntegrationTestWidgetsFlutterBinding.ensureInitialized();
 
-  testWidgets('fixed synthetic story completes without network or secrets', (
+  testWidgets('temporary guest story completes without network storage', (
     tester,
   ) async {
     SharedPreferences.setMockInitialValues({});
     final controller = AppController(
-      repository: await DemoRepository.create(),
-      mode: AppMode.offlineDemo,
+      repository: await GuestRepository.create(),
+      mode: AppMode.guest,
     );
     await controller.initialize();
     await tester.pumpWidget(FutureMintApp(controller: controller));
     await tester.pumpAndSettle();
 
-    expect(find.text('離線展示'), findsWidgets);
+    expect(find.text('訪客資料不會儲存'), findsOneWidget);
     expect(
       controller.events.any((event) => event.type == MoneyEventType.income),
       isTrue,

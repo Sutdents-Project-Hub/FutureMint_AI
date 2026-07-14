@@ -1,18 +1,19 @@
 # 安全、身份與隱私
 
-FutureMint AI 面向青少年，因此即使決賽只用合成資料，也把金額、商家、時間、訂閱與個人目標視為敏感資料。
+FutureMint AI 面向青少年，因此即使決賽只用合成資料，也把 email、金額、商家、時間、訂閱與個人目標視為敏感資料。
 
 ## 已落實控制
 
-- 預設 `offline-demo`，只使用合成 `demo-user`；UI 明示資料與解析來源。
+- 電子郵件／密碼註冊與登入由 Functions 處理；Client 不持有 Azure secret，也不決定使用者 ID。
+- 密碼以每帳號隨機 salt 的 `scrypt` 雜湊保存；API 永不回傳 password hash、salt 或明文。
+- Session 使用隨機 opaque token，server 僅保存 SHA-256 hash；token 7 天到期、登出可撤銷，保護路由要求 Bearer token。
 - Capture 原文不持久化、不進監測 log；未確認 draft 不寫入帳本。
-- Client bundle 只有公開 API URL／mode，不含 Azure OpenAI、Cosmos、Application Insights secret。
-- Functions 用 Zod 驗證輸入、固定 user boundary、positive integer TWD 與 controlled enums。
+- 訪客模式資料只存在 App 記憶體，沒有瀏覽器／裝置持久化或後端寫入。
+- Functions 用 Zod 驗證輸入；資料 ownership 一律從 session 帳號主體推導。
 - Azure AI 回覆視為不可信任資料；schema invalid、timeout、429 回安全錯誤，不傳 stack／prompt／SDK response。
 - Cosmos query 依 `/userId` partition，寫入使用 idempotency key；不重複建立事件。
-- CORS 只讀 `ALLOWED_ORIGINS`，不使用帶 credentials 的任意 `*`。
+- CORS 只讀 `ALLOWED_ORIGINS`，允許明確的 `authorization` header，不使用帶 credentials 的任意 `*`。
 - FutureSeed 明示假設與教育用途，不推薦投資標的或保證報酬。
-- 教練文案採非責備語氣，不污名化必要支出。
 
 ## Secrets 與 repository
 
@@ -24,11 +25,11 @@ FutureMint AI 面向青少年，因此即使決賽只用合成資料，也把金
 
 ## 明確限制
 
-MVP 沒有正式登入、家長共管、同意紀錄、production retention、自助刪除、未成年人法遵流程或事件應變機制。因此只能作為使用合成資料的競賽原型，不宣稱適合真實學生 production 使用。
+這是競賽原型，不是 production identity system。尚未有 email 驗證、忘記密碼、帳號刪除、rate limiting、登入嘗試防護、session 裝置管理、年齡／監護同意、正式保留／刪除流程、資安事件應變或法律審查。因此只適合使用合成資料的競賽展示，不應收集或宣稱可安全處理真實未成年人資料。
 
 若未來加入真實帳號或資料，必須先完成：
 
 1. 年齡適當的隱私告知與可驗證同意；
 2. 角色／ownership／刪除與資料可攜；
 3. 明確保留期限、備份刪除與 incident response；
-4. 威脅模型、權限測試與法務／競賽授權審查。
+4. 威脅模型、rate limit、權限測試與法務／競賽授權審查。

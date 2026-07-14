@@ -1,7 +1,9 @@
 import type {
+  Account,
   CaptureParseResult,
   Lesson,
   MoneyEvent,
+  SessionRecord,
   UserProfile,
 } from "../contracts/models";
 
@@ -47,4 +49,14 @@ export interface FutureMintRepository {
   getLatestLesson(userId: string): Promise<Lesson | null>;
   saveLesson(lesson: Lesson): Promise<Lesson>;
   resetDemo(userId: string): Promise<void>;
+}
+
+export interface AuthRepository {
+  findAccountByEmail(email: string): Promise<Account | null>;
+  findAccountById(userId: string): Promise<Account | null>;
+  createAccount(account: Account): Promise<Account>;
+  setProfileComplete(userId: string): Promise<void>;
+  createSession(session: SessionRecord): Promise<void>;
+  findSessionByTokenHash(tokenHash: string): Promise<SessionRecord | null>;
+  revokeSession(tokenHash: string): Promise<void>;
 }

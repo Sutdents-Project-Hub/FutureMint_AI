@@ -1,3 +1,4 @@
+import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:futuremint_app/app/future_mint_app.dart';
 
@@ -8,12 +9,26 @@ void main() {
     tester,
   ) async {
     final controller = await createController();
+    tester.view.physicalSize = const Size(375, 812);
+    tester.view.devicePixelRatio = 1;
+    tester.platformDispatcher.textScaleFactorTestValue = 2;
+    addTearDown(tester.view.resetPhysicalSize);
+    addTearDown(tester.view.resetDevicePixelRatio);
+    addTearDown(tester.platformDispatcher.clearTextScaleFactorTestValue);
     await tester.pumpWidget(FutureMintApp(controller: controller));
     await tester.pumpAndSettle();
 
     await tester.tap(find.text('未來').last);
     await tester.pumpAndSettle();
+    expect(find.byKey(const Key('future-seed-controls')), findsOneWidget);
+    expect(find.byKey(const Key('future-seed-empty-state')), findsOneWidget);
+    expect(
+      tester.getSize(find.byKey(const Key('future-seed-empty-state'))).height,
+      lessThan(280),
+    );
     expect(find.textContaining('這不是報酬預測'), findsOneWidget);
+    await tester.ensureVisible(find.text('開始教育試算'));
+    await tester.pumpAndSettle();
     await tester.tap(find.text('開始教育試算'));
     await tester.pumpAndSettle();
 
@@ -25,5 +40,6 @@ void main() {
       controller.futureSeedPreview!.endingBalanceMinor,
       greaterThan(controller.futureSeedPreview!.principalMinor),
     );
+    expect(tester.takeException(), isNull);
   });
 }

@@ -2,7 +2,7 @@ import 'dart:convert';
 
 import 'package:flutter_test/flutter_test.dart';
 import 'package:futuremint_app/core/models.dart';
-import 'package:futuremint_app/data/demo_repository.dart';
+import 'package:futuremint_app/data/guest_repository.dart';
 import 'package:futuremint_app/data/api_repository.dart';
 import 'package:futuremint_app/state/app_controller.dart';
 import 'package:http/http.dart' as http;
@@ -15,8 +15,8 @@ void main() {
   setUp(() async {
     SharedPreferences.setMockInitialValues({});
     controller = AppController(
-      repository: await DemoRepository.create(),
-      mode: AppMode.offlineDemo,
+      repository: await GuestRepository.create(),
+      mode: AppMode.guest,
     );
   });
 
@@ -29,7 +29,7 @@ void main() {
       expect(controller.profile?.goalName, '校外活動基金');
       expect(controller.dashboard?.recentEvents, isNotEmpty);
       expect(controller.events, isNotEmpty);
-      expect(controller.mode, AppMode.offlineDemo);
+      expect(controller.mode, AppMode.guest);
     },
   );
 
@@ -98,21 +98,6 @@ void main() {
     },
   );
 
-  test('reset restores the seeded subscription comparison', () async {
-    await controller.initialize();
-    await controller.parseCapture(
-      'Spotify 480',
-      referenceTime: DateTime.parse('2026-07-13T18:00:00+08:00'),
-    );
-    await controller.saveDraft(controller.captureResult!.drafts.single);
-    expect(controller.subscriptionComparison?.currentName, 'Spotify');
-
-    await controller.resetDemo();
-
-    expect(controller.subscriptionComparison?.currentName, '影音訂閱');
-    expect(controller.subscriptionComparison?.currentMonthlyCostMinor, 98);
-  });
-
   test('profile update reports failure so the editor can stay open', () async {
     final failingController = AppController(
       repository: ApiRepository(
@@ -129,12 +114,12 @@ void main() {
           ),
         ),
       ),
-      mode: AppMode.connected,
+      mode: AppMode.authenticated,
     );
 
     final didSave = await failingController.updateProfile(
       UserProfile(
-        userId: 'demo-user',
+        userId: 'account-test',
         monthlyBudgetMinor: 6000,
         goalName: '我的目標',
         goalTargetMinor: 12000,
@@ -144,6 +129,6 @@ void main() {
     );
 
     expect(didSave, isFalse);
-    expect(failingController.errorMessage, isNotNull);
+    expect(failingController.errorMessage, '暫時無法儲存。');
   });
 }

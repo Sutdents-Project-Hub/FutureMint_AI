@@ -7,6 +7,34 @@ import 'package:http/http.dart' as http;
 import 'package:http/testing.dart';
 
 void main() {
+  test('sends a Bearer token for every account data request', () async {
+    final repository = ApiRepository(
+      baseUri: Uri.parse('https://example.test/api/'),
+      accessToken: 'session-token',
+      client: MockClient((request) async {
+        expect(request.headers['authorization'], 'Bearer session-token');
+        return http.Response(
+          jsonEncode({
+            'requestId': 'request-token',
+            'data': {
+              'userId': 'account-1',
+              'monthlyBudgetMinor': 6000,
+              'goalName': '校外活動基金',
+              'goalTargetMinor': 12000,
+              'goalSavedMinor': 4200,
+              'goalDate': '2026-10-31',
+              'preferredTone': 'supportive',
+            },
+          }),
+          200,
+          headers: {'content-type': 'application/json'},
+        );
+      }),
+    );
+
+    expect((await repository.getProfile()).userId, 'account-1');
+  });
+
   test('unwraps the API data envelope into a profile', () async {
     final repository = ApiRepository(
       baseUri: Uri.parse('https://example.test/api/'),

@@ -6,6 +6,7 @@ import {
 } from "@azure/functions";
 
 import { getRuntime } from "../http/runtime";
+import { requireAuthenticatedUser } from "../http/authentication";
 import { ok, readJson, toProblem } from "../http/responses";
 
 export const futureSeedHandler = async (
@@ -13,9 +14,11 @@ export const futureSeedHandler = async (
   context: InvocationContext,
 ) => {
   try {
+    const runtime = getRuntime();
+    await requireAuthenticatedUser(request, runtime);
     return ok(
       context,
-      getRuntime().service.previewFutureSeed(
+      runtime.service.previewFutureSeed(
         (await readJson(request)) as never,
       ),
       200,

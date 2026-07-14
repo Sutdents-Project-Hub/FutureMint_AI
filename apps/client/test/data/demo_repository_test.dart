@@ -1,23 +1,19 @@
-import 'dart:convert';
-
 import 'package:flutter_test/flutter_test.dart';
 import 'package:futuremint_app/core/models.dart';
-import 'package:futuremint_app/data/demo_repository.dart';
-import 'package:shared_preferences/shared_preferences.dart';
+import 'package:futuremint_app/data/guest_repository.dart';
 
 void main() {
-  late DemoRepository repository;
+  late GuestRepository repository;
 
   setUp(() async {
-    SharedPreferences.setMockInitialValues({});
-    repository = await DemoRepository.create();
+    repository = await GuestRepository.create();
   });
 
-  test('starts with a complete synthetic demo profile and ledger', () async {
+  test('starts with a complete temporary guest profile and ledger', () async {
     final profile = await repository.getProfile();
     final events = await repository.listMoneyEvents();
 
-    expect(profile.userId, 'demo-user');
+    expect(profile.userId, 'guest-user');
     expect(profile.monthlyBudgetMinor, 6000);
     expect(events.any((event) => event.type == MoneyEventType.income), isTrue);
     expect(
@@ -39,32 +35,28 @@ void main() {
     expect(after, before);
   });
 
-  test(
-    'confirmed saves are idempotent and survive a new repository instance',
-    () async {
-      final result = await repository.parseCapture(
-        '今天買珍奶 75',
-        referenceTime: DateTime.parse('2026-07-13T12:00:00+08:00'),
-      );
+  test('confirmed saves are idempotent within a guest session', () async {
+    final result = await repository.parseCapture(
+      '今天買珍奶 75',
+      referenceTime: DateTime.parse('2026-07-13T12:00:00+08:00'),
+    );
 
-      final first = await repository.saveDraft(
-        result.drafts.single,
-        idempotencyKey: 'same-demo-capture',
-      );
-      final second = await repository.saveDraft(
-        result.drafts.single,
-        idempotencyKey: 'same-demo-capture',
-      );
-      final reloaded = await DemoRepository.create();
-      final events = await reloaded.listMoneyEvents();
+    final first = await repository.saveDraft(
+      result.drafts.single,
+      idempotencyKey: 'same-demo-capture',
+    );
+    final second = await repository.saveDraft(
+      result.drafts.single,
+      idempotencyKey: 'same-demo-capture',
+    );
+    final events = await repository.listMoneyEvents();
 
-      expect(second.id, first.id);
-      expect(
-        events.where((event) => event.idempotencyKey == 'same-demo-capture'),
-        hasLength(1),
-      );
-    },
-  );
+    expect(second.id, first.id);
+    expect(
+      events.where((event) => event.idempotencyKey == 'same-demo-capture'),
+      hasLength(1),
+    );
+  });
 
   test(
     'negative purchase text is rejected instead of becoming an expense',
@@ -115,15 +107,18 @@ void main() {
     expect(result.drafts.single.occurredAt.day, 12);
   });
 
-  test('persists the selected micro-lesson action across reloads', () async {
-    final lesson = await repository.generateLesson();
-    await repository.completeLesson(lesson, lesson.options.first);
+  test(
+    'does not retain a selected micro-lesson action in a new guest session',
+    () async {
+      final lesson = await repository.generateLesson();
+      await repository.completeLesson(lesson, lesson.options.first);
 
-    final reloaded = await DemoRepository.create();
-    final persisted = await reloaded.generateLesson();
+      final reloaded = await GuestRepository.create();
+      final persisted = await reloaded.generateLesson();
 
-    expect(persisted.selectedOption, lesson.options.first);
-  });
+      expect(persisted.selectedOption, isNull);
+    },
+  );
 
   test('uses the recorded subscription share as the current cost', () async {
     final comparison = await repository.compareSubscriptions();
@@ -158,33 +153,4 @@ void main() {
       expect(shared.userMonthlyCostMinor, 130);
     },
   );
-
-  test('groups an event into the current month using Taipei time', () async {
-    final taipeiNow = DateTime.now().toUtc().add(const Duration(hours: 8));
-    final firstDayTaipeiInstant = DateTime.utc(
-      taipeiNow.year,
-      taipeiNow.month,
-      1,
-    ).subtract(const Duration(hours: 7, minutes: 30));
-    SharedPreferences.setMockInitialValues({
-      'futuremint.demo.events.v1': jsonEncode([
-        {
-          'id': 'month-boundary',
-          'userId': 'demo-user',
-          'type': 'expense',
-          'amountMinor': 99,
-          'currency': 'TWD',
-          'category': 'food',
-          'occurredAt': firstDayTaipeiInstant.toIso8601String(),
-          'createdAt': firstDayTaipeiInstant.toIso8601String(),
-          'updatedAt': firstDayTaipeiInstant.toIso8601String(),
-        },
-      ]),
-    });
-    final boundaryRepository = await DemoRepository.create();
-
-    final dashboard = await boundaryRepository.getDashboard();
-
-    expect(dashboard.expenseMinor, 99);
-  });
 }

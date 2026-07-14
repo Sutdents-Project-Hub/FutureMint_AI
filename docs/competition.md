@@ -35,10 +35,10 @@
 
 ## Demo 備援
 
-- 正常路徑：Web／Android 連線至 Azure 測試環境。
-- 第一層備援：Flutter Offline demo 使用 SharedPreferences 固定合成故事與 deterministic parser，來源清楚標示，不偽裝 Azure 成功。
+- 正常路徑：使用合成測試帳號登入 Web／Android，呼叫 Functions 測試環境。
+- 第一層備援：Flutter 訪客模式使用僅記憶體的合成資料；要清楚說明資料不保存、也不與登入帳號同步。
 - 第二層備援：最後成功的 Flutter Web release build／錄影展示完整主線，口頭補充現場服務狀況。
-- 禁止在台上打開含金鑰、訂閱 ID、帳號 Email 或其他隊伍資源的 Portal 頁面。
+- 禁止在台上打開含金鑰、訂閱 ID、真實帳號 Email、password、token 或其他隊伍資源的 Portal 頁面。
 
 ## 提交前清單
 

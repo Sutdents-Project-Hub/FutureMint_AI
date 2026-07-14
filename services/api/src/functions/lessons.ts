@@ -6,6 +6,7 @@ import {
 } from "@azure/functions";
 
 import { getRuntime } from "../http/runtime";
+import { requireAuthenticatedUser } from "../http/authentication";
 import { ok, readJson, toProblem } from "../http/responses";
 
 export const generateLessonHandler = async (
@@ -13,9 +14,11 @@ export const generateLessonHandler = async (
   context: InvocationContext,
 ) => {
   try {
+    const runtime = getRuntime();
+    const account = await requireAuthenticatedUser(request, runtime);
     return ok(
       context,
-      await getRuntime().service.generateLesson("demo-user"),
+      await runtime.service.generateLesson(account.id),
       200,
       request,
     );
@@ -29,9 +32,11 @@ export const currentLessonHandler = async (
   context: InvocationContext,
 ) => {
   try {
+    const runtime = getRuntime();
+    const account = await requireAuthenticatedUser(request, runtime);
     return ok(
       context,
-      await getRuntime().service.getCurrentLesson("demo-user"),
+      await runtime.service.getCurrentLesson(account.id),
       200,
       request,
     );
@@ -45,11 +50,13 @@ export const completeLessonHandler = async (
   context: InvocationContext,
 ) => {
   try {
+    const runtime = getRuntime();
+    const account = await requireAuthenticatedUser(request, runtime);
     const body = (await readJson(request)) as { selectedOption?: string };
     return ok(
       context,
-      await getRuntime().service.completeLesson(
-        "demo-user",
+      await runtime.service.completeLesson(
+        account.id,
         request.params.lessonId,
         body.selectedOption ?? "",
       ),

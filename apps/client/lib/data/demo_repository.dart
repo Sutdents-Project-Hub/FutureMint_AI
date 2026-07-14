@@ -1,23 +1,47 @@
 import 'dart:convert';
 import 'dart:math';
 
-import 'package:shared_preferences/shared_preferences.dart';
-
 import '../core/future_mint_repository.dart';
 import '../core/models.dart';
 import '../shared/date_text.dart';
 
-class DemoRepository implements FutureMintRepository {
-  DemoRepository._(this._preferences);
+abstract interface class _KeyValueStore {
+  bool containsKey(String key);
+  String? getString(String key);
+  Future<bool> setString(String key, String value);
+  Future<bool> remove(String key);
+}
+
+class _MemoryStore implements _KeyValueStore {
+  final Map<String, String> _values = {};
+
+  @override
+  bool containsKey(String key) => _values.containsKey(key);
+
+  @override
+  String? getString(String key) => _values[key];
+
+  @override
+  Future<bool> remove(String key) async => _values.remove(key) != null;
+
+  @override
+  Future<bool> setString(String key, String value) async {
+    _values[key] = value;
+    return true;
+  }
+}
+
+class GuestRepository implements FutureMintRepository {
+  GuestRepository.transient() : _preferences = _MemoryStore();
 
   static const _profileKey = 'futuremint.demo.profile.v1';
   static const _eventsKey = 'futuremint.demo.events.v1';
   static const _lessonKey = 'futuremint.demo.lesson.v1';
 
-  final SharedPreferences _preferences;
+  final _KeyValueStore _preferences;
 
-  static Future<DemoRepository> create() async {
-    final repository = DemoRepository._(await SharedPreferences.getInstance());
+  static Future<GuestRepository> create() async {
+    final repository = GuestRepository.transient();
     await repository._ensureSeeded();
     return repository;
   }
@@ -35,7 +59,7 @@ class DemoRepository implements FutureMintRepository {
   }
 
   static final _seedProfile = UserProfile(
-    userId: 'demo-user',
+    userId: 'guest-user',
     monthlyBudgetMinor: 6000,
     weeklyBudgetMinor: 1500,
     goalName: '校外活動基金',
@@ -71,7 +95,7 @@ class DemoRepository implements FutureMintRepository {
     ),
     MoneyEvent(
       id: 'seed-subscription',
-      userId: 'demo-user',
+      userId: 'guest-user',
       type: MoneyEventType.subscription,
       amountMinor: 390,
       currency: 'TWD',
@@ -97,7 +121,7 @@ class DemoRepository implements FutureMintRepository {
     DateTime at,
   ) => MoneyEvent(
     id: id,
-    userId: 'demo-user',
+    userId: 'guest-user',
     type: type,
     amountMinor: amount,
     currency: 'TWD',
@@ -316,7 +340,7 @@ class DemoRepository implements FutureMintRepository {
     final now = DateTime.now();
     final event = MoneyEvent(
       id: 'event-${now.microsecondsSinceEpoch}',
-      userId: 'demo-user',
+      userId: 'guest-user',
       type: draft.type,
       amountMinor: draft.amountMinor!,
       currency: 'TWD',

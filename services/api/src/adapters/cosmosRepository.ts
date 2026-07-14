@@ -4,11 +4,18 @@ import { CosmosClient, type SqlQuerySpec } from "@azure/cosmos";
 import { DefaultAzureCredential } from "@azure/identity";
 
 import type {
+  AuthRepository,
   ConfirmedMoneyEventInput,
   FutureMintRepository,
 } from "../application/ports";
 import { DomainError } from "../contracts/errors";
-import type { Lesson, MoneyEvent, UserProfile } from "../contracts/models";
+import type {
+  Account,
+  Lesson,
+  MoneyEvent,
+  SessionRecord,
+  UserProfile,
+} from "../contracts/models";
 
 export interface CosmosQuery {
   query: string;
@@ -88,7 +95,9 @@ interface ProfileDocument extends UserProfile {
   id: "profile";
 }
 
-export class CosmosRepository implements FutureMintRepository {
+export class CosmosRepository
+  implements FutureMintRepository, AuthRepository
+{
   constructor(private readonly gateway: CosmosGateway) {}
 
   async getProfile(userId: string): Promise<UserProfile> {
@@ -183,6 +192,56 @@ export class CosmosRepository implements FutureMintRepository {
       "Cosmos 連線模式不支援自動重設，請使用專用合成資料程序。",
       409,
     );
+  }
+
+  async findAccountByEmail(email: string): Promise<Account | null> {
+    const accounts = await this.gateway.query<Account>("accounts", {
+      query: "SELECT TOP 1 * FROM c WHERE c.email = @email",
+      parameters: [{ name: "@email", value: email }],
+    });
+    return accounts[0] ?? null;
+  }
+
+  findAccountById(userId: string): Promise<Account | null> {
+    return this.gateway.read<Account>("accounts", userId, userId);
+  }
+
+  async createAccount(account: Account): Promise<Account> {
+    return this.gateway.create("accounts", account);
+  }
+
+  async setProfileComplete(userId: string): Promise<void> {
+    const account = await this.findAccountById(userId);
+    if (!account) {
+      throw new DomainError("account_not_found", "找不到登入帳號。", 404);
+    }
+    await this.gateway.upsert("accounts", {
+      ...account,
+      profileComplete: true,
+    });
+  }
+
+  async createSession(session: SessionRecord): Promise<void> {
+    await this.gateway.upsert("sessions", session);
+  }
+
+  async findSessionByTokenHash(
+    tokenHash: string,
+  ): Promise<SessionRecord | null> {
+    const sessions = await this.gateway.query<SessionRecord>("sessions", {
+      query: "SELECT TOP 1 * FROM c WHERE c.tokenHash = @tokenHash",
+      parameters: [{ name: "@tokenHash", value: tokenHash }],
+    });
+    return sessions[0] ?? null;
+  }
+
+  async revokeSession(tokenHash: string): Promise<void> {
+    const session = await this.findSessionByTokenHash(tokenHash);
+    if (!session) return;
+    await this.gateway.upsert("sessions", {
+      ...session,
+      revokedAt: new Date().toISOString(),
+    });
   }
 }
 

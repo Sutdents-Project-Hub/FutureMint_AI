@@ -6,6 +6,7 @@ import {
 } from "@azure/functions";
 
 import { getRuntime } from "../http/runtime";
+import { requireAuthenticatedUser } from "../http/authentication";
 import { ok, toProblem } from "../http/responses";
 
 export const dashboardHandler = async (
@@ -13,9 +14,11 @@ export const dashboardHandler = async (
   context: InvocationContext,
 ) => {
   try {
+    const runtime = getRuntime();
+    const account = await requireAuthenticatedUser(request, runtime);
     return ok(
       context,
-      await getRuntime().service.getDashboard("demo-user"),
+      await runtime.service.getDashboard(account.id),
       200,
       request,
     );

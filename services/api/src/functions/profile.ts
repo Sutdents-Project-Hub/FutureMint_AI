@@ -6,6 +6,7 @@ import {
 } from "@azure/functions";
 
 import { getRuntime } from "../http/runtime";
+import { requireAuthenticatedUser } from "../http/authentication";
 import { ok, readJson, toProblem } from "../http/responses";
 
 export const profileHandler = async (
@@ -13,14 +14,18 @@ export const profileHandler = async (
   context: InvocationContext,
 ) => {
   try {
-    const service = getRuntime().service;
+    const runtime = getRuntime();
+    const account = await requireAuthenticatedUser(request, runtime);
     const profile =
       request.method === "PUT"
-        ? await service.updateProfile(
-            "demo-user",
+        ? await runtime.service.updateProfile(
+            account.id,
             (await readJson(request)) as never,
           )
-        : await service.getProfile("demo-user");
+        : await runtime.service.getProfile(account.id);
+    if (request.method === "PUT") {
+      await runtime.authService.markProfileComplete(account.id);
+    }
     return ok(context, profile, 200, request);
   } catch (error) {
     return toProblem(context, error, request);

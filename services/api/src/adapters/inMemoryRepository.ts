@@ -1,8 +1,15 @@
 import { randomUUID } from "node:crypto";
 
-import type { Lesson, MoneyEvent, UserProfile } from "../contracts/models";
+import type {
+  Account,
+  Lesson,
+  MoneyEvent,
+  SessionRecord,
+  UserProfile,
+} from "../contracts/models";
 import { DomainError } from "../contracts/errors";
 import type {
+  AuthRepository,
   ConfirmedMoneyEventInput,
   FutureMintRepository,
 } from "../application/ports";
@@ -74,10 +81,15 @@ const eventSeed = (): MoneyEvent[] => [
   },
 ];
 
-export class InMemoryRepository implements FutureMintRepository {
+export class InMemoryRepository
+  implements FutureMintRepository, AuthRepository
+{
   private profiles = new Map<string, UserProfile>();
   private events = new Map<string, MoneyEvent[]>();
   private lessons = new Map<string, Lesson[]>();
+  private accountsByEmail = new Map<string, Account>();
+  private accountsById = new Map<string, Account>();
+  private sessions = new Map<string, SessionRecord>();
 
   constructor() {
     this.seed("demo-user");
@@ -161,5 +173,52 @@ export class InMemoryRepository implements FutureMintRepository {
 
   async resetDemo(userId: string): Promise<void> {
     this.seed(userId);
+  }
+
+  async findAccountByEmail(email: string): Promise<Account | null> {
+    const account = this.accountsByEmail.get(email);
+    return account ? { ...account } : null;
+  }
+
+  async findAccountById(userId: string): Promise<Account | null> {
+    const account = this.accountsById.get(userId);
+    return account ? { ...account } : null;
+  }
+
+  async createAccount(account: Account): Promise<Account> {
+    const copy = { ...account };
+    this.accountsByEmail.set(copy.email, copy);
+    this.accountsById.set(copy.id, copy);
+    return { ...copy };
+  }
+
+  async setProfileComplete(userId: string): Promise<void> {
+    const account = this.accountsById.get(userId);
+    if (!account) {
+      throw new DomainError("account_not_found", "找不到登入帳號。", 404);
+    }
+    const updated = { ...account, profileComplete: true };
+    this.accountsById.set(userId, updated);
+    this.accountsByEmail.set(updated.email, updated);
+  }
+
+  async createSession(session: SessionRecord): Promise<void> {
+    this.sessions.set(session.tokenHash, { ...session });
+  }
+
+  async findSessionByTokenHash(
+    tokenHash: string,
+  ): Promise<SessionRecord | null> {
+    const session = this.sessions.get(tokenHash);
+    return session ? { ...session } : null;
+  }
+
+  async revokeSession(tokenHash: string): Promise<void> {
+    const session = this.sessions.get(tokenHash);
+    if (!session) return;
+    this.sessions.set(tokenHash, {
+      ...session,
+      revokedAt: new Date().toISOString(),
+    });
   }
 }

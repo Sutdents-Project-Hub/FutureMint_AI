@@ -24,7 +24,7 @@ export const responseHeaders = (
   if (origin && allowedOrigins().includes(origin)) {
     headers["access-control-allow-origin"] = origin;
     headers["access-control-allow-methods"] = "GET,POST,PUT,PATCH,OPTIONS";
-    headers["access-control-allow-headers"] = "content-type";
+    headers["access-control-allow-headers"] = "content-type,authorization";
     headers.vary = "Origin";
   }
   return headers;

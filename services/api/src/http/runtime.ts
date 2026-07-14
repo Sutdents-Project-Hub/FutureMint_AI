@@ -5,13 +5,14 @@ import { DemoAiProvider } from "../adapters/demoAiProvider";
 import { InMemoryRepository } from "../adapters/inMemoryRepository";
 import { createAzureOpenAiProviderFromEnvironment } from "../adapters/azureOpenAiProvider";
 import { createCosmosRepositoryFromEnvironment } from "../adapters/cosmosRepository";
+import { AuthService } from "../auth/authService";
 
 export interface Runtime {
   mode: "demo" | "azure";
   aiProvider: "demo" | "azure";
   dataProvider: "memory" | "cosmos";
-  demoResetEnabled: boolean;
   service: FutureMintService;
+  authService: AuthService;
 }
 
 let runtime: Runtime | undefined;
@@ -29,7 +30,7 @@ const requiredChoice = <T extends string>(
 
 export const parseRuntimeConfig = (
   environment: Record<string, string | undefined>,
-): Omit<Runtime, "service"> => {
+): Omit<Runtime, "service" | "authService"> => {
   const aiProvider = requiredChoice("AI_PROVIDER", environment.AI_PROVIDER, [
     "demo",
     "azure",
@@ -44,7 +45,6 @@ export const parseRuntimeConfig = (
       aiProvider === "azure" || dataProvider === "cosmos" ? "azure" : "demo",
     aiProvider,
     dataProvider,
-    demoResetEnabled: environment.DEMO_RESET_ENABLED === "true",
   };
 };
 
@@ -61,6 +61,7 @@ const createRuntime = (): Runtime => {
   return {
     ...config,
     service: new Service(repository, aiProvider, demoCatalog),
+    authService: new AuthService(repository),
   };
 };
 

@@ -5,6 +5,7 @@ import {
   type CosmosGateway,
   type CosmosQuery,
 } from "../../src/adapters/cosmosRepository";
+import type { Account, SessionRecord } from "../../src/contracts/models";
 
 class FakeGateway implements CosmosGateway {
   readonly documents = new Map<string, unknown>();
@@ -51,6 +52,24 @@ class FakeGateway implements CosmosGateway {
 
   async query<T>(container: string, query: CosmosQuery) {
     this.queries.push({ container, query });
+    if (container === "accounts") {
+      const email = query.parameters.find(
+        (parameter) => parameter.name === "@email",
+      )?.value;
+      return [...this.documents.entries()]
+        .filter(([key]) => key.startsWith("accounts:"))
+        .map(([, value]) => value as Account)
+        .filter((account) => account.email === email) as T[];
+    }
+    if (container === "sessions") {
+      const tokenHash = query.parameters.find(
+        (parameter) => parameter.name === "@tokenHash",
+      )?.value;
+      return [...this.documents.entries()]
+        .filter(([key]) => key.startsWith("sessions:"))
+        .map(([, value]) => value as SessionRecord)
+        .filter((session) => session.tokenHash === tokenHash) as T[];
+    }
     return [...this.documents.entries()]
       .filter(([key]) => key.startsWith(`${container}:demo-user:`))
       .map(([, value]) => value as T);
@@ -126,5 +145,37 @@ describe("CosmosRepository", () => {
 
     expect(event.id).toMatch(/^event-/);
     expect(gateway.createCount).toBe(1);
+  });
+
+  it("stores an account and its session without mixing their partitions", async () => {
+    const gateway = new FakeGateway();
+    const repository = new CosmosRepository(gateway);
+    const account: Account = {
+      id: "account-a",
+      userId: "account-a",
+      email: "student@example.com",
+      passwordHash: "hash",
+      passwordSalt: "salt",
+      passwordAlgorithm: "scrypt-v1",
+      profileComplete: false,
+      createdAt: "2026-07-14T00:00:00.000Z",
+    };
+    const session: SessionRecord = {
+      id: "token-hash",
+      userId: "account-a",
+      tokenHash: "token-hash",
+      createdAt: "2026-07-14T00:00:00.000Z",
+      expiresAt: "2026-07-21T00:00:00.000Z",
+    };
+
+    await repository.createAccount(account);
+    await repository.createSession(session);
+
+    await expect(
+      repository.findAccountByEmail("student@example.com"),
+    ).resolves.toMatchObject({ id: "account-a" });
+    await expect(
+      repository.findSessionByTokenHash("token-hash"),
+    ).resolves.toEqual(session);
   });
 });

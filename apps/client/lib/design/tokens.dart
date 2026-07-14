@@ -1,20 +1,66 @@
 import 'package:flutter/material.dart';
 
 abstract final class FutureMintTokens {
-  static const teal = Color(0xFF0F766E);
-  static const tealDark = Color(0xFF0A4F4A);
-  static const amber = Color(0xFFB45309);
-  static const ink = Color(0xFF17312F);
-  static const canvas = Color(0xFFF6FAF8);
-  static const darkCanvas = Color(0xFF0E1F1E);
-  static const positive = Color(0xFF16794D);
+  static const ink = Color(0xFF171B1A);
+  static const cream = Color(0xFFF5FAF8);
+  static const paper = Color(0xFFFFFFFF);
+  static const mint = Color(0xFF2AB7A9);
+  static const mintSoft = Color(0xFFD8F4ED);
+  static const teal = Color(0xFF087B74);
+  static const tealDark = Color(0xFF075E59);
+  static const coral = Color(0xFFF96F61);
+  static const coralSoft = Color(0xFFFFE0DC);
+  static const sun = Color(0xFFF7C94C);
+  static const sunSoft = Color(0xFFFFF0B8);
+  static const lavender = Color(0xFFA58CE8);
+  static const lavenderSoft = Color(0xFFEAE4FC);
+  static const periwinkle = Color(0xFF8EA4E7);
+  static const periwinkleSoft = Color(0xFFE4E9FB);
+  static const sky = Color(0xFF80C5EC);
+  static const skySoft = Color(0xFFE0F2FB);
+  static const orange = Color(0xFFFFB34D);
+  static const orangeSoft = Color(0xFFFFE4BC);
+  static const pink = Color(0xFFE879C9);
+  static const pinkSoft = Color(0xFFF8DDF0);
+  static const hairline = Color(0xFFD4E2DE);
+  static const outline = Color(0xFF70817C);
+  static const amber = Color(0xFFA85B00);
+  static const canvas = cream;
+  static const darkCanvas = Color(0xFF101715);
+  static const darkSurface = Color(0xFF18211F);
+  static const darkSurfaceRaised = Color(0xFF222C29);
+  static const positive = Color(0xFF117A4B);
   static const danger = Color(0xFFB42318);
 
   static const radiusSmall = 12.0;
   static const radiusMedium = 20.0;
   static const radiusLarge = 28.0;
-  static const pageMaxWidth = 1240.0;
+  static const space1 = 4.0;
+  static const space2 = 8.0;
+  static const space3 = 12.0;
+  static const space4 = 16.0;
+  static const space5 = 24.0;
+  static const space6 = 32.0;
+  static const space7 = 48.0;
+  static const space8 = 64.0;
+
+  static const pageMaxWidth = 1200.0;
+  static const contentNarrow = 760.0;
+  static const contentReading = 840.0;
+  static const contentCanvas = 980.0;
   static const railBreakpoint = 720.0;
   static const wideBreakpoint = 1100.0;
+  static const dashboardBentoWidth = 900.0;
   static const controlHeight = 48.0;
+
+  static double pageGutter(BuildContext context) {
+    final width = MediaQuery.sizeOf(context).width;
+    if (width < railBreakpoint) return space4;
+    if (width < wideBreakpoint) return space5;
+    return space6;
+  }
+
+  static EdgeInsets cardPadding(BuildContext context) => EdgeInsets.all(
+    MediaQuery.sizeOf(context).width < railBreakpoint ? space4 : space5,
+  );
 }

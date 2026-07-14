@@ -1,4 +1,4 @@
-enum AppMode { connected, offlineDemo }
+enum AppMode { authenticated, guest }
 
 enum MoneyEventType { income, expense, subscription }
 

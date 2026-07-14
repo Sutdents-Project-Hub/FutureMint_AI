@@ -1,6 +1,8 @@
 import 'package:flutter/material.dart';
 
 import '../../../core/models.dart';
+import '../../../design/soft_components.dart';
+import '../../../design/tokens.dart';
 import '../../../shared/money_text.dart';
 
 class BudgetHero extends StatelessWidget {
@@ -9,7 +11,11 @@ class BudgetHero extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final scheme = Theme.of(context).colorScheme;
+    final theme = Theme.of(context);
+    final dark = theme.brightness == Brightness.dark;
+    final foreground = dark
+        ? theme.colorScheme.onSurface
+        : FutureMintTokens.ink;
     final ratio = summary.monthlyBudgetMinor == 0
         ? 0.0
         : (summary.availableMinor / summary.monthlyBudgetMinor).clamp(0.0, 1.0);
@@ -17,64 +23,69 @@ class BudgetHero extends StatelessWidget {
       container: true,
       label:
           '本月安心可用 ${summary.availableMinor} 元，預算剩餘百分之 ${(ratio * 100).round()}',
-      child: Container(
-        padding: const EdgeInsets.all(28),
-        decoration: BoxDecoration(
-          gradient: LinearGradient(
-            begin: Alignment.topLeft,
-            end: Alignment.bottomRight,
-            colors: [scheme.primary, scheme.primary.withValues(alpha: .78)],
-          ),
-          borderRadius: BorderRadius.circular(28),
-          boxShadow: [
-            BoxShadow(
-              color: scheme.primary.withValues(alpha: .18),
-              blurRadius: 32,
-              offset: const Offset(0, 14),
-            ),
-          ],
-        ),
+      child: SoftCard(
+        color: dark ? FutureMintTokens.tealDark : FutureMintTokens.mint,
+        radius: FutureMintTokens.radiusLarge,
+        padding: const EdgeInsets.all(FutureMintTokens.space5),
         child: DefaultTextStyle.merge(
-          style: TextStyle(color: scheme.onPrimary),
+          style: TextStyle(color: foreground),
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              Row(
+              Wrap(
+                alignment: WrapAlignment.spaceBetween,
+                crossAxisAlignment: WrapCrossAlignment.center,
+                spacing: 12,
+                runSpacing: 8,
                 children: [
-                  Icon(
-                    Icons.account_balance_wallet_outlined,
-                    color: scheme.onPrimary,
+                  Row(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      Icon(
+                        Icons.account_balance_wallet_outlined,
+                        color: foreground,
+                      ),
+                      const SizedBox(width: 8),
+                      const Text(
+                        '本月安心可用',
+                        style: TextStyle(fontWeight: FontWeight.w900),
+                      ),
+                    ],
                   ),
-                  const SizedBox(width: 8),
-                  const Text(
-                    '本月安心可用',
-                    style: TextStyle(fontWeight: FontWeight.w700),
+                  const MoneyBuddy(
+                    key: Key('dashboard-mascot'),
+                    size: 64,
+                    color: FutureMintTokens.sun,
+                    shape: MoneyBuddyShape.flower,
                   ),
                 ],
               ),
-              const SizedBox(height: 12),
+              const SizedBox(height: FutureMintTokens.space3),
               MoneyText(
                 summary.availableMinor,
                 style: Theme.of(context).textTheme.displaySmall?.copyWith(
-                  color: scheme.onPrimary,
+                  color: foreground,
                   fontSize: 42,
                 ),
               ),
-              const SizedBox(height: 20),
+              const SizedBox(height: FutureMintTokens.space5),
               ClipRRect(
                 borderRadius: BorderRadius.circular(8),
                 child: LinearProgressIndicator(
                   minHeight: 8,
                   value: ratio,
-                  color: scheme.onPrimary,
-                  backgroundColor: scheme.onPrimary.withValues(alpha: .25),
+                  color: foreground,
+                  backgroundColor: dark
+                      ? FutureMintTokens.darkSurfaceRaised
+                      : FutureMintTokens.mintSoft,
                 ),
               ),
-              const SizedBox(height: 10),
+              const SizedBox(height: FutureMintTokens.space3),
               Text(
                 '月預算 ${formatTwd(summary.monthlyBudgetMinor)} · 已支出 ${formatTwd(summary.expenseMinor + summary.subscriptionMinor)}',
                 style: TextStyle(
-                  color: scheme.onPrimary.withValues(alpha: .88),
+                  color: foreground,
+                  fontWeight: FontWeight.w700,
                 ),
               ),
             ],

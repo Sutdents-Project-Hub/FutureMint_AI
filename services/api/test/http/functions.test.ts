@@ -5,6 +5,7 @@ import { FutureMintService } from "../../src/application/futureMintService";
 import { demoCatalog } from "../../src/adapters/demoCatalog";
 import { DemoAiProvider } from "../../src/adapters/demoAiProvider";
 import { InMemoryRepository } from "../../src/adapters/inMemoryRepository";
+import { AuthService } from "../../src/auth/authService";
 import { setRuntimeForTests } from "../../src/http/runtime";
 import { healthHandler } from "../../src/functions/health";
 import { captureParseHandler } from "../../src/functions/captures";
@@ -41,26 +42,38 @@ const request = (
     method,
     headers: {
       "content-type": "application/json",
+      ...(authenticatedToken
+          ? { authorization: `Bearer ${authenticatedToken}` }
+          : {}),
       ...(origin ? { origin } : {}),
     },
     body: body === undefined ? undefined : { string: JSON.stringify(body) },
   });
 
+let authenticatedToken = "";
+
 describe("Functions HTTP handlers", () => {
-  beforeEach(() => {
+  beforeEach(async () => {
     process.env.ALLOWED_ORIGINS =
       "https://futuremint.example,http://localhost:4173";
     const repository = new InMemoryRepository();
+    const authService = new AuthService(repository);
+    const registered = await authService.register({
+      email: "test@example.com",
+      password: "futuremint2026",
+    });
+    authenticatedToken = registered.token;
+    await repository.resetDemo(registered.account.id);
     setRuntimeForTests({
       mode: "demo",
       aiProvider: "demo",
       dataProvider: "memory",
-      demoResetEnabled: true,
       service: new FutureMintService(
         repository,
         new DemoAiProvider(),
         demoCatalog,
       ),
+      authService,
     });
   });
 
@@ -180,6 +193,7 @@ describe("Functions HTTP handlers", () => {
         url: "http://localhost/api/money-events?type=subscription",
         method: "GET",
         query: { type: "subscription" },
+        headers: { authorization: `Bearer ${authenticatedToken}` },
       }),
       context(),
     );
@@ -191,6 +205,7 @@ describe("Functions HTTP handlers", () => {
           from: "2026-07-14T00:00:00+08:00",
           to: "2026-07-13T00:00:00+08:00",
         },
+        headers: { authorization: `Bearer ${authenticatedToken}` },
       }),
       context(),
     );
@@ -207,7 +222,10 @@ describe("Functions HTTP handlers", () => {
     const malformed = new HttpRequest({
       url: "http://localhost/api/captures/parse",
       method: "POST",
-      headers: { "content-type": "application/json" },
+      headers: {
+        "content-type": "application/json",
+        authorization: `Bearer ${authenticatedToken}`,
+      },
       body: { string: '{"text":' },
     });
 
@@ -232,7 +250,10 @@ describe("Functions HTTP handlers", () => {
       new HttpRequest({
         url: `http://localhost/api/lessons/${lesson.id}`,
         method: "PATCH",
-        headers: { "content-type": "application/json" },
+        headers: {
+          "content-type": "application/json",
+          authorization: `Bearer ${authenticatedToken}`,
+        },
         params: { lessonId: lesson.id },
         body: {
           string: JSON.stringify({ selectedOption: "未呈現的選項" }),

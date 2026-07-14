@@ -1,15 +1,16 @@
 # FutureMint AI Design System
 
-> Source: `ui-ux-pro-max` product, color, UX, and Flutter guidance, curated for the approved competition MVP.
+> Source: approved competition MVP direction plus the user-provided UI reference analysis, implemented with Flutter-native shapes and no external visual assets.
 > Page overrides in `pages/<page>.md` take precedence when present.
 
 ## Direction
 
 - Audience: students aged 15–18 managing allowance, income, subscriptions, and savings goals.
 - Character: optimistic, trustworthy, energetic, and clear; youth-friendly without looking childish.
-- Style: vibrant block-based cards with restrained decoration and light mode as the default.
-- Dials: variance 4/10, motion 3/10, density 5/10.
-- Avoid: trading-terminal aesthetics, neon finance clichés, glass everywhere, childish fonts, shame-based warnings, and decorative charts.
+- Style: calm near-white canvas, flat rounded color blocks, black action anchors, pill controls, and friendly geometric companions. It combines the clean planner structure of the reference UI with its expressive habit-app color and character language; light mode is the primary competition presentation.
+- Hierarchy: mint／teal owns the brand and budget Hero; black owns the strongest action and mobile navigation. Sun, lavender, periwinkle, sky, orange, and pink identify a small number of feature moments rather than coloring every surface.
+- Dials: variance 6/10, motion 2/10, density 5/10.
+- Avoid: repeated thick outlines, offset hard shadows, a card around every row, trading-terminal aesthetics, generic multi-hue gradients, glassmorphism, neon everywhere, childish fonts, shame-based warnings, decorative charts, and copied third-party illustration.
 
 ## Semantic colors
 
@@ -17,50 +18,59 @@
 
 | Token | Value | Purpose |
 |---|---|---|
-| primary | `#0F766E` | Main actions and selected navigation |
-| onPrimary | `#FFFFFF` | Content on primary |
-| primaryContainer | `#CCFBF1` | Progress and supportive highlights |
-| secondary | `#B45309` | Goal and learning accents |
-| secondaryContainer | `#FEF3C7` | Warm opportunity cards |
-| background | `#F7FAF9` | App background |
-| surface | `#FFFFFF` | Cards and sheets |
-| surfaceMuted | `#EAF4F1` | Grouped sections |
-| textPrimary | `#12312D` | Main text |
-| textSecondary | `#476560` | Supporting text |
-| outline | `#B7CCC7` | Borders and dividers |
-| success | `#15803D` | Confirmed positive state |
-| warning | `#A16207` | Attention with icon/text |
-| error | `#B91C1C` | Error with icon/text |
+| ink | `#171B1A` | Text, strongest actions, and phone navigation |
+| background | `#F5FAF8` | Near-white canvas with a restrained teal tint |
+| surface | `#FFFFFF` | Neutral cards, sheets, list surfaces, and fields |
+| mint | `#2AB7A9` | Budget Hero, brand mark, and confirmed emphasis |
+| mintSoft | `#D8F4ED` | Supportive and selected surfaces |
+| teal | `#087B74` | Links, progress, and restrained brand labels |
+| tealDark | `#075E59` | High-contrast teal text or progress |
+| coral | `#F96F61` | Coach and interaction accents |
+| coralSoft | `#FFE0DC` | Gentle feedback surfaces |
+| sun | `#F7C94C` | Goal, active rail indicator, and spark companion |
+| sunSoft | `#FFF0B8` | Goal and assumption surfaces |
+| lavender | `#A58CE8` | Personalized learning accent |
+| lavenderSoft | `#EAE4FC` | Learning and coach surfaces |
+| periwinkle | `#8EA4E7` | Habit-style example and secondary feature accent |
+| periwinkleSoft | `#E4E9FB` | Learning example surface |
+| sky | `#80C5EC` | Records and information accent |
+| skySoft | `#E0F2FB` | Records and FutureSeed surfaces |
+| orange | `#FFB34D` | Plan and subscription option accent |
+| orangeSoft | `#FFE4BC` | Goal and option surfaces |
+| pink | `#E879C9` | Small expressive companion or option accent |
+| pinkSoft | `#F8DDF0` | Small expressive surface |
+| hairline | `#D4E2DE` | Dividers and optional card boundaries |
+| outline | `#70817C` | Inputs and secondary controls |
+| success | `#117A4B` | Confirmed positive state |
+| warning | `#A85B00` | Attention with icon/text |
+| error | `#B42318` | Error with icon/text |
 
 ### Dark
 
 | Token | Value | Purpose |
 |---|---|---|
-| primary | `#5EEAD4` | Main actions and selected navigation |
-| onPrimary | `#062B27` | Content on primary |
-| primaryContainer | `#134E4A` | Progress and supportive highlights |
-| secondary | `#FBBF24` | Goal and learning accents |
-| secondaryContainer | `#713F12` | Warm opportunity cards |
-| background | `#071A18` | App background |
-| surface | `#102724` | Cards and sheets |
-| surfaceMuted | `#17332F` | Grouped sections |
-| textPrimary | `#F0FDFA` | Main text |
-| textSecondary | `#B7D5CF` | Supporting text |
-| outline | `#3F5F59` | Borders and dividers |
-| success | `#86EFAC` | Confirmed positive state |
-| warning | `#FDE68A` | Attention with icon/text |
-| error | `#FCA5A5` | Error with icon/text |
+| background | `#101715` | Teal-tinted near-black canvas |
+| surface | `#18211F` | Base card and sheet surface |
+| surfaceRaised | `#222C29` | Higher grouped surface; depth comes from lightness |
+| primary | `#72DCD4` | Main actions and progress |
+| primaryContainer | `#174F4D` | Selected or supportive state |
+| secondary | `#FF8378` | Capture and coach accent |
+| secondaryContainer | `#64302C` | Feedback surface |
+| textPrimary | `#FFF8EE` | Main text |
+| outline | `#AAA0A3` | Strong component outline |
+| outlineMuted | `#564D50` | Dividers and inactive outline |
+| feature accents | light palette, selectively reused | Small icons and selected indicators only |
 
 Every foreground/background pair used for body text must meet WCAG 4.5:1. State meaning always includes text or an icon, never color alone.
 
 ## Typography
 
 - Use the platform sans-serif with Traditional Chinese fallback; do not fetch a font at runtime.
-- Display: 32/40, weight 700.
-- Headline: 24/32, weight 700.
-- Title: 20/28, weight 600.
+- Display: 34–42/38–46, weight 800.
+- Headline: 26–32/30–36, weight 700.
+- Title: 18–22/24–28, weight 700.
 - Body: 16/24, weight 400.
-- Label: 14/20, weight 600.
+- Label: 14/20, weight 700.
 - Caption: 12/18, weight 500; never use below 12.
 - Money and chart values use tabular figures.
 - Long text stays within 65–75 characters on wide screens.
@@ -69,29 +79,39 @@ Every foreground/background pair used for body text must meet WCAG 4.5:1. State 
 
 - Spacing tokens: 4, 8, 12, 16, 24, 32, 48, 64dp.
 - Phone gutters: 16dp; tablet: 24dp; desktop content max width: 1200dp.
-- Card radius: 20dp; input/button radius: 14dp; chips: pill.
+- Card radius: 20dp; Hero radius: 28dp; input radius: 12dp; buttons and chips: pill.
 - Card padding: 16dp on phone, 20–24dp on larger screens.
-- Prefer borders and tonal surfaces; use only two subtle elevation levels.
+- Most light cards are flat and borderless. Use a 1dp hairline only when a white surface must be separated from the near-white canvas; reserve a subtle soft shadow for an exceptional floating layer, never for every card. Dark mode uses progressively lighter surfaces for depth.
 - Interactive targets are at least 48×48dp with 8dp separation.
 
 ## Responsive layout
 
-- Under 720dp: five-item bottom navigation with a prominent center Capture action.
-- 720–1099dp: NavigationRail and a single responsive content column.
-- 1100dp and above: NavigationRail plus a two-column dashboard; content remains bounded.
+- Under 720dp: five-item bottom navigation inside a dark rounded shell; Capture remains the central, highest-priority destination.
+- 720dp and above: a 264dp NavigationRail; the rail becomes independently scrollable below 560dp height.
+- Dashboard switches from a single column to its bento arrangement only when the post-rail content area is at least 900dp wide. Do not use the full viewport width for this decision.
+- Page content remains bounded to 1200dp; reading/list surfaces use narrower 760／840／980dp bounds where appropriate.
 - Use `LayoutBuilder`; do not hardcode device width assumptions.
 - Lists reserve padding for persistent navigation and safe areas.
 - Support portrait, landscape, browser keyboard navigation, and text scaling to 200% without horizontal overflow.
 
 ## Components
 
-- Buttons: one filled primary action per screen; outlined or text styles for alternatives. Loading disables repeat submission and preserves label width.
-- Cards: tonal blocks with clear title, one insight, and one action. Not every card is clickable.
+- Buttons: one filled pill action per screen; outlined or text styles for alternatives. Loading disables repeat submission and preserves label width.
+- `SoftCard`: shared flat rounded surface. Its default is borderless and shadowless; optional hairline and soft elevation are explicit variants. Color communicates hierarchy or feature grouping, never state by itself.
+- `PageHeading`: plain color kicker, strong sentence-case title, optional supporting copy, and a trailing action that stacks below 620dp.
+- `MoneyBuddy`: Flutter-native blob, flower, or spark companion with a single-hue radial highlight, black facial features, and the semantic label `FutureMint 金錢夥伴`. It is decorative and never carries financial state.
+- Cards: each block has a clear title, one insight, and at most one primary action. Lists use one shared surface with dividers instead of a card for every row.
+- Dashboard: one teal budget Hero, one lavender coaching strip, orange goal block, sky subscription block, and a neutral recent-record surface. The bento layout appears only with enough content width.
+- Capture: the empty/input state gets the colorful Hero; once drafts exist, visual emphasis moves to the first draft and the input Hero becomes quiet.
+- Learning: use neighboring or mildly overlapping lavender／sun／periwinkle blocks at normal text scale; at high text scale they return to a normal vertical stack.
+- FutureSeed: controls own the emphasis before calculation; the empty state sizes to content rather than reserving a fixed illustration height.
 - Forms: visible labels, helper text for financial assumptions, validation after submit/blur, and error text next to the field.
 - Capture flow: input → parsing → confirmation. Show provider source and never equate parsed with saved.
-- Navigation: icons and labels from Material Symbols only; active location uses color, weight, and indicator.
+- Navigation: icons and labels from Material Symbols only; active location uses text weight, icon, and a sun/lavender indicator in addition to color.
 - Charts: accessible teal/amber series, direct values, a written summary, empty/loading/error states, and reduced-motion support.
-- Feedback: snackbars use polite announcements; destructive reset requires confirmation and offers a clear consequence statement.
+- Authentication: sign-in／register screens use the same calm canvas, one clear primary action, visible password rules, and non-technical retry copy. Guest entry must state that data is temporary before entering the app.
+- Account state: App shell shows signed-in or guest state with text and icon. Guest state has a persistent, wrapping notice that data is not stored; logout／leave guest is available in Settings.
+- Feedback: snackbars use polite announcements. Network or authentication failure never fabricates a saved result or switches data sources silently.
 
 ## Motion
 
@@ -102,7 +122,7 @@ Every foreground/background pair used for body text must meet WCAG 4.5:1. State 
 
 ## Required states
 
-Every remote or persisted feature provides loading, success, empty, validation error, retryable error, offline, and disabled states. Connected mode failures never silently substitute demo data; switching to Offline demo is an explicit user action.
+Every remote or persisted feature provides loading, success, empty, validation error, retryable error, unavailable-network, and disabled states. API failure never silently substitutes demo data. Guest mode is an explicit temporary state, not an offline synchronization mode.
 
 ## Delivery checks
 

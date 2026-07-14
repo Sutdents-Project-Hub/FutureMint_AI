@@ -17,18 +17,41 @@ void main() {
 
     await tester.tap(find.text('記一筆').last);
     await tester.pumpAndSettle();
+    expect(find.byKey(const Key('capture-hero')), findsOneWidget);
     await tester.enterText(find.byKey(const Key('capture-input')), '今天買珍奶 75');
     await tester.tap(find.text('幫我整理'));
     await tester.pumpAndSettle();
 
     expect(find.text('確認草稿'), findsOneWidget);
+    expect(find.byKey(const Key('capture-draft-focus')), findsOneWidget);
     expect(find.textContaining('離線規則'), findsOneWidget);
+    expect(find.bySemanticsLabel('AI 已整理草稿，尚未保存'), findsOneWidget);
     expect(controller.events.length, initialCount);
 
     await tester.ensureVisible(find.text('確認並記下'));
     await tester.tap(find.text('確認並記下'));
     await tester.pumpAndSettle();
     expect(controller.events.length, initialCount + 1);
+  });
+
+  testWidgets('capture remains usable on a narrow phone', (tester) async {
+    final controller = await createController();
+    tester.view.physicalSize = const Size(375, 812);
+    tester.view.devicePixelRatio = 1;
+    addTearDown(tester.view.resetPhysicalSize);
+    addTearDown(tester.view.resetDevicePixelRatio);
+
+    await tester.pumpWidget(FutureMintApp(controller: controller));
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('記一筆').last);
+    await tester.pumpAndSettle();
+
+    expect(find.byKey(const Key('capture-input')), findsOneWidget);
+    expect(find.text('今天買珍奶 75'), findsOneWidget);
+    expect(find.text('打工薪水 1500'), findsOneWidget);
+    expect(find.text('Netflix 390 四個人分'), findsOneWidget);
+    expect(find.text('幫我整理'), findsOneWidget);
+    expect(tester.takeException(), isNull);
   });
 
   testWidgets('subscription draft exposes date, cycle, and split arithmetic', (

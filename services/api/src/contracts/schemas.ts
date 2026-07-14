@@ -5,6 +5,16 @@ import { billingCycles, moneyCategories, moneyEventTypes } from "./models";
 const positiveMoney = z.number().int().positive().max(100_000_000);
 const isoDateTime = z.string().datetime({ offset: true });
 
+export const authCredentialsSchema = z.object({
+  email: z.string().trim().email().max(254),
+  password: z
+    .string()
+    .min(12, "密碼至少需要 12 個字元。")
+    .max(128, "密碼不得超過 128 個字元。")
+    .regex(/[A-Za-z]/, "密碼需包含英文字母。")
+    .regex(/\d/, "密碼需包含數字。"),
+});
+
 export const splitDetailsSchema = z.object({
   participants: z.number().int().min(2).max(20),
   userShareMinor: positiveMoney,

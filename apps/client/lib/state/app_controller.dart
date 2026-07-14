@@ -2,12 +2,20 @@ import 'package:flutter/material.dart';
 
 import '../core/future_mint_repository.dart';
 import '../core/models.dart';
+import '../data/api_repository.dart';
 
 class AppController extends ChangeNotifier {
-  AppController({required this.repository, required this.mode});
+  AppController({
+    required this.repository,
+    required this.mode,
+    this.accountEmail,
+    this.onExit,
+  });
 
   FutureMintRepository repository;
-  AppMode mode;
+  final AppMode mode;
+  final String? accountEmail;
+  final Future<void> Function()? onExit;
   ThemeMode themeMode = ThemeMode.system;
 
   bool initialized = false;
@@ -31,9 +39,11 @@ class AppController extends ChangeNotifier {
       await operation();
       return true;
     } catch (error) {
-      errorMessage = error is FormatException
-          ? error.message
-          : '目前無法完成操作，請稍後再試。';
+      errorMessage = switch (error) {
+        FormatException(:final message) => message,
+        ApiException(:final message) => message,
+        _ => '目前無法完成操作，請稍後再試。',
+      };
       return false;
     } finally {
       busy = false;
@@ -136,19 +146,6 @@ class AppController extends ChangeNotifier {
     );
   });
 
-  Future<void> resetDemo() => _run(() async {
-    await repository.resetDemo();
-    captureResult = null;
-    lastSavedEvent = null;
-    lesson = null;
-    await refresh();
-    try {
-      subscriptionComparison = await repository.compareSubscriptions();
-    } catch (_) {
-      noticeMessage = '展示資料已重設，但訂閱比較暫時無法更新。';
-    }
-  });
-
   void setThemeMode(ThemeMode value) {
     themeMode = value;
     notifyListeners();
@@ -159,23 +156,4 @@ class AppController extends ChangeNotifier {
     noticeMessage = null;
     notifyListeners();
   }
-
-  Future<void> switchRepository(
-    FutureMintRepository nextRepository,
-    AppMode nextMode,
-  ) => _run(() async {
-    repository = nextRepository;
-    mode = nextMode;
-    initialized = false;
-    captureResult = null;
-    await refresh();
-    try {
-      subscriptionComparison = await repository.compareSubscriptions();
-    } catch (_) {
-      subscriptionComparison = null;
-      noticeMessage = '訂閱比較暫時無法載入，其他資料仍可使用。';
-    }
-    lesson = null;
-    initialized = true;
-  });
 }

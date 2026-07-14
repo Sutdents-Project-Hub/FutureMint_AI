@@ -6,6 +6,7 @@ import {
 } from "@azure/functions";
 
 import { getRuntime } from "../http/runtime";
+import { requireAuthenticatedUser } from "../http/authentication";
 import { ok, readJson, toProblem } from "../http/responses";
 
 export const captureParseHandler = async (
@@ -13,8 +14,10 @@ export const captureParseHandler = async (
   context: InvocationContext,
 ) => {
   try {
-    const result = await getRuntime().service.parseCapture(
-      "demo-user",
+    const runtime = getRuntime();
+    const account = await requireAuthenticatedUser(request, runtime);
+    const result = await runtime.service.parseCapture(
+      account.id,
       (await readJson(request)) as never,
     );
     return ok(context, result, 200, request);

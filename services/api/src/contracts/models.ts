@@ -53,6 +53,33 @@ export interface UserProfile {
   preferredTone: "supportive" | "direct";
 }
 
+export interface Account {
+  id: string;
+  userId: string;
+  email: string;
+  passwordHash: string;
+  passwordSalt: string;
+  passwordAlgorithm: "scrypt-v1";
+  profileComplete: boolean;
+  createdAt: string;
+}
+
+export interface PublicAccount {
+  id: string;
+  email: string;
+  profileComplete: boolean;
+  createdAt: string;
+}
+
+export interface SessionRecord {
+  id: string;
+  userId: string;
+  tokenHash: string;
+  createdAt: string;
+  expiresAt: string;
+  revokedAt?: string;
+}
+
 export interface CategoryTotal {
   category: MoneyCategory;
   amountMinor: number;

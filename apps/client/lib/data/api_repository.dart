@@ -24,11 +24,13 @@ class ApiException implements Exception {
 class ApiRepository implements FutureMintRepository {
   ApiRepository({
     required this.baseUri,
+    this.accessToken,
     http.Client? client,
     this.requestTimeout = const Duration(seconds: 12),
   }) : _client = client ?? http.Client();
 
   final Uri baseUri;
+  final String? accessToken;
   final http.Client _client;
   final Duration requestTimeout;
 
@@ -56,7 +58,10 @@ class ApiRepository implements FutureMintRepository {
   Future<dynamic> _send(String method, String path, {Object? body}) async {
     late http.Response response;
     try {
-      final headers = {'content-type': 'application/json'};
+      final headers = <String, String>{
+        'content-type': 'application/json',
+        if (accessToken != null) 'authorization': 'Bearer $accessToken',
+      };
       final encoded = body == null ? null : jsonEncode(body);
       final request = switch (method) {
         'GET' => _client.get(_uri(path), headers: headers),
@@ -74,7 +79,7 @@ class ApiRepository implements FutureMintRepository {
     } on http.ClientException {
       throw const ApiException(
         code: 'network_error',
-        message: '目前無法連上服務，請檢查網路或切換離線展示。',
+        message: '目前無法連上服務，請檢查網路後再試。',
         retryable: true,
       );
     }
@@ -93,7 +98,9 @@ class ApiRepository implements FutureMintRepository {
     if (response.statusCode < 200 || response.statusCode >= 300) {
       throw ApiException(
         code: decoded['code'] as String? ?? 'request_failed',
-        message: decoded['message'] as String? ?? '目前無法完成請求。',
+        message: response.statusCode == 401
+            ? '登入已過期，請重新登入。'
+            : decoded['message'] as String? ?? '目前無法完成請求。',
         retryable: decoded['retryable'] as bool? ?? false,
       );
     }

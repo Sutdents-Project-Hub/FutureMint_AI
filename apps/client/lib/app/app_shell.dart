@@ -3,6 +3,7 @@ import 'package:go_router/go_router.dart';
 import 'package:provider/provider.dart';
 
 import '../core/models.dart';
+import '../design/soft_components.dart';
 import '../design/tokens.dart';
 import '../features/settings/settings_sheet.dart';
 import '../state/app_controller.dart';
@@ -59,124 +60,230 @@ class AppShell extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final wide =
-        MediaQuery.sizeOf(context).width >= FutureMintTokens.railBreakpoint;
     final controller = context.watch<AppController>();
-    final offline = controller.mode == AppMode.offlineDemo;
-
-    final content = SafeArea(
-      child: Center(
-        child: ConstrainedBox(
-          constraints: const BoxConstraints(
-            maxWidth: FutureMintTokens.pageMaxWidth,
-          ),
-          child: Column(
-            children: [
-              if (controller.errorMessage != null ||
-                  controller.noticeMessage != null)
-                _GlobalMessage(
-                  message: controller.errorMessage ?? controller.noticeMessage!,
-                  error: controller.errorMessage != null,
-                  onClose: controller.clearMessages,
-                ),
-              Expanded(child: child),
-            ],
-          ),
-        ),
-      ),
-    );
-
-    if (!wide) {
-      return Scaffold(
-        appBar: AppBar(
-          titleSpacing: 20,
-          title: const _Brand(),
-          actions: [
-            _ModeChip(offline: offline),
-            IconButton(
-              tooltip: '設定',
-              onPressed: () => showSettingsSheet(context),
-              icon: const Icon(Icons.tune_rounded),
-            ),
-            const SizedBox(width: 8),
-          ],
-        ),
-        body: content,
-        bottomNavigationBar: NavigationBar(
-          selectedIndex: _selectedIndex,
-          onDestinationSelected: (index) => _go(context, index),
-          destinations: [
-            for (final item in appDestinations)
-              NavigationDestination(
-                icon: Icon(item.icon),
-                selectedIcon: Icon(item.selectedIcon),
-                label: item.label,
-              ),
-          ],
-        ),
-      );
-    }
-
-    return Scaffold(
-      body: SafeArea(
-        child: Row(
-          children: [
-            Container(
-              width: 264,
-              decoration: BoxDecoration(
-                color: Theme.of(context).colorScheme.surface,
-                border: Border(
-                  right: BorderSide(
-                    color: Theme.of(context).colorScheme.outlineVariant,
-                  ),
-                ),
+    final guest = controller.mode == AppMode.guest;
+    return LayoutBuilder(
+      builder: (context, constraints) {
+        final wide = constraints.maxWidth >= FutureMintTokens.railBreakpoint;
+        final content = SafeArea(
+          child: Center(
+            child: ConstrainedBox(
+              constraints: const BoxConstraints(
+                maxWidth: FutureMintTokens.pageMaxWidth,
               ),
               child: Column(
-                crossAxisAlignment: CrossAxisAlignment.stretch,
                 children: [
-                  const Padding(
-                    padding: EdgeInsets.fromLTRB(24, 24, 16, 12),
-                    child: _Brand(),
-                  ),
-                  Padding(
-                    padding: const EdgeInsets.symmetric(horizontal: 16),
-                    child: Align(
-                      alignment: Alignment.centerLeft,
-                      child: _ModeChip(offline: offline),
+                  if (controller.errorMessage != null ||
+                      controller.noticeMessage != null)
+                    _GlobalMessage(
+                      message:
+                          controller.errorMessage ?? controller.noticeMessage!,
+                      error: controller.errorMessage != null,
+                      onClose: controller.clearMessages,
                     ),
-                  ),
-                  const SizedBox(height: 20),
-                  Expanded(
-                    child: NavigationRail(
-                      extended: true,
-                      minExtendedWidth: 263,
-                      selectedIndex: _selectedIndex,
-                      onDestinationSelected: (index) => _go(context, index),
-                      groupAlignment: -1,
-                      labelType: NavigationRailLabelType.none,
-                      destinations: [
-                        for (final item in appDestinations)
-                          NavigationRailDestination(
-                            icon: Icon(item.icon),
-                            selectedIcon: Icon(item.selectedIcon),
-                            label: Text(item.label),
-                          ),
-                      ],
-                    ),
-                  ),
-                  Padding(
-                    padding: const EdgeInsets.all(16),
-                    child: OutlinedButton.icon(
-                      onPressed: () => showSettingsSheet(context),
-                      icon: const Icon(Icons.tune_rounded),
-                      label: const Text('設定與服務狀態'),
-                    ),
-                  ),
+                  if (guest) const _GuestNotice(),
+                  Expanded(child: child),
                 ],
               ),
             ),
-            Expanded(child: content),
-          ],
+          ),
+        );
+
+        if (!wide) {
+          return Scaffold(
+            appBar: AppBar(
+              titleSpacing: FutureMintTokens.space4,
+              backgroundColor: Theme.of(context).scaffoldBackgroundColor,
+              surfaceTintColor: Colors.transparent,
+              title: const _Brand(),
+              actions: [
+                _ModeChip(guest: guest, accountEmail: controller.accountEmail),
+                IconButton(
+                  tooltip: '設定',
+                  onPressed: () => showSettingsSheet(context),
+                  icon: const Icon(Icons.tune_rounded),
+                ),
+                const SizedBox(width: FutureMintTokens.space2),
+              ],
+            ),
+            body: content,
+            bottomNavigationBar: _MobileNavigation(
+              selectedIndex: _selectedIndex,
+              onDestinationSelected: (index) => _go(context, index),
+            ),
+          );
+        }
+
+        return Scaffold(
+          body: SafeArea(
+            child: Row(
+              children: [
+                Container(
+                  width: 264,
+                  decoration: BoxDecoration(
+                    color: Theme.of(context).brightness == Brightness.dark
+                        ? FutureMintTokens.darkSurface
+                        : FutureMintTokens.paper,
+                    border: Border(
+                      right: BorderSide(
+                        color: Theme.of(context).colorScheme.outlineVariant,
+                      ),
+                    ),
+                  ),
+                  child: LayoutBuilder(
+                    builder: (context, railConstraints) {
+                      NavigationRail buildRail() => NavigationRail(
+                        extended: true,
+                        minExtendedWidth: 263,
+                        selectedIndex: _selectedIndex,
+                        onDestinationSelected: (index) => _go(context, index),
+                        groupAlignment: -1,
+                        labelType: NavigationRailLabelType.none,
+                        destinations: [
+                          for (final item in appDestinations)
+                            NavigationRailDestination(
+                              icon: Icon(item.icon),
+                              selectedIcon: Icon(item.selectedIcon),
+                              label: Text(item.label),
+                            ),
+                        ],
+                      );
+                      final header = <Widget>[
+                        const Padding(
+                          padding: EdgeInsets.fromLTRB(24, 24, 16, 12),
+                          child: _Brand(),
+                        ),
+                        Padding(
+                          padding: const EdgeInsets.symmetric(
+                            horizontal: FutureMintTokens.space4,
+                          ),
+                          child: Align(
+                            alignment: Alignment.centerLeft,
+                            child: _ModeChip(
+                              guest: guest,
+                              accountEmail: controller.accountEmail,
+                            ),
+                          ),
+                        ),
+                        const SizedBox(height: FutureMintTokens.space5),
+                      ];
+                      final settings = Padding(
+                        padding: const EdgeInsets.all(FutureMintTokens.space4),
+                        child: SoftCard(
+                          padding: EdgeInsets.zero,
+                          borderWidth: 1,
+                          color: Theme.of(context).brightness == Brightness.dark
+                              ? FutureMintTokens.darkSurfaceRaised
+                              : FutureMintTokens.mintSoft,
+                          child: TextButton.icon(
+                            onPressed: () => showSettingsSheet(context),
+                            icon: const Icon(Icons.tune_rounded),
+                            label: const Text('設定與服務狀態'),
+                          ),
+                        ),
+                      );
+                      if (railConstraints.maxHeight < 560) {
+                        return SingleChildScrollView(
+                          key: const Key('short-rail-scroll'),
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.stretch,
+                            children: [
+                              ...header,
+                              SizedBox(
+                                height: appDestinations.length * 52 + 16,
+                                child: buildRail(),
+                              ),
+                              settings,
+                            ],
+                          ),
+                        );
+                      }
+                      return Column(
+                        crossAxisAlignment: CrossAxisAlignment.stretch,
+                        children: [
+                          ...header,
+                          Expanded(child: buildRail()),
+                          settings,
+                        ],
+                      );
+                    },
+                  ),
+                ),
+                Expanded(child: content),
+              ],
+            ),
+          ),
+        );
+      },
+    );
+  }
+}
+
+class _MobileNavigation extends StatelessWidget {
+  const _MobileNavigation({
+    required this.selectedIndex,
+    required this.onDestinationSelected,
+  });
+
+  final int selectedIndex;
+  final ValueChanged<int> onDestinationSelected;
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    final dark = theme.brightness == Brightness.dark;
+    final foreground = dark
+        ? theme.colorScheme.onSurface
+        : FutureMintTokens.paper;
+    return ColoredBox(
+      color: theme.scaffoldBackgroundColor,
+      child: SafeArea(
+        top: false,
+        minimum: const EdgeInsets.fromLTRB(12, 0, 12, 8),
+        child: DecoratedBox(
+          key: const Key('mobile-navigation-shell'),
+          decoration: BoxDecoration(
+            color: dark
+                ? FutureMintTokens.darkSurfaceRaised
+                : FutureMintTokens.ink,
+            borderRadius: BorderRadius.circular(28),
+          ),
+          child: ClipRRect(
+            borderRadius: BorderRadius.circular(28),
+            child: NavigationBarTheme(
+              data: theme.navigationBarTheme.copyWith(
+                indicatorColor: dark
+                    ? FutureMintTokens.lavender
+                    : FutureMintTokens.mintSoft,
+                iconTheme: WidgetStateProperty.resolveWith((states) {
+                  if (states.contains(WidgetState.selected)) {
+                    return const IconThemeData(color: FutureMintTokens.ink);
+                  }
+                  return IconThemeData(color: foreground);
+                }),
+                labelTextStyle: WidgetStateProperty.resolveWith((states) {
+                  final selected = states.contains(WidgetState.selected);
+                  return TextStyle(
+                    color: selected ? FutureMintTokens.mint : foreground,
+                    fontSize: 12,
+                    fontWeight: selected ? FontWeight.w700 : FontWeight.w600,
+                  );
+                }),
+              ),
+              child: NavigationBar(
+                selectedIndex: selectedIndex,
+                onDestinationSelected: onDestinationSelected,
+                destinations: [
+                  for (final item in appDestinations)
+                    NavigationDestination(
+                      icon: Icon(item.icon),
+                      selectedIcon: Icon(item.selectedIcon),
+                      label: item.label,
+                    ),
+                ],
+              ),
+            ),
+          ),
         ),
       ),
     );
@@ -190,24 +297,22 @@ class _Brand extends StatelessWidget {
   Widget build(BuildContext context) => Row(
     mainAxisSize: MainAxisSize.min,
     children: [
-      DecoratedBox(
-        decoration: BoxDecoration(
-          color: Theme.of(context).colorScheme.primaryContainer,
-          borderRadius: BorderRadius.circular(12),
-        ),
-        child: const SizedBox(
-          width: 38,
-          height: 38,
-          child: Icon(Icons.spa_rounded, size: 22),
-        ),
+      const MoneyBuddy(
+        size: 40,
+        color: FutureMintTokens.mint,
+        excludeSemantics: true,
       ),
-      const SizedBox(width: 10),
+      const SizedBox(width: FutureMintTokens.space3),
       Flexible(
         child: Text(
           'FutureMint AI',
           maxLines: 1,
           overflow: TextOverflow.ellipsis,
-          style: Theme.of(context).textTheme.titleLarge?.copyWith(fontSize: 18),
+          style: Theme.of(context).textTheme.titleLarge?.copyWith(
+            fontSize: 18,
+            fontWeight: FontWeight.w700,
+            letterSpacing: -.4,
+          ),
         ),
       ),
     ],
@@ -215,21 +320,69 @@ class _Brand extends StatelessWidget {
 }
 
 class _ModeChip extends StatelessWidget {
-  const _ModeChip({required this.offline});
-  final bool offline;
+  const _ModeChip({required this.guest, this.accountEmail});
+  final bool guest;
+  final String? accountEmail;
 
   @override
-  Widget build(BuildContext context) => Tooltip(
-    message: offline
-        ? '使用內建合成資料，不會連線到真實金融服務'
-        : '設定為 Connected 模式；實際可用狀態以畫面回應為準',
-    child: Chip(
-      visualDensity: VisualDensity.compact,
-      avatar: Icon(
-        offline ? Icons.offline_bolt_outlined : Icons.cloud_outlined,
-        size: 16,
+  Widget build(BuildContext context) {
+    final dark = Theme.of(context).brightness == Brightness.dark;
+    final labelColor = dark ? FutureMintTokens.paper : FutureMintTokens.ink;
+    return Tooltip(
+      message: guest
+          ? '訪客資料只保留在這次使用期間，不會寫入帳號。'
+          : '已登入 ${accountEmail ?? '你的帳號'}；資料會依帳號分開保存。',
+      child: Chip(
+        visualDensity: VisualDensity.compact,
+        backgroundColor: guest
+            ? (dark
+                  ? FutureMintTokens.darkSurfaceRaised
+                  : FutureMintTokens.sunSoft)
+            : (dark ? const Color(0xFF184B60) : FutureMintTokens.skySoft),
+        avatar: Icon(
+          guest ? Icons.visibility_outlined : Icons.verified_user_outlined,
+          size: 16,
+          color: guest ? FutureMintTokens.mint : FutureMintTokens.sky,
+        ),
+        label: Text(
+          guest ? '訪客' : '已登入',
+          style: TextStyle(color: labelColor, fontWeight: FontWeight.w700),
+        ),
       ),
-      label: Text(offline ? '離線展示' : 'Connected 模式'),
+    );
+  }
+}
+
+class _GuestNotice extends StatelessWidget {
+  const _GuestNotice();
+
+  @override
+  Widget build(BuildContext context) => Container(
+    color: Theme.of(context).brightness == Brightness.dark
+        ? FutureMintTokens.darkSurfaceRaised
+        : FutureMintTokens.sunSoft,
+    padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 9),
+    child: Row(
+      children: [
+        const Icon(Icons.info_outline, size: 20),
+        const SizedBox(width: FutureMintTokens.space3),
+        Expanded(
+          child: Wrap(
+            spacing: FutureMintTokens.space3,
+            runSpacing: FutureMintTokens.space1,
+            crossAxisAlignment: WrapCrossAlignment.center,
+            children: [
+              Text(
+                '訪客資料不會儲存',
+                style: Theme.of(
+                  context,
+                ).textTheme.bodyMedium?.copyWith(fontWeight: FontWeight.w700),
+              ),
+              Text('離開或重新整理後會清除', style: Theme.of(context).textTheme.bodySmall),
+            ],
+          ),
+        ),
+      ],
     ),
   );
 }
@@ -246,16 +399,26 @@ class _GlobalMessage extends StatelessWidget {
   final VoidCallback onClose;
 
   @override
-  Widget build(BuildContext context) => Material(
-    color: error
-        ? Theme.of(context).colorScheme.errorContainer
-        : Theme.of(context).colorScheme.secondaryContainer,
+  Widget build(BuildContext context) => Container(
+    decoration: BoxDecoration(
+      color: error
+          ? Theme.of(context).colorScheme.errorContainer
+          : Theme.of(context).brightness == Brightness.dark
+          ? FutureMintTokens.darkSurfaceRaised
+          : FutureMintTokens.sunSoft,
+      border: Border(
+        bottom: BorderSide(
+          color: Theme.of(context).colorScheme.outline,
+          width: 1,
+        ),
+      ),
+    ),
     child: Padding(
       padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
       child: Row(
         children: [
           Icon(error ? Icons.error_outline : Icons.info_outline, size: 20),
-          const SizedBox(width: 10),
+          const SizedBox(width: FutureMintTokens.space3),
           Expanded(child: Text(message)),
           if (error)
             TextButton(

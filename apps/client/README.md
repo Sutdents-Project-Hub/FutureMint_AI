@@ -1,6 +1,6 @@
 # FutureMint Flutter Client
 
-FutureMint AI 的 Android、iOS 與 Web 共用 Client。預設以明確標示的離線合成資料執行，也可用同一套 repository contract 連接 Functions API。
+FutureMint AI 的 Android、iOS 與 Web 共用 Client。使用者可用電子郵件與密碼登入自己的資料，或以不保存資料的訪客模式先體驗。
 
 ## 技術證據與前置需求
 
@@ -10,38 +10,25 @@ FutureMint AI 的 Android、iOS 與 Web 共用 Client。預設以明確標示的
 
 ## 已完成流程
 
-- 響應式首頁：預算、目標、近期紀錄、教練提醒與訂閱機會。
-- Quick Capture：文字輸入、解析進度、來源標籤、多草稿、修改與確認保存。
-- 收入／支出／訂閱紀錄與篩選。
-- 合成訂閱方案成本、節省與資格比較。
-- 金融微課、選擇題與下一步行動。
-- FutureSeed 本金／假設成長／期末值與年度摘要。
-- 亮色／深色／系統主題、Connected／Offline 狀態、合成資料重設。
-- 手機 NavigationBar 與平板／桌面 NavigationRail；支援 deep links。
+- 註冊、登入、首次預算／目標設定與登出。
+- Session token 只保存於本機；帳號資料一律經 Bearer token 交給 Functions，Client 不傳可竄改的使用者 ID。
+- 訪客模式使用當次記憶體資料；離開、重新整理或切換帳號後清除，不寫入 SharedPreferences 或後端。
+- 響應式首頁、Quick Capture、收入／支出／訂閱紀錄、合成訂閱比較、金融微課與 FutureSeed 教育試算。
+- 亮色／深色／系統主題、手機 NavigationBar 與平板／桌面 NavigationRail；支援 deep links。
+- 柔和色塊品牌介面：近白畫布、扁平圓角功能區、黑色主行動與手機膠囊導覽、Flutter 原生幾何金錢夥伴，以及依內容寬度切換的桌面 bento 儀表板；沒有加入外部圖片或遠端字型。
 
 ## 執行
 
+先依根目錄 README 啟動 Functions，接著：
+
 ```bash
 flutter pub get
-flutter run -d chrome
-```
-
-預設不需要 secret：
-
-```text
-APP_MODE=offline-demo
-```
-
-Connected mode：
-
-```bash
 flutter run -d chrome \
   --web-port=4173 \
-  --dart-define=APP_MODE=connected \
   --dart-define=API_BASE_URL=http://localhost:7071/api/
 ```
 
-Functions 的 `ALLOWED_ORIGINS` 需包含 `http://localhost:4173`；固定 web port 可避免 Chrome 每次使用不同 origin 而被 CORS 拒絕。`API_BASE_URL` 是公開設定，不得把 Azure OpenAI 或 Cosmos secret 放進 Dart define 或 Client bundle。Connected request timeout 為 12 秒，錯誤不會自動改成假成功；使用者可在設定中明確切換 Offline demo。
+Functions 的 `ALLOWED_ORIGINS` 需包含 `http://localhost:4173`；固定 web port 可避免 Chrome 每次使用不同 origin 而被 CORS 拒絕。`API_BASE_URL` 是公開設定，不得把 Azure OpenAI 或 Cosmos secret 放進 Dart define 或 Client bundle。API request timeout 為 12 秒；斷網時顯示可重試訊息，不會自動切換或偽造已保存資料。
 
 ## 品質
 
@@ -49,10 +36,10 @@ Functions 的 `ALLOWED_ORIGINS` 需包含 `http://localhost:4173`；固定 web p
 dart format --output=none --set-exit-if-changed lib test integration_test
 flutter analyze
 flutter test
-flutter build web
+flutter build web --release
 ```
 
-`integration_test/demo_flow_test.dart` 走固定合成故事。Web integration 需先啟動相容版本 ChromeDriver（port 4444），再執行：
+`integration_test/demo_flow_test.dart` 驗證訪客暫存流程。Web integration 需先啟動相容版本 ChromeDriver（port 4444），再執行：
 
 ```bash
 flutter drive \
@@ -61,12 +48,12 @@ flutter drive \
   -d chrome
 ```
 
-## 資料
+## 資料與限制
 
-- Offline demo 只把合成 profile、已確認事件與微課選擇存進 SharedPreferences／browser local storage。
+- 已登入帳號的 profile、events 與 lessons 只經 Functions 保存；資料邊界由後端帳號主體強制執行。
 - 原始輸入只用於當次解析，不寫入 MoneyEvent。
-- 「重設合成展示資料」只影響本裝置的離線 Demo。
-- 本產品不連銀行、支付或真實金融帳戶。
+- 訪客資料不保存，也不是離線同步或備份機制。
+- 本產品不連銀行、支付或真實金融帳戶；目前沒有 email 驗證、忘記密碼、帳號刪除、家長共管或 production 未成年人法遵。
 
 相關文件：[測試證據](../../docs/testing-and-evidence.md)、[系統架構](../../docs/architecture.md)、[安全與隱私](../../docs/security-and-privacy.md)。
 

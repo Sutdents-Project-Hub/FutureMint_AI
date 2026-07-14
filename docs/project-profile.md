@@ -63,7 +63,7 @@
 - 決賽 MVP 以 Flutter Web 或 Android 作為主要展示面，iOS 為共用程式碼的延伸目標
 - Azure OpenAI 與 Cosmos DB 只由 Azure Functions 後端存取
 - 預算、金額、期限與複利計算由確定性程式處理
-- 正式帳號、家長共管與真實金融串接不納入本次 MVP
+- 競賽型 email/password 帳號已納入 MVP；正式 identity hardening、家長共管與真實金融串接不納入本次 MVP
 - design-system 是非執行型支援資產，不列入 executable components
 
 ## 未決定事項

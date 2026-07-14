@@ -1,6 +1,8 @@
 import 'package:flutter/material.dart';
 
 import '../../core/models.dart';
+import '../../design/soft_components.dart';
+import '../../design/tokens.dart';
 import '../../shared/date_text.dart';
 import '../dashboard/dashboard_screen.dart';
 
@@ -151,20 +153,25 @@ class _DraftEditorState extends State<DraftEditor> {
   }
 
   @override
-  Widget build(BuildContext context) => Card(
-    child: Padding(
-      padding: const EdgeInsets.all(22),
+  Widget build(BuildContext context) => Semantics(
+    container: true,
+    explicitChildNodes: true,
+    label: 'AI 已整理草稿，尚未保存',
+    child: SoftCard(
+      color: Theme.of(context).brightness == Brightness.dark
+          ? FutureMintTokens.darkSurfaceRaised
+          : FutureMintTokens.paper,
+      borderWidth: 1,
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
-          Row(
+          Wrap(
+            alignment: WrapAlignment.spaceBetween,
+            crossAxisAlignment: WrapCrossAlignment.center,
+            spacing: FutureMintTokens.space3,
+            runSpacing: FutureMintTokens.space2,
             children: [
-              Expanded(
-                child: Text(
-                  '確認草稿',
-                  style: Theme.of(context).textTheme.titleLarge,
-                ),
-              ),
+              Text('確認草稿', style: Theme.of(context).textTheme.titleLarge),
               Chip(
                 avatar: const Icon(Icons.rule_rounded, size: 16),
                 label: Text(
@@ -175,20 +182,22 @@ class _DraftEditorState extends State<DraftEditor> {
               ),
             ],
           ),
-          const SizedBox(height: 6),
+          const SizedBox(height: FutureMintTokens.space2),
           Text(
             '解析不會自動存檔，請確認內容後再記下。',
             style: TextStyle(
               color: Theme.of(context).colorScheme.onSurfaceVariant,
             ),
           ),
-          const SizedBox(height: 8),
+          const SizedBox(height: FutureMintTokens.space2),
           Text(
             '解析信心 ${(widget.draft.confidence * 100).round()}%'
             '${widget.draft.missingFields.isEmpty ? '' : ' · 待補：${widget.draft.missingFields.map(_missingFieldLabel).join('、')}'}',
             style: Theme.of(context).textTheme.bodySmall,
           ),
-          const SizedBox(height: 20),
+          const SizedBox(height: FutureMintTokens.space5),
+          Text('交易基本資料', style: Theme.of(context).textTheme.titleMedium),
+          const SizedBox(height: FutureMintTokens.space3),
           TextField(
             controller: amountController,
             keyboardType: TextInputType.number,
@@ -262,7 +271,9 @@ class _DraftEditorState extends State<DraftEditor> {
             onTap: widget.busy ? null : _pickDate,
           ),
           if (eventType == MoneyEventType.subscription) ...[
-            const SizedBox(height: 16),
+            const SizedBox(height: FutureMintTokens.space5),
+            Text('訂閱設定', style: Theme.of(context).textTheme.titleMedium),
+            const SizedBox(height: FutureMintTokens.space3),
             DropdownButtonFormField<BillingCycle>(
               initialValue: billingCycle,
               decoration: const InputDecoration(labelText: '計費週期'),
@@ -301,7 +312,9 @@ class _DraftEditorState extends State<DraftEditor> {
             ),
           ],
           if (eventType != MoneyEventType.income) ...[
-            const SizedBox(height: 8),
+            const SizedBox(height: FutureMintTokens.space5),
+            Text('分帳設定', style: Theme.of(context).textTheme.titleMedium),
+            const SizedBox(height: FutureMintTokens.space2),
             SwitchListTile(
               key: const Key('split-toggle'),
               contentPadding: EdgeInsets.zero,
@@ -332,7 +345,7 @@ class _DraftEditorState extends State<DraftEditor> {
               ),
             ],
           ],
-          const SizedBox(height: 20),
+          const SizedBox(height: FutureMintTokens.space5),
           FilledButton.icon(
             onPressed: widget.busy ? null : _submit,
             icon: const Icon(Icons.check_rounded),

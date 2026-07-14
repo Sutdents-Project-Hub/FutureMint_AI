@@ -8,13 +8,11 @@ describe("parseRuntimeConfig", () => {
       parseRuntimeConfig({
         AI_PROVIDER: "demo",
         DATA_PROVIDER: "memory",
-        DEMO_RESET_ENABLED: "true",
       }),
     ).toEqual({
       mode: "demo",
       aiProvider: "demo",
       dataProvider: "memory",
-      demoResetEnabled: true,
     });
   });
 
@@ -23,7 +21,6 @@ describe("parseRuntimeConfig", () => {
       parseRuntimeConfig({
         AI_PROVIDER: "azure",
         DATA_PROVIDER: "cosmos",
-        DEMO_RESET_ENABLED: "false",
       }).mode,
     ).toBe("azure");
   });
