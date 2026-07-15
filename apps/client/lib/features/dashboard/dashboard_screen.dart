@@ -170,7 +170,7 @@ class _NoticeStrip extends StatelessWidget {
   Widget build(BuildContext context) {
     final first = notices.first;
     return Material(
-      color: _softSurface(context, FutureMintTokens.sunSoft),
+      color: _softSurface(context, FutureMintTokens.mintSoft),
       borderRadius: BorderRadius.circular(FutureMintTokens.radiusMedium),
       child: InkWell(
         borderRadius: BorderRadius.circular(FutureMintTokens.radiusMedium),
@@ -291,7 +291,7 @@ class _GoalCard extends StatelessWidget {
   @override
   Widget build(BuildContext context) => _SectionCard(
     title: '成長目標',
-    color: _softSurface(context, FutureMintTokens.orangeSoft),
+    color: _softSurface(context, FutureMintTokens.mintSoft),
     child: Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
@@ -395,7 +395,7 @@ class _RecentEventTile extends StatelessWidget {
       leading: CircleAvatar(
         backgroundColor: income
             ? _softSurface(context, FutureMintTokens.mintSoft)
-            : _softSurface(context, FutureMintTokens.skySoft),
+            : _softSurface(context, FutureMintTokens.coralSoft),
         child: Icon(
           income ? Icons.south_west_rounded : Icons.north_east_rounded,
         ),

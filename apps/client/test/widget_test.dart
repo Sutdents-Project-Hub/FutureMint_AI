@@ -87,6 +87,30 @@ void main() {
     expect(label.style?.color, FutureMintTokens.paper);
   });
 
+  testWidgets(
+    'uses light budget hero text and progress on the indigo surface',
+    (tester) async {
+      final controller = await createController();
+      await tester.pumpWidget(FutureMintApp(controller: controller));
+      await tester.pumpAndSettle();
+
+      final progress = tester.widget<LinearProgressIndicator>(
+        find.byKey(const Key('dashboard-budget-progress')),
+      );
+      final textStyle = tester.widget<DefaultTextStyle>(
+        find
+            .descendant(
+              of: find.byKey(const Key('dashboard-budget-hero')),
+              matching: find.byType(DefaultTextStyle),
+            )
+            .first,
+      );
+      expect(textStyle.style.color, FutureMintTokens.paper);
+      expect(progress.color, FutureMintTokens.paper);
+      expect(progress.backgroundColor, FutureMintTokens.tealDark);
+    },
+  );
+
   testWidgets('keeps the phone dashboard usable at 200% text scale', (
     tester,
   ) async {

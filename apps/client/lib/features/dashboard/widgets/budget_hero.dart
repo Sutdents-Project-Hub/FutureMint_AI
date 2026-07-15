@@ -15,7 +15,13 @@ class BudgetHero extends StatelessWidget {
     final dark = theme.brightness == Brightness.dark;
     final foreground = dark
         ? theme.colorScheme.onSurface
-        : FutureMintTokens.ink;
+        : FutureMintTokens.paper;
+    final progressColor = dark
+        ? theme.colorScheme.onSurface
+        : FutureMintTokens.paper;
+    final progressTrackColor = dark
+        ? FutureMintTokens.darkSurfaceRaised
+        : FutureMintTokens.tealDark;
     final ratio = summary.monthlyBudgetMinor == 0
         ? 0.0
         : (summary.availableMinor / summary.monthlyBudgetMinor).clamp(0.0, 1.0);
@@ -24,6 +30,7 @@ class BudgetHero extends StatelessWidget {
       label:
           '本月安心可用 ${summary.availableMinor} 元，預算剩餘百分之 ${(ratio * 100).round()}',
       child: SoftCard(
+        key: const Key('dashboard-budget-hero'),
         color: dark ? FutureMintTokens.tealDark : FutureMintTokens.mint,
         radius: FutureMintTokens.radiusLarge,
         padding: const EdgeInsets.all(FutureMintTokens.space5),
@@ -72,12 +79,11 @@ class BudgetHero extends StatelessWidget {
               ClipRRect(
                 borderRadius: BorderRadius.circular(8),
                 child: LinearProgressIndicator(
+                  key: const Key('dashboard-budget-progress'),
                   minHeight: 8,
                   value: ratio,
-                  color: foreground,
-                  backgroundColor: dark
-                      ? FutureMintTokens.darkSurfaceRaised
-                      : FutureMintTokens.mintSoft,
+                  color: progressColor,
+                  backgroundColor: progressTrackColor,
                 ),
               ),
               const SizedBox(height: FutureMintTokens.space3),

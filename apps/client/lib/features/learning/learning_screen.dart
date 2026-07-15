@@ -128,11 +128,14 @@ class _LearningPlanCard extends StatelessWidget {
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 CircleAvatar(
+                  key: Key('learning-plan-module-$index'),
                   radius: 16,
                   backgroundColor: plan.modules[index].status == 'current'
                       ? FutureMintTokens.mint
                       : FutureMintTokens.paper,
-                  foregroundColor: FutureMintTokens.ink,
+                  foregroundColor: plan.modules[index].status == 'current'
+                      ? FutureMintTokens.paper
+                      : FutureMintTokens.ink,
                   child: Text('${index + 1}'),
                 ),
                 const SizedBox(width: FutureMintTokens.space3),
@@ -227,7 +230,7 @@ class _LessonContent extends StatelessWidget {
                 number: '01',
                 title: '先看懂',
                 body: lesson.concept,
-                color: FutureMintTokens.sunSoft,
+                color: FutureMintTokens.lavenderSoft,
               ),
             ),
             SizedBox(height: overlap ? 0 : FutureMintTokens.space3),
@@ -237,7 +240,7 @@ class _LessonContent extends StatelessWidget {
                 number: '02',
                 title: '放進生活',
                 body: lesson.example,
-                color: FutureMintTokens.periwinkleSoft,
+                color: FutureMintTokens.mintSoft,
               ),
             ),
           ],

@@ -64,11 +64,13 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
                     kicker: '第一步',
                     title: '先設定一個做得到的目標',
                     description: '這些資料只會存到你的帳號，之後也能在設定裡修改。',
-                    accent: FutureMintTokens.orange,
+                    accent: FutureMintTokens.teal,
                   ),
                   const SizedBox(height: FutureMintTokens.space5),
                   SoftCard(
-                    color: FutureMintTokens.sunSoft,
+                    color: theme.brightness == Brightness.dark
+                        ? FutureMintTokens.darkSurfaceRaised
+                        : FutureMintTokens.lavenderSoft,
                     child: Form(
                       key: _formKey,
                       child: Column(

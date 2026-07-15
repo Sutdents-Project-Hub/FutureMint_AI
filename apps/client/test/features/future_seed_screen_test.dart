@@ -21,6 +21,19 @@ void main() {
     await tester.tap(find.text('未來').last);
     await tester.pumpAndSettle();
     expect(find.byKey(const Key('future-seed-controls')), findsOneWidget);
+    final sliders = tester.widgetList<Slider>(find.byType(Slider)).toList();
+    expect(sliders, hasLength(3));
+    expect(sliders.every((slider) => slider.divisions == null), isTrue);
+    final sliderThemes = tester
+        .widgetList<SliderTheme>(find.byType(SliderTheme))
+        .toList();
+    expect(sliderThemes, hasLength(3));
+    expect(
+      sliderThemes.every(
+        (theme) => theme.data.trackShape is RoundedRectSliderTrackShape,
+      ),
+      isTrue,
+    );
     expect(find.byKey(const Key('future-seed-empty-state')), findsOneWidget);
     expect(
       tester.getSize(find.byKey(const Key('future-seed-empty-state'))).height,

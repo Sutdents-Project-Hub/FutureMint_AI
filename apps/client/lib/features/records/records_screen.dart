@@ -147,7 +147,7 @@ class _RecordRow extends StatelessWidget {
             ? FutureMintTokens.mintSoft
             : event.type == MoneyEventType.subscription
             ? FutureMintTokens.lavenderSoft
-            : FutureMintTokens.skySoft,
+            : FutureMintTokens.coralSoft,
         foregroundColor: FutureMintTokens.ink,
         child: Icon(
           income

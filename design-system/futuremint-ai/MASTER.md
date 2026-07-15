@@ -8,7 +8,7 @@
 - Audience: students aged 15–18 managing allowance, income, subscriptions, and savings goals.
 - Character: optimistic, trustworthy, energetic, and clear; youth-friendly without looking childish.
 - Style: calm lavender-tinted near-white canvas, flat rounded color blocks, deep-indigo action anchors, pill controls, and friendly geometric companions. It combines the clean planner structure of the reference UI with its expressive habit-app color and character language; light mode is the primary competition presentation.
-- Hierarchy: indigo／violet owns the brand and budget Hero; deep ink owns the strongest action and mobile navigation. Sun, lavender, periwinkle, sky, orange, and pink identify a small number of feature moments rather than coloring every surface.
+- Hierarchy: indigo／violet owns the brand, primary actions, selection, and budget Hero; deep ink owns text and mobile navigation. Sun and orange are reserved for warning／fallback meaning, while lavender, sky, coral, and pink identify only a small number of feature moments rather than coloring every surface.
 - Dials: variance 6/10, motion 2/10, density 5/10.
 - Avoid: repeated thick outlines, offset hard shadows, a card around every row, trading-terminal aesthetics, generic multi-hue gradients, glassmorphism, neon everywhere, childish fonts, shame-based warnings, decorative charts, and copied third-party illustration.
 
@@ -18,25 +18,25 @@
 
 | Token | Value | Purpose |
 |---|---|---|
-| ink | `#1B1B2A` | Text, strongest actions, and phone navigation |
+| ink | `#1B1B2A` | Text, selected-control foreground, and phone navigation |
 | background | `#F8F7FC` | Near-white canvas with a restrained lavender tint |
 | surface | `#FFFFFF` | Neutral cards, sheets, list surfaces, and fields |
-| mint | `#6D5BD0` | Flutter compatibility token for the indigo Budget Hero, brand mark, and confirmed emphasis |
+| mint | `#6D5BD0` | Indigo primary action, Budget Hero, brand mark, and confirmed emphasis |
 | mintSoft | `#E8E4FF` | Flutter compatibility token for indigo supportive and selected surfaces |
 | teal | `#4B3FA7` | Flutter compatibility token for violet links, progress, and restrained brand labels |
 | tealDark | `#342B7C` | Flutter compatibility token for high-contrast violet text or progress |
 | coral | `#F96F61` | Coach and interaction accents |
 | coralSoft | `#FFE0DC` | Gentle feedback surfaces |
-| sun | `#F7C94C` | Goal, active rail indicator, and spark companion |
-| sunSoft | `#FFF0B8` | Goal and assumption surfaces |
+| sun | `#F7C94C` | Warning signal and spark companion |
+| sunSoft | `#FFF0B8` | Warning and fallback-data surfaces only |
 | lavender | `#A58CE8` | Personalized learning accent |
 | lavenderSoft | `#EAE4FC` | Learning and coach surfaces |
 | periwinkle | `#8EA4E7` | Habit-style example and secondary feature accent |
 | periwinkleSoft | `#E4E9FB` | Learning example surface |
 | sky | `#80C5EC` | Records and information accent |
 | skySoft | `#E0F2FB` | Records and FutureSeed surfaces |
-| orange | `#FFB34D` | Plan and subscription option accent |
-| orangeSoft | `#FFE4BC` | Goal and option surfaces |
+| orange | `#FFB34D` | Subscription option accent only |
+| orangeSoft | `#FFE4BC` | Subscription option surfaces only |
 | pink | `#E879C9` | Small expressive companion or option accent |
 | pinkSoft | `#F8DDF0` | Small expressive surface |
 | hairline | `#DEDDEC` | Dividers and optional card boundaries |
@@ -101,9 +101,9 @@ Every foreground/background pair used for body text must meet WCAG 4.5:1. State 
 - `PageHeading`: plain color kicker, strong sentence-case title, optional supporting copy, and a trailing action that stacks below 620dp.
 - `MoneyBuddy`: Flutter-native blob, flower, or spark companion with a single-hue radial highlight, black facial features, and the semantic label `FutureMint 金錢夥伴`. It is decorative and never carries financial state.
 - Cards: each block has a clear title, one insight, and at most one primary action. Lists use one shared surface with dividers instead of a card for every row.
-- Dashboard: one indigo budget Hero, one lavender coaching strip, orange goal block, sky subscription block, and a neutral recent-record surface. The bento layout appears only with enough content width.
+- Dashboard: one indigo budget Hero, lavender／indigo supportive insight blocks, a sky subscription block, and a neutral recent-record surface. The bento layout appears only with enough content width.
 - Capture: the empty/input state gets the colorful Hero; once drafts exist, visual emphasis moves to the first draft and the input Hero becomes quiet.
-- Learning: use neighboring or mildly overlapping lavender／sun／periwinkle blocks at normal text scale; at high text scale they return to a normal vertical stack.
+- Learning: use neighboring or mildly overlapping lavender／indigo blocks at normal text scale; at high text scale they return to a normal vertical stack.
 - Records: analysis comes before the bounded transaction list; use paired income／outflow bars and intent progress, with text summaries that remain understandable without color.
 - Notifications: use one icon, title, explanation, optional amount and a clear destination; a renewal notice is a review prompt, never an automatic waste verdict.
 - FutureSeed: controls own the emphasis before calculation; after calculation, three selectable line paths share one unframed chart, with metrics and AI reading companion below. Curves must remain labeled and meaningful without relying only on color.
@@ -111,7 +111,7 @@ Every foreground/background pair used for body text must meet WCAG 4.5:1. State 
 - Roles: child／parent changes copy and education framing only; never imply cross-account visibility unless authorization and data relationships are implemented.
 - Forms: visible labels, helper text for financial assumptions, validation after submit/blur, and error text next to the field.
 - Capture flow: input → parsing → confirmation. Show provider source and never equate parsed with saved.
-- Navigation: icons and labels from Material Symbols only; active location uses text weight, icon, and a sun/lavender indicator in addition to color.
+- Navigation: icons and labels from Material Symbols only; active location uses text weight, icon, and an indigo/lavender indicator in addition to color.
 - Charts: accessible violet/amber series, direct values, a written summary, empty/loading/error states, and reduced-motion support.
 - Authentication: sign-in／register screens use the same calm canvas, one clear primary action, visible password rules, and non-technical retry copy. Guest entry must state that data is temporary before entering the app.
 - Account state: App shell shows signed-in or guest state with text and icon. Guest state has a persistent, wrapping notice that data is not stored; logout／leave guest is available in Settings.

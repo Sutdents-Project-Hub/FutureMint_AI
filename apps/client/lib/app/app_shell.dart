@@ -296,7 +296,7 @@ class _MobileNavigation extends StatelessWidget {
                 labelTextStyle: WidgetStateProperty.resolveWith((states) {
                   final selected = states.contains(WidgetState.selected);
                   return TextStyle(
-                    color: selected ? FutureMintTokens.mint : foreground,
+                    color: selected ? FutureMintTokens.ink : foreground,
                     fontSize: 12,
                     fontWeight: selected ? FontWeight.w700 : FontWeight.w600,
                   );
@@ -371,7 +371,7 @@ class _ModeChip extends StatelessWidget {
         backgroundColor: guest
             ? (dark
                   ? FutureMintTokens.darkSurfaceRaised
-                  : FutureMintTokens.sunSoft)
+                  : FutureMintTokens.mintSoft)
             : (dark ? const Color(0xFF184B60) : FutureMintTokens.skySoft),
         avatar: Icon(
           guest ? Icons.visibility_outlined : Icons.verified_user_outlined,
@@ -411,7 +411,7 @@ class _GuestNotice extends StatelessWidget {
   Widget build(BuildContext context) => Container(
     color: Theme.of(context).brightness == Brightness.dark
         ? FutureMintTokens.darkSurfaceRaised
-        : FutureMintTokens.sunSoft,
+        : FutureMintTokens.lavenderSoft,
     padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 9),
     child: Row(
       children: [
@@ -456,7 +456,7 @@ class _GlobalMessage extends StatelessWidget {
           ? Theme.of(context).colorScheme.errorContainer
           : Theme.of(context).brightness == Brightness.dark
           ? FutureMintTokens.darkSurfaceRaised
-          : FutureMintTokens.sunSoft,
+          : FutureMintTokens.lavenderSoft,
       border: Border(
         bottom: BorderSide(
           color: Theme.of(context).colorScheme.outline,

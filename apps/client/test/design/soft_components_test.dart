@@ -88,4 +88,12 @@ void main() {
   test('global content width is bounded to 1200', () {
     expect(FutureMintTokens.pageMaxWidth, 1200);
   });
+
+  test('light theme uses indigo for primary actions and selections', () {
+    final theme = FutureMintTheme.light();
+
+    expect(theme.colorScheme.primary, FutureMintTokens.mint);
+    expect(theme.colorScheme.onPrimary, FutureMintTokens.paper);
+    expect(theme.navigationBarTheme.indicatorColor, FutureMintTokens.mintSoft);
+  });
 }

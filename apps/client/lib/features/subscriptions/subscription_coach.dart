@@ -135,7 +135,7 @@ class _OptionCard extends StatelessWidget {
   Widget build(BuildContext context) {
     final accent = index.isEven
         ? FutureMintTokens.sky
-        : FutureMintTokens.orange;
+        : FutureMintTokens.lavender;
     return SoftCard(
       color: Theme.of(context).brightness == Brightness.dark
           ? FutureMintTokens.darkSurfaceRaised

@@ -46,7 +46,7 @@ class _FutureSeedScreenState extends State<FutureSeedScreen> {
                 kicker: 'FutureSeed 教育模擬',
                 title: '讓省下來的錢，遇見時間、紀律與風險',
                 description: '比較三條合成路徑的成長與下跌，再用 AI 陪讀員看懂現象。這不是報酬預測。',
-                accent: FutureMintTokens.sun,
+                accent: FutureMintTokens.teal,
               ),
               const SizedBox(height: FutureMintTokens.space5),
               SoftCard(
@@ -176,7 +176,7 @@ class _Controls extends StatelessWidget {
     borderWidth: 1,
     color: Theme.of(context).brightness == Brightness.dark
         ? FutureMintTokens.darkSurfaceRaised
-        : FutureMintTokens.sunSoft,
+        : FutureMintTokens.lavenderSoft,
     child: Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
@@ -188,7 +188,7 @@ class _Controls extends StatelessWidget {
           value: initial,
           min: 0,
           max: 20000,
-          divisions: 40,
+          step: 500,
           onChanged: onInitial,
         ),
         _SliderField(
@@ -197,7 +197,7 @@ class _Controls extends StatelessWidget {
           value: monthly,
           min: 100,
           max: 5000,
-          divisions: 49,
+          step: 100,
           onChanged: onMonthly,
         ),
         _SliderField(
@@ -206,7 +206,7 @@ class _Controls extends StatelessWidget {
           value: years,
           min: 1,
           max: 20,
-          divisions: 19,
+          step: 1,
           onChanged: onYears,
         ),
         const SizedBox(height: FutureMintTokens.space2),
@@ -232,7 +232,7 @@ class _SliderField extends StatelessWidget {
     required this.value,
     required this.min,
     required this.max,
-    required this.divisions,
+    required this.step,
     required this.onChanged,
   });
 
@@ -241,8 +241,10 @@ class _SliderField extends StatelessWidget {
   final double value;
   final double min;
   final double max;
-  final int divisions;
+  final double step;
   final ValueChanged<double>? onChanged;
+
+  double _snap(double nextValue) => (nextValue / step).round() * step;
 
   @override
   Widget build(BuildContext context) => Padding(
@@ -258,13 +260,25 @@ class _SliderField extends StatelessWidget {
             ),
           ],
         ),
-        Slider(
-          value: value,
-          min: min,
-          max: max,
-          divisions: divisions,
-          label: valueLabel,
-          onChanged: onChanged,
+        SliderTheme(
+          data: SliderTheme.of(context).copyWith(
+            trackHeight: 4,
+            trackShape: const RoundedRectSliderTrackShape(),
+            tickMarkShape: SliderTickMarkShape.noTickMark,
+            activeTrackColor: Theme.of(context).colorScheme.primary,
+            inactiveTrackColor: Theme.of(
+              context,
+            ).colorScheme.primary.withValues(alpha: 0.32),
+          ),
+          child: Slider(
+            value: value,
+            min: min,
+            max: max,
+            label: valueLabel,
+            onChanged: onChanged == null
+                ? null
+                : (nextValue) => onChanged!(_snap(nextValue)),
+          ),
         ),
       ],
     ),

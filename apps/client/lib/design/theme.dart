@@ -11,7 +11,7 @@ abstract final class FutureMintTheme {
     final scheme = ColorScheme.fromSeed(
       seedColor: FutureMintTokens.mint,
       brightness: brightness,
-      primary: dark ? const Color(0xFFB8AEFF) : FutureMintTokens.ink,
+      primary: dark ? const Color(0xFFB8AEFF) : FutureMintTokens.mint,
       onPrimary: dark ? FutureMintTokens.ink : Colors.white,
       primaryContainer: dark
           ? const Color(0xFF393368)
@@ -144,7 +144,9 @@ abstract final class FutureMintTheme {
         height: 72,
         backgroundColor: Colors.transparent,
         elevation: 0,
-        indicatorColor: dark ? FutureMintTokens.lavender : FutureMintTokens.sun,
+        indicatorColor: dark
+            ? FutureMintTokens.lavender
+            : FutureMintTokens.mintSoft,
         indicatorShape: RoundedRectangleBorder(
           borderRadius: BorderRadius.circular(999),
         ),
@@ -154,7 +156,9 @@ abstract final class FutureMintTheme {
       ),
       navigationRailTheme: NavigationRailThemeData(
         backgroundColor: Colors.transparent,
-        indicatorColor: dark ? FutureMintTokens.lavender : FutureMintTokens.sun,
+        indicatorColor: dark
+            ? FutureMintTokens.lavender
+            : FutureMintTokens.mintSoft,
         indicatorShape: RoundedRectangleBorder(
           borderRadius: BorderRadius.circular(999),
         ),
@@ -173,7 +177,7 @@ abstract final class FutureMintTheme {
             if (!states.contains(WidgetState.selected)) {
               return Colors.transparent;
             }
-            return dark ? FutureMintTokens.mint : FutureMintTokens.mintSoft;
+            return dark ? FutureMintTokens.lavender : FutureMintTokens.mintSoft;
           }),
           foregroundColor: WidgetStateProperty.resolveWith((states) {
             if (states.contains(WidgetState.selected)) {
@@ -240,10 +244,11 @@ abstract final class FutureMintTheme {
             : FutureMintTokens.teal,
         inactiveTrackColor: dark
             ? FutureMintTokens.darkSurfaceRaised
-            : FutureMintTokens.sunSoft,
-        thumbColor: dark ? FutureMintTokens.sun : FutureMintTokens.coral,
-        overlayColor: (dark ? FutureMintTokens.sun : FutureMintTokens.coral)
-            .withValues(alpha: .14),
+            : FutureMintTokens.mintSoft,
+        thumbColor: dark ? FutureMintTokens.lavender : FutureMintTokens.coral,
+        overlayColor:
+            (dark ? FutureMintTokens.lavender : FutureMintTokens.coral)
+                .withValues(alpha: .14),
       ),
     );
   }

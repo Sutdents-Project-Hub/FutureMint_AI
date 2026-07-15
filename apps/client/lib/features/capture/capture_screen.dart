@@ -118,9 +118,9 @@ class _CaptureScreenState extends State<CaptureScreen> {
                       runSpacing: 8,
                       children: [
                         for (final entry in const [
-                          ('今天買珍奶 75', FutureMintTokens.sunSoft),
-                          ('打工薪水 1500', FutureMintTokens.skySoft),
-                          ('Netflix 390 四個人分', FutureMintTokens.sunSoft),
+                          ('今天買珍奶 75', FutureMintTokens.coralSoft),
+                          ('打工薪水 1500', FutureMintTokens.mintSoft),
+                          ('Netflix 390 四個人分', FutureMintTokens.lavenderSoft),
                         ])
                           ActionChip(
                             backgroundColor:

@@ -827,7 +827,7 @@ class _PracticeEventCard extends StatelessWidget {
     key: const Key('investment-lab-dice'),
     color: Theme.of(context).brightness == Brightness.dark
         ? FutureMintTokens.darkSurfaceRaised
-        : FutureMintTokens.sunSoft,
+        : FutureMintTokens.lavenderSoft,
     child: Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [

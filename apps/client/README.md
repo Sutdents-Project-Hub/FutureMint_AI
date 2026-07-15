@@ -42,7 +42,7 @@ Coolify Application 設定：
 - Build variable：`API_BASE_URL=https://<api-domain>/api/`
 - Domain：正式 frontend HTTPS domain
 
-Nginx 會將 deep links fallback 到 `index.html`，入口檔設為 no-store，hashed assets 可快取。`API_BASE_URL` 已編譯進 bundle，變更 API domain 後必須重新 build／deploy 前端。不得把 `LIANGJIE_API_KEY`、`DATABASE_URL` 或任何秘密放入 Dart define。
+Nginx 會將 deep links fallback 到 `index.html`；`index.html`、Flutter loader／service worker、`main.dart.js` 與版本檔均設為 `no-store`，其餘帶指紋的靜態資產可快取，以避免更新後仍載入舊版 UI。`API_BASE_URL` 已編譯進 bundle，變更 API domain 後必須重新 build／deploy 前端。不得把 `LIANGJIE_API_KEY`、`DATABASE_URL` 或任何秘密放入 Dart define。
 
 ## 品質
 

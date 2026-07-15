@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:futuremint_app/app/future_mint_app.dart';
 import 'package:futuremint_app/design/soft_components.dart';
+import 'package:futuremint_app/design/tokens.dart';
 
 import '../widget_test.dart';
 
@@ -17,6 +18,11 @@ void main() {
 
     await tester.tap(find.text('學習').last);
     await tester.pumpAndSettle();
+    final currentModule = tester.widget<CircleAvatar>(
+      find.byKey(const Key('learning-plan-module-0')),
+    );
+    expect(currentModule.backgroundColor, FutureMintTokens.mint);
+    expect(currentModule.foregroundColor, FutureMintTokens.paper);
     await tester.ensureVisible(find.text('先檢查一項固定訂閱'));
     await tester.tap(find.text('先檢查一項固定訂閱'));
     await tester.pumpAndSettle();
