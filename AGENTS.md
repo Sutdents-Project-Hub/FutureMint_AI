@@ -57,6 +57,18 @@
 - 以可觀察結果驗證：優先執行現有的 lint、typecheck、test、build 或實際操作；無法執行時明確回報原因與剩餘風險。
 - 不得聲稱未實際執行的測試、部署、外部操作或人工驗收已完成。
 
+## 變更分類與文件同步
+
+- 工作中新增或發現功能、需求、流程、既有行為變更、缺陷、測試結果或實作事實時，先分類為釐清、缺陷修正、已核准範圍調整、範圍變更或新能力。
+- 使用者當次明確要求即代表目前敘述方向已獲核准；一般範圍內實作與文件同步不需額外等待批准。只有結果會實質改變架構、權限／安全、保存資料、破壞性行為、外部服務／成本／授權、production／部署、競賽驗收或其他明示關卡時才停止確認。
+- 實作前辨識受影響的權威文件，完成前在同一任務同步；文件同步是完成條件，不是之後再補的工作。
+- 產品定位、功能範圍與驗收更新 `docs/product-spec.md`、`docs/project-overview.md`；專案分類、元件或部署狀態改變時同步 `docs/project-profile.md`。
+- 元件邊界、API、資料、安全或外部整合更新 `docs/architecture.md`、`docs/data-and-storage.md`、`docs/security-and-privacy.md`、`docs/integrations.md` 及受影響的 `apps/client/README.md`／`services/api/README.md`。
+- 啟動、指令、環境變數、Compose、部署、rollback 或 hosting resource 改變時，更新根 `README.md`、元件 README、`.env.example`、`docs/deployment.md` 與 `docs/hosting-resources.md` 中實際受影響的文件。
+- Demo 流程、測試證據、競賽主張或限制改變時，更新 `docs/demo-script.md`、`docs/testing-and-evidence.md` 與 `docs/competition.md`；視覺規範或 UI 行為改變時同步 `design-system/README.md`、`design-system/futuremint-ai/MASTER.md` 與對應 Client 實作／測試。
+- 優先更新既有權威文件，不為了形式新增空 Markdown；不把規劃、假設或未執行結果寫成已實作或已驗證。
+- 完成回報列出變更分類與同步文件；若沒有文件需要變更，說明文件仍與實作一致的具體理由。
+
 ## README 與文件同步
 
 - `README.md` 是專案入口，內容只記錄已確認的目標、功能、結構、技術、啟動、測試、環境變數名稱、部署狀態與文件連結。
@@ -101,4 +113,4 @@
 
 ## 完成回報
 
-- 回報變更檔案、行為差異、實際執行的驗證與結果、未驗證事項、剩餘風險及需要人工決定的項目。
+- 回報變更分類、變更檔案、行為差異、實際執行的驗證與結果、同步文件、未驗證事項、剩餘風險及需要人工決定的項目；若沒有文件變更，說明理由。
