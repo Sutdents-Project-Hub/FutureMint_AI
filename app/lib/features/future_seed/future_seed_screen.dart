@@ -275,6 +275,7 @@ class _SliderField extends StatelessWidget {
             min: min,
             max: max,
             label: valueLabel,
+            semanticFormatterCallback: (_) => '$label，$valueLabel',
             onChanged: onChanged == null
                 ? null
                 : (nextValue) => onChanged!(_snap(nextValue)),

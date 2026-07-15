@@ -6,9 +6,9 @@
 
 | Resource | 代表什麼 | 為什麼分開 | 是否公開 |
 |---|---|---|---|
-| `futuremint-web` | Flutter Web release bundle + Nginx | 前端 build-time API URL、SPA cache 與 release 可獨立回滾 | HTTPS public |
-| `futuremint-api` | Node.js 22 Fastify container | 保護 AI／database secret、auth、規則、migration 與資料權限 | HTTPS public |
-| `futuremint-postgres` | PostgreSQL 17 + persistent volume | 資料生命週期不跟 application image 綁定，可獨立備份／還原 | Private network only |
+| `futuremint-ai-web` | Flutter Web release bundle + Nginx | 前端 build-time API URL、SPA cache 與 release 可獨立回滾 | HTTPS public |
+| `futuremint-ai-api` | Node.js 22 Fastify container | 保護 AI／database secret、auth、規則、migration 與資料權限 | HTTPS public |
+| `futuremint-ai-postgres` | PostgreSQL 17 + persistent volume | 資料生命週期不跟 application image 綁定，可獨立備份／還原 | Private network only |
 
 量界智算是 API 呼叫的 external provider，不是在 Coolify 內啟動的第四個 Resource。
 
@@ -35,7 +35,7 @@
 - 由 Coolify Database Resource 建立，不從 repository build。
 - 使用 internal URL 給 API；不設定 public port。
 - Persistent volume、scheduled full backups 與 restore rehearsal 是 production 必要條件。
-- Application rollback 不會自動 rollback schema 或資料，因此 migration 需保持 backward-compatible 或有明確還原策略。
+- Application rollback 不會自動 rollback schema 或資料，因此每次 migration 都必須保持向前相容；破壞性 migration 需另有已演練的 backup／restore 與切換策略。
 
 ## GitHub 與部署關係
 

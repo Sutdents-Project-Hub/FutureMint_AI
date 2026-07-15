@@ -30,15 +30,18 @@
 | sun | `#F7C94C` | Warning signal and spark companion |
 | sunSoft | `#FFF0B8` | Warning and fallback-data surfaces only |
 | lavender | `#A58CE8` | Personalized learning accent |
+| lavenderInk | `#6953A7` | Accessible learning label text on light surfaces |
 | lavenderSoft | `#EAE4FC` | Learning and coach surfaces |
 | periwinkle | `#8EA4E7` | Habit-style example and secondary feature accent |
 | periwinkleSoft | `#E4E9FB` | Learning example surface |
 | sky | `#80C5EC` | Records and information accent |
+| skyInk | `#2B6587` | Accessible records and information label text on light surfaces |
 | skySoft | `#E0F2FB` | Records and FutureSeed surfaces |
 | orange | `#FFB34D` | Subscription option accent only |
 | orangeSoft | `#FFE4BC` | Subscription option surfaces only |
 | pink | `#E879C9` | Small expressive companion or option accent |
 | pinkSoft | `#F8DDF0` | Small expressive surface |
+| coralInk | `#B23A32` | Accessible coach label text on light surfaces |
 | hairline | `#DEDDEC` | Dividers and optional card boundaries |
 | outline | `#74728C` | Inputs and secondary controls |
 | success | `#117A4B` | Confirmed positive state |
@@ -98,7 +101,7 @@ Every foreground/background pair used for body text must meet WCAG 4.5:1. State 
 
 - Buttons: one filled pill action per screen; outlined or text styles for alternatives. Loading disables repeat submission and preserves label width.
 - `SoftCard`: shared flat rounded surface. Its default is borderless and shadowless; optional hairline and soft elevation are explicit variants. Color communicates hierarchy or feature grouping, never state by itself.
-- `PageHeading`: plain color kicker, strong sentence-case title, optional supporting copy, and a trailing action that stacks below 620dp.
+- `PageHeading`: plain color kicker, strong sentence-case title, optional supporting copy, and a trailing action that stacks below 620dp. On light surfaces, feature kickers use the matching `*Ink` token rather than a decorative light accent, preserving the required 4.5:1 text contrast.
 - `MoneyBuddy`: Flutter-native blob, flower, or spark companion with a single-hue radial highlight, black facial features, and the semantic label `FutureMint 金錢夥伴`. It is decorative and never carries financial state.
 - Cards: each block has a clear title, one insight, and at most one primary action. Lists use one shared surface with dividers instead of a card for every row.
 - Dashboard: one indigo budget Hero, lavender／indigo supportive insight blocks, a sky subscription block, and a neutral recent-record surface. The bento layout appears only with enough content width.

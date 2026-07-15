@@ -1,6 +1,6 @@
 # FutureMint Fastify API
 
-Node.js 22／TypeScript 後端，提供帳號與 session、Zod 契約、確定性財務計算、量界智算／Demo AI providers、證交所市場資料 adapter，以及 PostgreSQL／Memory repositories。正式部署為 Coolify 中獨立的 `futuremint-api` Application。
+Node.js 22／TypeScript 後端，提供帳號與 session、Zod 契約、確定性財務計算、量界智算／Demo AI providers、證交所市場資料 adapter，以及 PostgreSQL／Memory repositories。正式部署為 Coolify 中獨立的 `futuremint-ai-api` Application。
 
 ## Runtime
 
@@ -43,7 +43,7 @@ curl http://localhost:3000/api/health
 
 | 變數 | 用途 |
 |---|---|
-| `NODE_ENV` | `development`、`test` 或 `production` |
+| `NODE_ENV` | `development`、`test` 或 `production`；production 只接受 `liangjie + postgres` |
 | `HOST` | 預設 `0.0.0.0` |
 | `PORT` | 預設 `3000` |
 | `AI_PROVIDER` | 必填：`demo` 或 `liangjie` |
@@ -53,7 +53,7 @@ curl http://localhost:3000/api/health
 | `LIANGJIE_BASE_URL` | 建議 `https://liangjiewis.com/v1` |
 | `LIANGJIE_MODEL` | 量界帳號實際可用的 model id |
 | `LIANGJIE_API_KEY` | 只放 runtime secret |
-| `ALLOWED_ORIGINS` | 允許的完整 Web origins，以逗號分隔；不接受萬用 `*` |
+| `ALLOWED_ORIGINS` | 允許的完整 Web origins，以逗號分隔；production 必填且只接受不帶 path／尾端 `/` 的 HTTPS origin，不接受萬用 `*` |
 | `ALLOW_DEMO_SEED` | 只有受控合成資料 seed 時短暫設為 `true` |
 
 `.env.example` 只放安全 placeholder。真實 `.env`、API key、database URL、密碼與 token 不得提交或寫入 log。
@@ -120,6 +120,8 @@ Coolify Application 設定：
 - Health check：`/api/health`
 - Runtime variables：依上表設定；`DATABASE_URL` 使用 PostgreSQL Resource 的 internal URL
 - 不公開 PostgreSQL port，不把秘密設成 build arguments
+
+production 啟動會驗證 `AI_PROVIDER=liangjie`、`DATA_PROVIDER=postgres` 與至少一個合法 HTTPS `ALLOWED_ORIGINS`；任何一項不符會在 listen 前退出，不能以 health 200 掩蓋錯誤設定。API 只信任 Coolify reverse proxy 的一跳 forwarded header，VPS firewall 不得讓使用者直接繞過 proxy 連 API container。
 
 完整部署順序與 private GitHub 自動部署見 [部署說明](../docs/deployment.md)。
 

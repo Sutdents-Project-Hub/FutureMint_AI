@@ -5,6 +5,22 @@ import 'package:futuremint_app/design/theme.dart';
 import 'package:futuremint_app/design/tokens.dart';
 
 void main() {
+  double linearize(double value) => value <= .04045
+      ? value / 12.92
+      : ((value + .055) / 1.055) * ((value + .055) / 1.055);
+
+  double contrastRatio(Color foreground, Color background) {
+    double luminance(Color color) =>
+        (.2126 * linearize(color.r)) +
+        (.7152 * linearize(color.g)) +
+        (.0722 * linearize(color.b));
+    final brighter = luminance(foreground);
+    final darker = luminance(background);
+    return (brighter + .05) / (darker + .05) > 1
+        ? (brighter + .05) / (darker + .05)
+        : (darker + .05) / (brighter + .05);
+  }
+
   testWidgets('SoftCard is flat and borderless by default', (tester) async {
     await tester.pumpWidget(
       MaterialApp(
@@ -96,4 +112,20 @@ void main() {
     expect(theme.colorScheme.onPrimary, FutureMintTokens.paper);
     expect(theme.navigationBarTheme.indicatorColor, FutureMintTokens.mintSoft);
   });
+
+  test(
+    'feature heading inks meet body-text contrast on the competition canvas',
+    () {
+      for (final accent in [
+        FutureMintTokens.lavenderInk,
+        FutureMintTokens.coralInk,
+        FutureMintTokens.skyInk,
+      ]) {
+        expect(
+          contrastRatio(accent, FutureMintTokens.cream),
+          greaterThanOrEqualTo(4.5),
+        );
+      }
+    },
+  );
 }

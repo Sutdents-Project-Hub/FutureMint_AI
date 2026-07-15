@@ -23,7 +23,9 @@ services:
     restart: unless-stopped
     init: true
     environment:
-      NODE_ENV: production
+      # Local Compose intentionally uses the deterministic demo provider.
+      # Production refuses that provider pair and must use Coolify runtime secrets.
+      NODE_ENV: development
       HOST: 0.0.0.0
       PORT: 3000
       AI_PROVIDER: demo

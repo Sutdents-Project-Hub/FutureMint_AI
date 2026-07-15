@@ -10,7 +10,7 @@
 ## 與程式碼的關係
 
 - Flutter tokens 與 Material theme 位於 `app/lib/design/`。
-- `soft_components.dart` 提供共用 `SoftCard`、`PageHeading` 與 Flutter 原生幾何 `MoneyBuddy`；不依賴外部圖片或遠端字型。
+- `soft_components.dart` 提供共用 `SoftCard`、`PageHeading` 與 Flutter 原生幾何 `MoneyBuddy`；Web／Android 品牌圖示是本機 SVG／Android Vector Drawable，不依賴外部圖片或遠端字型。
 - 新畫面先重用既有 semantic colors、type scale、spacing 與 components，不自行新增近似 token。
 - 規範與實作改變時必須同步兩邊；不得只改文件或只改 UI，造成交接內容漂移。
 

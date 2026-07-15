@@ -37,7 +37,7 @@ class NotificationCenterScreen extends StatelessWidget {
                   kicker: '圖形化提醒',
                   title: '需要注意的，不只是一串數字',
                   description: '提醒來自已確認的紀錄；訂閱提醒是檢查邀請，不代表一定浪費。',
-                  accent: FutureMintTokens.coral,
+                  accent: FutureMintTokens.coralInk,
                 ),
                 const SizedBox(height: FutureMintTokens.space5),
                 if (notices.isEmpty)

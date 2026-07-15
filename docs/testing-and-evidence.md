@@ -2,11 +2,11 @@
 
 ## 最新本機驗證
 
-驗證日期：2026-07-15（Asia/Taipei）。以下只記錄實際執行結果，不代表 Coolify production、量界正式帳號或真實未成年人服務驗收。
+驗證日期：2026-07-16（Asia/Taipei）。以下只記錄實際執行結果，不代表 Coolify production、量界正式帳號或真實未成年人服務驗收。
 
 | 元件 | 指令／操作 | 結果 |
 |---|---|---|
-| Fastify API | `npm test` | 15 個 test files、82 tests 通過 |
+| Fastify API | `npm test` | 15 個 test files、84 tests 通過 |
 | Fastify API | `npm run typecheck` | 通過 |
 | Fastify API | `npm run build` | 通過 |
 | Dependencies | `npm audit --omit=dev` | 0 vulnerabilities |
@@ -21,11 +21,13 @@
 | Investment persistence E2E | Container register → profile → virtual buy → restart API → login → investment lab | 通過；重啟後讀回 1 order、2 股與正確剩餘現金 |
 | TWSE market adapter | 實際呼叫 `/v1/exchangeReport/STOCK_DAY_ALL` 與 `/api/market/quotes` | 取得 5 個內建教學標的、資料日 2026-07-14、`isFallback=false`；另有 timeout／fallback unit test |
 | Docker Compose | `docker compose config`、`docker compose up -d --build --wait` | `futuremint_ai` 單一專案群組內 Web／API／PostgreSQL 三服務 healthy；Web 200、API health 200 |
+| Production fail-fast | 以 production Node image 注入 `demo + memory` | container 在 listen 前退出；unit test 同時驗證 production 只接受 `liangjie + postgres`、HTTPS CORS origin 為必填且合法 |
 | Flutter format | `dart format --output=none --set-exit-if-changed lib test integration_test` | 52 files，0 changed |
 | Flutter analyze | `flutter analyze` | 0 issues |
-| Flutter tests | `flutter test` | 69 tests 通過 |
+| Flutter tests | `flutter test` | 72 tests 通過 |
 | Flutter Web | `flutter build web --release --dart-define=API_BASE_URL=...` | 通過 |
-| UX visual QA | release Web + in-app Browser（桌面與 390×844） | 訪客模式、亮／深色主題、底部導覽與記錄頁可用；頁面直接切換、無左右滑動；無 console errors |
+| Android debug | `flutter build apk --debug` | 通過，產出 debug APK；尚未進行實機驗收或 signing |
+| UX visual QA | Docker Web + in-app Browser（1440×900、375×812、812×375） | 登入／訪客／dashboard 可用，底部導覽與 landscape rail 正常、沒有水平溢位與 console error；已確認新 PWA brand icon 可取得 |
 | Frontend Docker build | `docker build --build-arg API_BASE_URL=... -t futuremint-web:codex app` | 通過；固定 Flutter 3.41.9 commit，Nginx runtime image 約 34.4 MB |
 | Frontend container | root／`/capture`、Docker health、bundle config | HTTP 200、deep-link 回同一 SPA entry、health healthy、bundle 含指定公開 API URL |
 | Web cache | 檢查 response headers | `index.html` 回 `Cache-Control: no-store` |
@@ -44,9 +46,9 @@
 - FutureSeed 1.5%／5%／8% 合成路徑的十年幾何平均校準，以及不被每月投入稀釋的報酬指數 drawdown。
 - TWSE 日資料 schema／民國日期／change percent／cache fallback／同時 cache miss 合併；虛擬現金、買入、賣出、持有量、配置、idempotency、同帳號併發下單與可重現事件牌組。
 - Parse 不保存、確認保存、idempotency、query filters、malformed JSON、request body 過大與 validation envelope。
-- CORS allowed／denied preflight／預檢快取、安全 headers、AI route rate limit、not found、health dependency failure。
+- CORS allowed／denied preflight／預檢快取、安全 headers、AI route rate limit、not found、health dependency failure；production origin 缺失、尾端 `/` 或非 HTTPS 時 fail-fast。
 - Lessons completion body schema、同時註冊同 email 的 conflict response。
-- Runtime 設定缺失／不合法時明確失敗。
+- Runtime 設定缺失／不合法時明確失敗；production 只允許完整的 `liangjie + postgres` provider pair。
 - 量界 adapter：OpenAI-compatible request、nullable fields、type／category／intent semantics、Markdown JSON fence、invalid JSON／schema、timeout、429 retry budget、學習規劃與安全陪讀回覆。
 - PostgreSQL mapping、parameterized queries、event idempotency、sessions、lessons、health 與 close。
 
@@ -58,7 +60,7 @@
 - Capture 三階段、多 draft、修正、單筆確認、儲存後清空輸入、partial refresh recovery。
 - Dashboard、phone／desktop direct navigation、subscription、lesson action、需要／想要控制、無延遲分析圖表與三路徑 FutureSeed。
 - 投資練習場 route、盤後來源、訪客虛擬買入、超賣拒絕、事件骰子與 200% text scale。
-- 200% text scale、short landscape rail、Design System components 與 responsive bento。
+- 200% text scale、short landscape rail、Design System components 與 responsive bento；FutureSeed sliders 的名稱與值語意、light-surface feature heading 4.5:1 text contrast。
 
 ## 30 筆合成解析評估
 
@@ -77,7 +79,7 @@ Fixture：`backend/test/fixtures/capture-evaluation.json`；報告：
 - Coolify PostgreSQL internal URL、production capacity、scheduled S3 backup 與隔離 restore。
 - Production log retention、磁碟告警與 server／Coolify 自身備份。
 - Flutter Web integration drive；Flutter CLI 的 Web integration test 仍需相容 ChromeDriver。等價主線已有 Widget／HTTP／container tests，不冒充 drive 通過。
-- Android debug build先前因本機磁碟空間不足未產出 APK；Android 實機、iOS build／signing 未驗證。
+- Android 實機、iOS build／signing 未驗證。
 - 正式螢幕閱讀器、完整鍵盤、色覺與 reduced-motion 人工驗收。
 - Production identity hardening：email verification、password reset、MFA、帳號刪除、session cleanup、shared rate limit、同意與資料保留。
 
@@ -106,6 +108,7 @@ flutter analyze
 flutter test
 flutter build web --release \
   --dart-define=API_BASE_URL=https://api.example.com/api/
+flutter build apk --debug
 docker build \
   --build-arg API_BASE_URL=https://api.example.com/api/ \
   -t futuremint-web .

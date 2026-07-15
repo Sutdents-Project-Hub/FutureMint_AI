@@ -88,9 +88,9 @@ Runtime 要求明確設定 `AI_PROVIDER=demo|liangjie` 與 `DATA_PROVIDER=memory
 ## HTTP 與信任邊界
 
 - API base path：`/api`；body 上限 32 KiB。
-- CORS 只允許 `ALLOWED_ORIGINS` 的完整 origin，不允許 `*`。
+- CORS 只允許 `ALLOWED_ORIGINS` 的完整 origin，不允許 `*`；production 缺少、帶 path／尾端 `/` 或非 HTTPS origin 時在 listen 前失敗，而不是 health 200 後才讓 Web 預檢失敗。
 - 全域 rate limit 為單 instance 每分鐘 120 requests；auth routes 每分鐘 10 requests；AI routes 每分鐘 20 requests。
-- API behind Coolify proxy 時信任 proxy，production client IP／HTTPS 由 Coolify reverse proxy 提供。
+- API behind Coolify proxy 時只信任一跳 proxy，production client IP／HTTPS 由 Coolify reverse proxy 提供；VPS firewall 不得讓外部繞過 proxy 直接到 container port。
 - 所有動態回應設 `Cache-Control: no-store`，並送出 nosniff、frame deny、referrer 與 CSP headers。
 - AI output、database errors 與使用者輸入都不直接回傳 stack、SQL、prompt、key 或 SDK response。
 

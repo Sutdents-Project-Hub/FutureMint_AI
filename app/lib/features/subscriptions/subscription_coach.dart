@@ -43,7 +43,7 @@ class SubscriptionCoachScreen extends StatelessWidget {
                 kicker: '訂閱教練',
                 title: '訂閱不是只能留或退',
                 description: '先換算每月真正負擔，再確認資格與使用方式。',
-                accent: FutureMintTokens.sky,
+                accent: FutureMintTokens.skyInk,
               ),
               const SizedBox(height: FutureMintTokens.space5),
               if (comparison == null)

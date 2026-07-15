@@ -25,6 +25,24 @@ describe("parseRuntimeConfig", () => {
     ).toBe("hosted");
   });
 
+  it("requires the complete production provider pair", () => {
+    expect(() =>
+      parseRuntimeConfig({
+        NODE_ENV: "production",
+        AI_PROVIDER: "demo",
+        DATA_PROVIDER: "postgres",
+      }),
+    ).toThrow("AI_PROVIDER=liangjie and DATA_PROVIDER=postgres");
+
+    expect(
+      parseRuntimeConfig({
+        NODE_ENV: "production",
+        AI_PROVIDER: "liangjie",
+        DATA_PROVIDER: "postgres",
+      }),
+    ).toMatchObject({ mode: "hosted" });
+  });
+
   it("rejects missing provider choices instead of guessing", () => {
     expect(() => parseRuntimeConfig({})).toThrow("AI_PROVIDER");
   });

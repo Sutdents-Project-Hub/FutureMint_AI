@@ -24,6 +24,12 @@ void main() {
     final sliders = tester.widgetList<Slider>(find.byType(Slider)).toList();
     expect(sliders, hasLength(3));
     expect(sliders.every((slider) => slider.divisions == null), isTrue);
+    expect(
+      sliders
+          .map((slider) => slider.semanticFormatterCallback!(slider.value))
+          .toList(),
+      containsAll([contains('已經省下來'), contains('每月持續投入'), contains('持續期間')]),
+    );
     final sliderThemes = tester
         .widgetList<SliderTheme>(find.byType(SliderTheme))
         .toList();

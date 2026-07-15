@@ -43,6 +43,14 @@ export const parseRuntimeConfig = (
     environment.DATA_PROVIDER,
     ["memory", "postgres"] as const,
   );
+  if (
+    environment.NODE_ENV === "production" &&
+    (aiProvider !== "liangjie" || dataProvider !== "postgres")
+  ) {
+    throw new Error(
+      "production requires AI_PROVIDER=liangjie and DATA_PROVIDER=postgres",
+    );
+  }
   return {
     mode:
       aiProvider === "liangjie" || dataProvider === "postgres"

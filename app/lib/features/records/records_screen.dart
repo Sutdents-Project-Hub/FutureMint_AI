@@ -63,7 +63,7 @@ class _RecordsScreenState extends State<RecordsScreen> {
                     kicker: '分析優先的金錢時間軸',
                     title: '先看模式，再看每一筆',
                     description: '收支、需要與想要會先整理成趨勢；下方仍保留所有確認紀錄。',
-                    accent: FutureMintTokens.sky,
+                    accent: FutureMintTokens.skyInk,
                   ),
                   const SizedBox(height: FutureMintTokens.space5),
                   if (controller.insights != null) ...[

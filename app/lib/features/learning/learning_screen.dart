@@ -50,7 +50,7 @@ class _LearningScreenState extends State<LearningScreen> {
                 kicker: '三分鐘微課',
                 title: '練一個真正用得到的金錢選擇',
                 description: '內容依合成紀錄挑選，重點是看懂選擇，不是考試。',
-                accent: FutureMintTokens.lavender,
+                accent: FutureMintTokens.lavenderInk,
               ),
               const SizedBox(height: FutureMintTokens.space5),
               if (plan != null) ...[

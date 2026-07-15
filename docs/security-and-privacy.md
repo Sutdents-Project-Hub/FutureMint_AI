@@ -13,8 +13,8 @@
 ## API 邊界
 
 - Fastify body limit 32 KiB；Zod 驗證 request。
-- CORS 僅允許 `ALLOWED_ORIGINS` 完整 origins；production 只放正式 frontend HTTPS domain。
-- 全域 rate limit 120 requests／minute；auth routes 10 requests／minute；AI 產生／陪讀 routes 20 requests／minute。現況為單 instance memory counter，水平擴充前應改 shared store／edge rate limit。
+- CORS 僅允許 `ALLOWED_ORIGINS` 完整 origins；production 只放正式 frontend HTTPS domain，缺少、帶 path／尾端 `/` 或格式錯誤即拒絕啟動。
+- 全域 rate limit 120 requests／minute；auth routes 10 requests／minute；AI 產生／陪讀 routes 20 requests／minute。現況為單 instance memory counter，水平擴充前應改 shared store／edge rate limit；API 只信任 Coolify 一跳 reverse proxy header，VPS firewall 不得公開 container port。
 - Response 使用 no-store、nosniff、frame deny、referrer policy 與 restrictive CSP。
 - PostgreSQL query 全部使用 parameter placeholders。
 - AI 回覆視為不可信任：去 fence／抽 JSON 後再做 schema、列舉、金額、日期與範圍驗證。

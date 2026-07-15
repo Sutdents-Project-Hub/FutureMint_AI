@@ -97,6 +97,7 @@ ALLOWED_ORIGINS=https://<frontend-domain>
 - Coolify 變數值若含 `$`，在 Normal View 勾 Literal，避免被當成其他變數插值。
 - 不設定 `ALLOW_DEMO_SEED`，production 自動部署不寫示範資料。
 - `ALLOWED_ORIGINS` 只放完整 HTTPS frontend origins；多個以逗號分隔，不用 `*`。
+- API 會在 listen 前拒絕非 `liangjie + postgres` provider pair，或遺漏、帶 path／尾端 `/`、非 HTTPS 的 `ALLOWED_ORIGINS`；看到 startup failure 時先修 runtime variable，不可先略過健康檢查。
 - VPS／Coolify 必須允許 API 對 `https://openapi.twse.com.tw/` 的 outbound HTTPS；市場來源失敗時 UI 會顯示教育快照，不影響 health check。
 - Docker image 在 `DATA_PROVIDER=postgres` 時會先跑 migration；migration 失敗則 container 退出。
 - Dockerfile health check 會優先於 UI health check。只有 `/api/health` 回 200 時新 deployment 才應接流量。

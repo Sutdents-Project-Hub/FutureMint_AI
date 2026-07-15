@@ -1,4 +1,7 @@
 .dart_tool
+.env
+.env.*
+!.env.example
 .git
 .github
 .idea
@@ -11,5 +14,6 @@ build
 coverage
 ios/Pods
 output
+local.settings.json
 *.iml
 *.log

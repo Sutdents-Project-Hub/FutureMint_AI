@@ -17,11 +17,42 @@ interface BuildServerOptions {
   logger?: boolean;
 }
 
-const configuredOrigins = (): string[] =>
-  (process.env.ALLOWED_ORIGINS ?? "")
+export const parseAllowedOrigins = (
+  value: string | undefined,
+  requireSecure = process.env.NODE_ENV === "production",
+): string[] => {
+  const origins = (value ?? "")
     .split(",")
     .map((origin) => origin.trim())
     .filter(Boolean);
+
+  if (requireSecure && origins.length === 0) {
+    throw new Error("ALLOWED_ORIGINS is required in production");
+  }
+
+  return origins.map((origin) => {
+    let url: URL;
+    try {
+      url = new URL(origin);
+    } catch {
+      throw new Error("ALLOWED_ORIGINS must contain valid HTTPS origin values");
+    }
+    const protocolAllowed = requireSecure
+      ? url.protocol === "https:"
+      : url.protocol === "https:" || url.protocol === "http:";
+    if (!protocolAllowed || url.origin !== origin) {
+      throw new Error(
+        requireSecure
+          ? "ALLOWED_ORIGINS must contain valid HTTPS origin values"
+          : "ALLOWED_ORIGINS must contain valid HTTP(S) origin values",
+      );
+    }
+    return origin;
+  });
+};
+
+const configuredOrigins = (): string[] =>
+  parseAllowedOrigins(process.env.ALLOWED_ORIGINS);
 
 const success = (
   request: FastifyRequest,
@@ -49,7 +80,9 @@ export const buildServer = async (
   const allowedOrigins = options.allowedOrigins ?? configuredOrigins();
   const app = Fastify({
     logger: options.logger ?? process.env.NODE_ENV !== "test",
-    trustProxy: true,
+    // Coolify's reverse proxy is the sole trusted hop. Do not trust a client-
+    // supplied X-Forwarded-For chain when enforcing per-IP rate limits.
+    trustProxy: 1,
     bodyLimit: 32 * 1024,
   });
 

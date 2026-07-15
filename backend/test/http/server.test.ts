@@ -7,7 +7,7 @@ import { InMemoryRepository } from "../../src/adapters/inMemoryRepository";
 import { EducationalMarketDataProvider } from "../../src/adapters/twseMarketDataProvider";
 import { FutureMintService } from "../../src/application/futureMintService";
 import { AuthService } from "../../src/auth/authService";
-import { buildServer } from "../../src/http/server";
+import { buildServer, parseAllowedOrigins } from "../../src/http/server";
 import type { Runtime } from "../../src/http/runtime";
 
 const createRuntime = (repository: InMemoryRepository): Runtime => ({
@@ -26,6 +26,22 @@ const createRuntime = (repository: InMemoryRepository): Runtime => ({
 });
 
 describe("Fastify HTTP server", () => {
+  it("validates production CORS origins before the server starts", () => {
+    expect(() => parseAllowedOrigins(undefined, true)).toThrow(
+      "ALLOWED_ORIGINS is required",
+    );
+    expect(() => parseAllowedOrigins("*", true)).toThrow("valid HTTPS origin");
+    expect(() => parseAllowedOrigins("https://futuremint.example/", true)).toThrow(
+      "valid HTTPS origin",
+    );
+    expect(parseAllowedOrigins("https://futuremint.example", true)).toEqual([
+      "https://futuremint.example",
+    ]);
+    expect(parseAllowedOrigins("http://localhost:4173", false)).toEqual([
+      "http://localhost:4173",
+    ]);
+  });
+
   let app: FastifyInstance;
   let token = "";
 
