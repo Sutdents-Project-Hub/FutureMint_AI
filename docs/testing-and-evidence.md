@@ -6,7 +6,7 @@
 
 | 元件 | 指令／操作 | 結果 |
 |---|---|---|
-| Fastify API | `npm test` | 15 個 test files、75 tests 通過 |
+| Fastify API | `npm test` | 15 個 test files、82 tests 通過 |
 | Fastify API | `npm run typecheck` | 通過 |
 | Fastify API | `npm run build` | 通過 |
 | Dependencies | `npm audit --omit=dev` | 0 vulnerabilities |
@@ -23,8 +23,9 @@
 | Docker Compose | `docker compose config`、`docker compose up -d --build --wait` | `futuremint_ai` 單一專案群組內 Web／API／PostgreSQL 三服務 healthy；Web 200、API health 200 |
 | Flutter format | `dart format --output=none --set-exit-if-changed lib test integration_test` | 52 files，0 changed |
 | Flutter analyze | `flutter analyze` | 0 issues |
-| Flutter tests | `flutter test` | 66 tests 通過 |
+| Flutter tests | `flutter test` | 69 tests 通過 |
 | Flutter Web | `flutter build web --release --dart-define=API_BASE_URL=...` | 通過 |
+| UX visual QA | release Web + in-app Browser（桌面與 390×844） | 訪客模式、亮／深色主題、底部導覽與記錄頁可用；頁面直接切換、無左右滑動；無 console errors |
 | Frontend Docker build | `docker build --build-arg API_BASE_URL=... -t futuremint-web:codex apps/client` | 通過；固定 Flutter 3.41.9 commit，Nginx runtime image 約 34.4 MB |
 | Frontend container | root／`/capture`、Docker health、bundle config | HTTP 200、deep-link 回同一 SPA entry、health healthy、bundle 含指定公開 API URL |
 | Web cache | 檢查 response headers | `index.html` 回 `Cache-Control: no-store` |
@@ -41,9 +42,10 @@
 - 帳號 ownership：帳號 B 看不到帳號 A 的事件。
 - Budget、split、subscription monthly cost、六個月 cashflow、提醒、FutureSeed zero rate、三情境曲線與 drawdown calculation。
 - FutureSeed 1.5%／5%／8% 合成路徑的十年幾何平均校準，以及不被每月投入稀釋的報酬指數 drawdown。
-- TWSE 日資料 schema／民國日期／change percent／cache fallback；虛擬現金、買入、賣出、持有量、配置、idempotency 與可重現事件牌組。
-- Parse 不保存、確認保存、idempotency、query filters、malformed JSON 與 validation envelope。
-- CORS allowed／denied preflight、安全 headers、not found、health dependency failure。
+- TWSE 日資料 schema／民國日期／change percent／cache fallback／同時 cache miss 合併；虛擬現金、買入、賣出、持有量、配置、idempotency、同帳號併發下單與可重現事件牌組。
+- Parse 不保存、確認保存、idempotency、query filters、malformed JSON、request body 過大與 validation envelope。
+- CORS allowed／denied preflight／預檢快取、安全 headers、AI route rate limit、not found、health dependency failure。
+- Lessons completion body schema、同時註冊同 email 的 conflict response。
 - Runtime 設定缺失／不合法時明確失敗。
 - 量界 adapter：OpenAI-compatible request、nullable fields、type／category／intent semantics、Markdown JSON fence、invalid JSON／schema、timeout、429 retry budget、學習規劃與安全陪讀回覆。
 - PostgreSQL mapping、parameterized queries、event idempotency、sessions、lessons、health 與 close。
@@ -52,9 +54,9 @@
 
 - Model JSON 與 `liangjie-ai` source mapping。
 - Register／login envelope、Bearer header、首次設定、訪客不保存 session。
-- API timeout／problem envelope、明確 timezone、空資料不虛構 subscription。
-- Capture 三階段、多 draft、修正、單筆確認、partial refresh recovery。
-- Dashboard、phone／desktop navigation、subscription、lesson action、需要／想要控制、分析圖表與三路徑 FutureSeed。
+- API timeout／problem envelope、明確 timezone、空資料不虛構 subscription、session 還原時的暫時網路失敗／未授權分流。
+- Capture 三階段、多 draft、修正、單筆確認、儲存後清空輸入、partial refresh recovery。
+- Dashboard、phone／desktop direct navigation、subscription、lesson action、需要／想要控制、無延遲分析圖表與三路徑 FutureSeed。
 - 投資練習場 route、盤後來源、訪客虛擬買入、超賣拒絕、事件骰子與 200% text scale。
 - 200% text scale、short landscape rail、Design System components 與 responsive bento。
 

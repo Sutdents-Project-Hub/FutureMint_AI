@@ -148,7 +148,7 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
                                   const Duration(days: 3650),
                                 ),
                               );
-                              if (selected != null) {
+                              if (selected != null && mounted) {
                                 setState(() => _goalDate = selected);
                               }
                             },

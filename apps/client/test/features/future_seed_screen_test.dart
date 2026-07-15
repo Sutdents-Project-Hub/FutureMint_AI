@@ -40,11 +40,7 @@ void main() {
     expect(find.text('高風險資產'), findsWidgets);
     expect(find.text('AI 陪讀員'), findsOneWidget);
     expect(controller.investmentSimulation?.scenarios, hasLength(3));
-    expect(controller.futureSeedPreview?.principalMinor, 30000);
-    expect(
-      controller.futureSeedPreview!.endingBalanceMinor,
-      greaterThan(controller.futureSeedPreview!.principalMinor),
-    );
+    expect(controller.futureSeedPreview, isNull);
     expect(tester.takeException(), isNull);
   });
 }

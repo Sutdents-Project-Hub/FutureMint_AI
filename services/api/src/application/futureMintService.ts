@@ -44,6 +44,8 @@ import { compareSubscription } from "../domain/subscriptions";
 import { DomainError } from "../contracts/errors";
 
 export class FutureMintService {
+  private readonly investmentOrderLocks = new Map<string, Promise<void>>();
+
   constructor(
     private readonly repository: FutureMintRepository,
     private readonly aiProvider: AiProvider,
@@ -58,6 +60,30 @@ export class FutureMintService {
           new Date(a.occurredAt).getTime() - new Date(b.occurredAt).getTime(),
       )
       .slice(-5);
+  }
+
+  private async withInvestmentOrderLock<T>(
+    userId: string,
+    operation: () => Promise<T>,
+  ): Promise<T> {
+    const previous = this.investmentOrderLocks.get(userId) ?? Promise.resolve();
+    let release: (() => void) | undefined;
+    const current = previous.then(
+      () =>
+        new Promise<void>((resolve) => {
+          release = resolve;
+        }),
+    );
+    this.investmentOrderLocks.set(userId, current);
+    await previous;
+    try {
+      return await operation();
+    } finally {
+      release?.();
+      if (this.investmentOrderLocks.get(userId) === current) {
+        this.investmentOrderLocks.delete(userId);
+      }
+    }
   }
 
   getProfile(userId: string): Promise<UserProfile> {
@@ -104,12 +130,17 @@ export class FutureMintService {
   ): Promise<MoneyEvent[]> {
     const parsed = moneyEventListQuerySchema.parse(filters);
     const events = await this.repository.listMoneyEvents(userId);
-    return events.filter(
-      (event) =>
-        (!parsed.type || event.type === parsed.type) &&
-        (!parsed.from || new Date(event.occurredAt) >= new Date(parsed.from)) &&
-        (!parsed.to || new Date(event.occurredAt) <= new Date(parsed.to)),
-    );
+    return events
+      .filter(
+        (event) =>
+          (!parsed.type || event.type === parsed.type) &&
+          (!parsed.from || new Date(event.occurredAt) >= new Date(parsed.from)) &&
+          (!parsed.to || new Date(event.occurredAt) <= new Date(parsed.to)),
+      )
+      .sort(
+        (a, b) =>
+          new Date(b.occurredAt).getTime() - new Date(a.occurredAt).getTime(),
+      );
   }
 
   async getSubscriptions(userId: string) {
@@ -261,55 +292,57 @@ export class FutureMintService {
   }
 
   async placeInvestmentOrder(userId: string, input: InvestmentOrderInput) {
-    const parsed = investmentOrderInputSchema.parse(input);
-    const [profile, market, existingOrders] = await Promise.all([
-      this.repository.getProfile(userId),
-      this.marketDataProvider.getSnapshot(),
-      this.repository.listInvestmentOrders(userId),
-    ]);
-    const account = await this.repository.getOrCreateInvestmentAccount(
-      userId,
-      profile.goalSavedMinor > 0 ? profile.goalSavedMinor : 1000,
-    );
-    if (
-      existingOrders.some(
-        (order) => order.idempotencyKey === parsed.idempotencyKey,
-      )
-    ) {
-      return buildInvestmentLab(account, existingOrders, market);
-    }
-    const quote = market.quotes.find(
-      (candidate) => candidate.symbol === parsed.symbol,
-    );
-    if (!quote) {
-      throw new DomainError(
-        "market_quote_not_found",
-        "目前找不到這個教學標的的盤後價格。",
-        404,
+    return this.withInvestmentOrderLock(userId, async () => {
+      const parsed = investmentOrderInputSchema.parse(input);
+      const [profile, market, existingOrders] = await Promise.all([
+        this.repository.getProfile(userId),
+        this.marketDataProvider.getSnapshot(),
+        this.repository.listInvestmentOrders(userId),
+      ]);
+      const account = await this.repository.getOrCreateInvestmentAccount(
+        userId,
+        profile.goalSavedMinor > 0 ? profile.goalSavedMinor : 1000,
       );
-    }
-    const totalMinor = Math.round(quote.price * parsed.quantity);
-    const current = buildInvestmentLab(account, existingOrders, market);
-    validateInvestmentOrder(
-      current,
-      parsed.symbol,
-      parsed.side,
-      parsed.quantity,
-      totalMinor,
-    );
-    await this.repository.saveInvestmentOrder(userId, {
-      ...parsed,
-      name: quote.name,
-      unitPrice: quote.price,
-      totalMinor,
-      quoteAsOf: quote.asOf,
-      quoteSource: quote.source,
+      if (
+        existingOrders.some(
+          (order) => order.idempotencyKey === parsed.idempotencyKey,
+        )
+      ) {
+        return buildInvestmentLab(account, existingOrders, market);
+      }
+      const quote = market.quotes.find(
+        (candidate) => candidate.symbol === parsed.symbol,
+      );
+      if (!quote) {
+        throw new DomainError(
+          "market_quote_not_found",
+          "目前找不到這個教學標的的盤後價格。",
+          404,
+        );
+      }
+      const totalMinor = Math.round(quote.price * parsed.quantity);
+      const current = buildInvestmentLab(account, existingOrders, market);
+      validateInvestmentOrder(
+        current,
+        parsed.symbol,
+        parsed.side,
+        parsed.quantity,
+        totalMinor,
+      );
+      await this.repository.saveInvestmentOrder(userId, {
+        ...parsed,
+        name: quote.name,
+        unitPrice: quote.price,
+        totalMinor,
+        quoteAsOf: quote.asOf,
+        quoteSource: quote.source,
+      });
+      return buildInvestmentLab(
+        account,
+        await this.repository.listInvestmentOrders(userId),
+        market,
+      );
     });
-    return buildInvestmentLab(
-      account,
-      await this.repository.listInvestmentOrders(userId),
-      market,
-    );
   }
 
   rollInvestmentPracticeEvent(userId: string, input: { rollIndex: number }) {

@@ -93,18 +93,19 @@ class _FutureSeedScreenState extends State<FutureSeedScreen> {
                     initial: initial,
                     monthly: monthly,
                     years: years,
-                    onInitial: (value) => setState(() => initial = value),
-                    onMonthly: (value) => setState(() => monthly = value),
-                    onYears: (value) => setState(() => years = value),
+                    onInitial: controller.busy
+                        ? null
+                        : (value) => setState(() => initial = value),
+                    onMonthly: controller.busy
+                        ? null
+                        : (value) => setState(() => monthly = value),
+                    onYears: controller.busy
+                        ? null
+                        : (value) => setState(() => years = value),
                     onRun: controller.busy
                         ? null
                         : () async {
-                            await controller.previewFutureSeed(
-                              monthlyContributionMinor: monthly.round(),
-                              years: years.round(),
-                              annualRatePercent: 3,
-                            );
-                            await controller.simulateInvestments(
+                            await controller.runInvestmentSimulation(
                               initialAmountMinor: initial.round(),
                               monthlyContributionMinor: monthly.round(),
                               years: years.round(),
@@ -164,9 +165,9 @@ class _Controls extends StatelessWidget {
   final double initial;
   final double monthly;
   final double years;
-  final ValueChanged<double> onInitial;
-  final ValueChanged<double> onMonthly;
-  final ValueChanged<double> onYears;
+  final ValueChanged<double>? onInitial;
+  final ValueChanged<double>? onMonthly;
+  final ValueChanged<double>? onYears;
   final VoidCallback? onRun;
 
   @override
@@ -241,7 +242,7 @@ class _SliderField extends StatelessWidget {
   final double min;
   final double max;
   final int divisions;
-  final ValueChanged<double> onChanged;
+  final ValueChanged<double>? onChanged;
 
   @override
   Widget build(BuildContext context) => Padding(

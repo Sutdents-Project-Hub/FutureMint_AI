@@ -23,6 +23,7 @@ class _CaptureScreenState extends State<CaptureScreen> {
   }
 
   Future<void> _parse(AppController controller) async {
+    if (controller.busy) return;
     final text = inputController.text.trim();
     if (text.isEmpty) {
       ScaffoldMessenger.of(
@@ -95,11 +96,14 @@ class _CaptureScreenState extends State<CaptureScreen> {
                     TextField(
                       key: const Key('capture-input'),
                       controller: inputController,
+                      enabled: !controller.busy,
                       minLines: 3,
                       maxLines: 5,
                       maxLength: 500,
                       textInputAction: TextInputAction.done,
-                      onSubmitted: (_) => _parse(controller),
+                      onSubmitted: controller.busy
+                          ? null
+                          : (_) => _parse(controller),
                       decoration: const InputDecoration(
                         labelText: '收入、支出或訂閱',
                         alignLabelWithHint: true,
@@ -124,8 +128,11 @@ class _CaptureScreenState extends State<CaptureScreen> {
                                 ? FutureMintTokens.darkSurface
                                 : entry.$2,
                             label: Text(entry.$1),
-                            onPressed: () =>
-                                setState(() => inputController.text = entry.$1),
+                            onPressed: controller.busy
+                                ? null
+                                : () => setState(
+                                    () => inputController.text = entry.$1,
+                                  ),
                           ),
                       ],
                     ),
@@ -184,7 +191,12 @@ class _CaptureScreenState extends State<CaptureScreen> {
                     key: ValueKey(drafts[index].draftId),
                     draft: drafts[index],
                     busy: controller.busy,
-                    onConfirm: controller.saveDraft,
+                    onConfirm: (draft) async {
+                      await controller.saveDraft(draft);
+                      if (mounted && controller.captureResult == null) {
+                        inputController.clear();
+                      }
+                    },
                   ),
                 ),
               ],

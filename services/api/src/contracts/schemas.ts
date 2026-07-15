@@ -139,6 +139,10 @@ export const coachRequestSchema = z.object({
   selectedYear: z.number().int().min(1).max(30).optional(),
 });
 
+export const lessonCompletionInputSchema = z.object({
+  selectedOption: z.string().trim().min(1).max(200),
+});
+
 export const investmentOrderInputSchema = z.object({
   symbol: z.string().trim().regex(/^\d{4,6}[A-Z]?$/).max(8),
   side: z.enum(investmentOrderSides),

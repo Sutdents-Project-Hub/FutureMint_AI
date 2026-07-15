@@ -59,4 +59,28 @@ describe("TwseMarketDataProvider", () => {
     });
     expect(snapshot.disclaimer).toContain("不是即時行情");
   });
+
+  it("shares one in-flight fetch when several requests arrive before the cache", async () => {
+    let calls = 0;
+    let releaseFetch: () => void = () => {};
+    const gate = new Promise<void>((resolve) => {
+      releaseFetch = resolve;
+    });
+    const provider = new TwseMarketDataProvider(
+      async () => {
+        calls += 1;
+        await gate;
+        return new Response(JSON.stringify(twseRows), { status: 200 });
+      },
+      () => new Date("2026-07-15T03:00:00.000Z"),
+    );
+
+    const snapshots = [provider.getSnapshot(), provider.getSnapshot()];
+    expect(calls).toBe(1);
+    releaseFetch();
+
+    const [first, second] = await Promise.all(snapshots);
+    expect(first).toBe(second);
+    expect(first.source).toBe("twse-openapi");
+  });
 });

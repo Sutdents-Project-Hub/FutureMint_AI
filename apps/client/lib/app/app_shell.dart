@@ -303,6 +303,7 @@ class _MobileNavigation extends StatelessWidget {
                 }),
               ),
               child: NavigationBar(
+                animationDuration: Duration.zero,
                 selectedIndex: selectedIndex,
                 onDestinationSelected: onDestinationSelected,
                 destinations: [

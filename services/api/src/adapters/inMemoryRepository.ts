@@ -245,6 +245,13 @@ export class InMemoryRepository
   }
 
   async createAccount(account: Account): Promise<Account> {
+    if (this.accountsByEmail.has(account.email)) {
+      throw new DomainError(
+        "account_unavailable",
+        "此電子郵件無法完成註冊。",
+        409,
+      );
+    }
     const copy = { ...account };
     this.accountsByEmail.set(copy.email, copy);
     this.accountsById.set(copy.id, copy);

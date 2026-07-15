@@ -8,7 +8,14 @@ import '../core/models.dart';
 import '../data/api_repository.dart';
 import 'app_controller.dart';
 
-enum SessionStatus { loading, signedOut, onboarding, authenticated, guest }
+enum SessionStatus {
+  loading,
+  signedOut,
+  restorationFailed,
+  onboarding,
+  authenticated,
+  guest,
+}
 
 typedef AuthenticatedRepositoryFactory =
     FutureMintRepository Function(String token);
@@ -42,6 +49,9 @@ class SessionController extends ChangeNotifier {
   String _messageFor(Object error) =>
       error is ApiException ? error.message : '目前無法完成操作，請稍後再試。';
 
+  bool _isExpiredSession(Object error) =>
+      error is ApiException && error.code == 'unauthorized';
+
   Future<void> start() async {
     _token = await _store.readToken();
     if (_token == null) {
@@ -55,10 +65,12 @@ class SessionController extends ChangeNotifier {
       final restored = await _auth.me(_token!);
       await _activateAuthenticated(restored, _token!);
     } catch (error) {
-      await _store.clearToken();
-      _token = null;
-      status = SessionStatus.signedOut;
-      message = _messageFor(error);
+      if (_isExpiredSession(error)) {
+        await expireSession();
+      } else {
+        status = SessionStatus.restorationFailed;
+        message = _messageFor(error);
+      }
     } finally {
       busy = false;
       notifyListeners();
@@ -105,10 +117,11 @@ class SessionController extends ChangeNotifier {
       mode: AppMode.authenticated,
       accountEmail: nextAccount.email,
       onExit: logout,
+      onUnauthorized: expireSession,
     );
     await nextApp.initialize();
     if (!nextApp.initialized) {
-      status = SessionStatus.signedOut;
+      status = SessionStatus.restorationFailed;
       message = nextApp.errorMessage ?? '無法載入你的資料，請稍後再試。';
       return;
     }
@@ -127,6 +140,7 @@ class SessionController extends ChangeNotifier {
       mode: AppMode.authenticated,
       accountEmail: account!.email,
       onExit: logout,
+      onUnauthorized: expireSession,
     );
     final saved = await nextApp.updateProfile(profile);
     busy = false;
@@ -153,6 +167,7 @@ class SessionController extends ChangeNotifier {
         repository: await _guestRepository(),
         mode: AppMode.guest,
         onExit: logout,
+        onUnauthorized: expireSession,
       );
       await nextApp.initialize();
       app = nextApp;
@@ -184,5 +199,26 @@ class SessionController extends ChangeNotifier {
       status = SessionStatus.signedOut;
       notifyListeners();
     }
+  }
+
+  Future<void> expireSession() async {
+    await _store.clearToken();
+    _token = null;
+    account = null;
+    app = null;
+    busy = false;
+    status = SessionStatus.signedOut;
+    message = '登入已過期，請重新登入。';
+    notifyListeners();
+  }
+
+  Future<void> discardStoredSession() async {
+    await _store.clearToken();
+    _token = null;
+    account = null;
+    app = null;
+    message = null;
+    status = SessionStatus.signedOut;
+    notifyListeners();
   }
 }

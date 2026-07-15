@@ -188,6 +188,7 @@ class _CashflowChart extends StatelessWidget {
               ),
           ],
         ),
+        duration: Duration.zero,
       ),
     );
   }

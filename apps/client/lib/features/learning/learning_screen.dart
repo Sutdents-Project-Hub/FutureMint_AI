@@ -20,8 +20,8 @@ class _LearningScreenState extends State<LearningScreen> {
     WidgetsBinding.instance.addPostFrameCallback((_) async {
       if (!mounted) return;
       final controller = context.read<AppController>();
-      await controller.loadLearningPlan();
-      if (mounted) await controller.loadLesson();
+      await controller.loadLesson();
+      if (mounted) await controller.loadLearningPlan();
     });
   }
 
@@ -255,7 +255,7 @@ class _LessonContent extends StatelessWidget {
                 alignment: Alignment.centerLeft,
                 backgroundColor: lesson.selectedOption == option
                     ? dark
-                          ? const Color(0xFF174F4D)
+                          ? const Color(0xFF393368)
                           : FutureMintTokens.mintSoft
                     : Theme.of(context).colorScheme.surface,
                 padding: const EdgeInsets.symmetric(
@@ -284,7 +284,7 @@ class _LessonContent extends StatelessWidget {
           SoftCard(
             padding: const EdgeInsets.all(FutureMintTokens.space4),
             radius: 16,
-            color: dark ? const Color(0xFF174F4D) : FutureMintTokens.mintSoft,
+            color: dark ? const Color(0xFF393368) : FutureMintTokens.mintSoft,
             child: Row(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [

@@ -36,6 +36,13 @@ void main() {
     await tester.pumpAndSettle();
     expect(controller.events.length, initialCount + 1);
     expect(controller.lastSavedEvent?.spendingIntent, SpendingIntent.want);
+    expect(
+      tester
+          .widget<TextField>(find.byKey(const Key('capture-input')))
+          .controller
+          ?.text,
+      isEmpty,
+    );
   });
 
   testWidgets('capture remains usable on a narrow phone', (tester) async {

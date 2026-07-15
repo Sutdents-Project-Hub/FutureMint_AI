@@ -113,8 +113,9 @@ class _InvestmentLabScreenState extends State<InvestmentLabScreen> {
                     final market = _MarketList(
                       quotes: lab.market.quotes,
                       selectedSymbol: selected.symbol,
-                      onSelected: (symbol) =>
-                          setState(() => selectedSymbol = symbol),
+                      onSelected: controller.busy
+                          ? null
+                          : (symbol) => setState(() => selectedSymbol = symbol),
                     );
                     final order = _OrderPanel(
                       lab: lab,
@@ -372,7 +373,7 @@ class _MarketList extends StatelessWidget {
 
   final List<MarketQuote> quotes;
   final String selectedSymbol;
-  final ValueChanged<String> onSelected;
+  final ValueChanged<String>? onSelected;
 
   @override
   Widget build(BuildContext context) => SoftCard(
@@ -405,7 +406,9 @@ class _MarketList extends StatelessWidget {
           _QuoteRow(
             quote: quotes[index],
             selected: quotes[index].symbol == selectedSymbol,
-            onTap: () => onSelected(quotes[index].symbol),
+            onTap: onSelected == null
+                ? null
+                : () => onSelected!(quotes[index].symbol),
           ),
         ],
       ],
@@ -422,7 +425,7 @@ class _QuoteRow extends StatelessWidget {
 
   final MarketQuote quote;
   final bool selected;
-  final VoidCallback onTap;
+  final VoidCallback? onTap;
 
   String _price(double value) =>
       'NT\$${NumberFormat('#,##0.00', 'zh_TW').format(value)}';
@@ -433,7 +436,7 @@ class _QuoteRow extends StatelessWidget {
         ? FutureMintTokens.positive
         : FutureMintTokens.danger;
     return Semantics(
-      button: true,
+      button: onTap != null,
       selected: selected,
       label: '${quote.symbol} ${quote.name}，盤後價 ${_price(quote.price)}',
       child: Material(

@@ -40,6 +40,7 @@ class _SettingsSheet extends StatelessWidget {
     var goalDate =
         current?.goalDate ?? DateTime.now().add(const Duration(days: 90));
     var accountRole = current?.accountRole ?? AccountRole.child;
+    var saving = false;
     await showDialog<void>(
       context: context,
       builder: (dialogContext) => StatefulBuilder(
@@ -115,7 +116,7 @@ class _SettingsSheet extends StatelessWidget {
                         firstDate: firstDate,
                         lastDate: lastDate,
                       );
-                      if (selected != null) {
+                      if (selected != null && dialogContext.mounted) {
                         setDialogState(() => goalDate = selected);
                       }
                     },
@@ -130,40 +131,46 @@ class _SettingsSheet extends StatelessWidget {
               child: const Text('取消'),
             ),
             FilledButton(
-              onPressed: () async {
-                final monthly = int.tryParse(budget.text.trim());
-                final target = int.tryParse(goalTarget.text.trim());
-                final savedAmount = int.tryParse(goalSaved.text.trim());
-                if (monthly == null ||
-                    monthly <= 0 ||
-                    target == null ||
-                    target <= 0 ||
-                    savedAmount == null ||
-                    savedAmount < 0 ||
-                    goalName.text.trim().isEmpty) {
-                  ScaffoldMessenger.of(context).showSnackBar(
-                    const SnackBar(content: Text('請填入有效的預算與目標資料。')),
-                  );
-                  return;
-                }
-                final didSave = await controller.updateProfile(
-                  UserProfile(
-                    userId: current?.userId ?? 'guest-user',
-                    accountRole: accountRole,
-                    monthlyBudgetMinor: monthly,
-                    weeklyBudgetMinor: current?.weeklyBudgetMinor,
-                    goalName: goalName.text.trim(),
-                    goalTargetMinor: target,
-                    goalSavedMinor: savedAmount,
-                    goalDate: goalDate,
-                    preferredTone: current?.preferredTone ?? 'supportive',
-                  ),
-                );
-                if (didSave && dialogContext.mounted) {
-                  Navigator.pop(dialogContext);
-                }
-              },
-              child: const Text('儲存設定'),
+              onPressed: saving || controller.busy
+                  ? null
+                  : () async {
+                      final monthly = int.tryParse(budget.text.trim());
+                      final target = int.tryParse(goalTarget.text.trim());
+                      final savedAmount = int.tryParse(goalSaved.text.trim());
+                      if (monthly == null ||
+                          monthly <= 0 ||
+                          target == null ||
+                          target <= 0 ||
+                          savedAmount == null ||
+                          savedAmount < 0 ||
+                          goalName.text.trim().isEmpty) {
+                        ScaffoldMessenger.of(context).showSnackBar(
+                          const SnackBar(content: Text('請填入有效的預算與目標資料。')),
+                        );
+                        return;
+                      }
+                      setDialogState(() => saving = true);
+                      final didSave = await controller.updateProfile(
+                        UserProfile(
+                          userId: current?.userId ?? 'guest-user',
+                          accountRole: accountRole,
+                          monthlyBudgetMinor: monthly,
+                          weeklyBudgetMinor: current?.weeklyBudgetMinor,
+                          goalName: goalName.text.trim(),
+                          goalTargetMinor: target,
+                          goalSavedMinor: savedAmount,
+                          goalDate: goalDate,
+                          preferredTone: current?.preferredTone ?? 'supportive',
+                        ),
+                      );
+                      if (!dialogContext.mounted) return;
+                      if (didSave) {
+                        Navigator.pop(dialogContext);
+                      } else {
+                        setDialogState(() => saving = false);
+                      }
+                    },
+              child: Text(saving ? '正在儲存…' : '儲存設定'),
             ),
           ],
         ),

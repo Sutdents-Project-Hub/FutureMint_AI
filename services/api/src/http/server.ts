@@ -7,6 +7,7 @@ import Fastify, {
 import { ZodError } from "zod";
 
 import { DomainError } from "../contracts/errors";
+import { lessonCompletionInputSchema } from "../contracts/schemas";
 import { bearerToken, requireAuthenticatedUser } from "./authentication";
 import { getRuntime, type Runtime } from "./runtime";
 
@@ -56,7 +57,8 @@ export const buildServer = async (
     global: true,
     max: 120,
     timeWindow: "1 minute",
-    errorResponseBuilder: (request) => ({
+    errorResponseBuilder: (request, context) => ({
+      statusCode: context.statusCode,
       code: "rate_limited",
       message: "請求過於頻繁，請稍後再試。",
       requestId: request.id,
@@ -71,6 +73,7 @@ export const buildServer = async (
       reply.header("access-control-allow-origin", origin);
       reply.header("access-control-allow-methods", "GET,POST,PUT,PATCH,OPTIONS");
       reply.header("access-control-allow-headers", "content-type,authorization");
+      reply.header("access-control-max-age", "600");
       reply.header("vary", "Origin");
     }
     if (request.method === "OPTIONS") {
@@ -118,6 +121,23 @@ export const buildServer = async (
       });
     }
     const fastifyError = error as { statusCode?: number; code?: string };
+    if (fastifyError.code === "rate_limited") {
+      return problem(request, reply, fastifyError.statusCode ?? 429, {
+        code: "rate_limited",
+        message: "請求過於頻繁，請稍後再試。",
+        retryable: true,
+      });
+    }
+    if (
+      fastifyError.statusCode === 413 ||
+      fastifyError.code === "FST_ERR_CTP_BODY_TOO_LARGE"
+    ) {
+      return problem(request, reply, 413, {
+        code: "request_too_large",
+        message: "輸入內容過長，請縮短後再試一次。",
+        retryable: false,
+      });
+    }
     if (
       fastifyError.statusCode === 400 ||
       fastifyError.code === "FST_ERR_CTP_INVALID_JSON_BODY"
@@ -225,7 +245,7 @@ export const buildServer = async (
     return success(request, reply, profile);
   });
 
-  app.post("/api/captures/parse", async (request, reply) => {
+  app.post("/api/captures/parse", aiRateLimit, async (request, reply) => {
     const account = await requireAuthenticatedUser(request, runtime);
     return success(
       request,
@@ -287,7 +307,7 @@ export const buildServer = async (
     );
   });
 
-  app.post("/api/lessons/generate", async (request, reply) => {
+  app.post("/api/lessons/generate", aiRateLimit, async (request, reply) => {
     const account = await requireAuthenticatedUser(request, runtime);
     return success(
       request,
@@ -306,14 +326,14 @@ export const buildServer = async (
   app.patch("/api/lessons/:lessonId", async (request, reply) => {
     const account = await requireAuthenticatedUser(request, runtime);
     const { lessonId } = request.params as { lessonId: string };
-    const body = request.body as { selectedOption?: string };
+    const body = lessonCompletionInputSchema.parse(request.body);
     return success(
       request,
       reply,
       await runtime.service.completeLesson(
         account.id,
         lessonId,
-        body.selectedOption ?? "",
+        body.selectedOption,
       ),
     );
   });

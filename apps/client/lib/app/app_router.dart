@@ -13,49 +13,73 @@ import 'app_shell.dart';
 
 GoRouter createAppRouter() => GoRouter(
   initialLocation: '/',
+  errorPageBuilder: (context, state) => _instantPage(
+    state,
+    Scaffold(
+      body: Center(
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            const Icon(Icons.explore_off_outlined, size: 48),
+            const SizedBox(height: 16),
+            const Text('找不到這個頁面'),
+            const SizedBox(height: 12),
+            FilledButton(
+              onPressed: () => context.go('/'),
+              child: const Text('回到首頁'),
+            ),
+          ],
+        ),
+      ),
+    ),
+  ),
   routes: [
     ShellRoute(
-      builder: (context, state, child) =>
-          AppShell(location: state.uri.path, child: child),
+      pageBuilder: (context, state, child) =>
+          _instantPage(state, AppShell(location: state.uri.path, child: child)),
       routes: [
-        GoRoute(path: '/', builder: (_, _) => const DashboardScreen()),
-        GoRoute(path: '/records', builder: (_, _) => const RecordsScreen()),
-        GoRoute(path: '/capture', builder: (_, _) => const CaptureScreen()),
-        GoRoute(path: '/learning', builder: (_, _) => const LearningScreen()),
+        GoRoute(
+          path: '/',
+          pageBuilder: (_, state) =>
+              _instantPage(state, const DashboardScreen()),
+        ),
+        GoRoute(
+          path: '/records',
+          pageBuilder: (_, state) => _instantPage(state, const RecordsScreen()),
+        ),
+        GoRoute(
+          path: '/capture',
+          pageBuilder: (_, state) => _instantPage(state, const CaptureScreen()),
+        ),
+        GoRoute(
+          path: '/learning',
+          pageBuilder: (_, state) =>
+              _instantPage(state, const LearningScreen()),
+        ),
         GoRoute(
           path: '/notifications',
-          builder: (_, _) => const NotificationCenterScreen(),
+          pageBuilder: (_, state) =>
+              _instantPage(state, const NotificationCenterScreen()),
         ),
         GoRoute(
           path: '/future-seed',
-          builder: (_, _) => const FutureSeedScreen(),
+          pageBuilder: (_, state) =>
+              _instantPage(state, const FutureSeedScreen()),
         ),
         GoRoute(
           path: '/future-seed/investment-lab',
-          builder: (_, _) => const InvestmentLabScreen(),
+          pageBuilder: (_, state) =>
+              _instantPage(state, const InvestmentLabScreen()),
         ),
         GoRoute(
           path: '/subscriptions',
-          builder: (_, _) => const SubscriptionCoachScreen(),
+          pageBuilder: (_, state) =>
+              _instantPage(state, const SubscriptionCoachScreen()),
         ),
       ],
     ),
   ],
-  errorBuilder: (context, state) => Scaffold(
-    body: Center(
-      child: Column(
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          const Icon(Icons.explore_off_outlined, size: 48),
-          const SizedBox(height: 16),
-          const Text('找不到這個頁面'),
-          const SizedBox(height: 12),
-          FilledButton(
-            onPressed: () => context.go('/'),
-            child: const Text('回到首頁'),
-          ),
-        ],
-      ),
-    ),
-  ),
 );
+
+NoTransitionPage<void> _instantPage(GoRouterState state, Widget child) =>
+    NoTransitionPage<void>(key: state.pageKey, child: child);

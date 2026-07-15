@@ -50,6 +50,23 @@ void main() {
     },
   );
 
+  test('starting another parse clears a previous saved confirmation', () async {
+    await controller.initialize();
+    await controller.parseCapture(
+      '今天買珍奶 75',
+      referenceTime: DateTime.parse('2026-07-13T12:00:00+08:00'),
+    );
+    await controller.saveDraft(controller.captureResult!.drafts.single);
+
+    await controller.parseCapture(
+      '剛剛買飲料',
+      referenceTime: DateTime.parse('2026-07-13T12:10:00+08:00'),
+    );
+
+    expect(controller.lastSavedEvent, isNull);
+    expect(controller.captureResult?.clarificationQuestion, isNotNull);
+  });
+
   test('saving a confirmed draft refreshes dashboard and records', () async {
     await controller.initialize();
     await controller.parseCapture(

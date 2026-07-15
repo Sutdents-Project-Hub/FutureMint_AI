@@ -103,6 +103,7 @@ class InvestmentScenarioChart extends StatelessWidget {
               ),
           ],
         ),
+        duration: Duration.zero,
       ),
     );
   }

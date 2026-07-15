@@ -117,6 +117,7 @@ describe("Fastify HTTP server", () => {
     expect(allowed.headers).toMatchObject({
       "access-control-allow-origin": "https://futuremint.example",
       "access-control-allow-methods": "GET,POST,PUT,PATCH,OPTIONS",
+      "access-control-max-age": "600",
     });
     expect(denied.statusCode).toBe(403);
     expect(denied.headers).not.toHaveProperty("access-control-allow-origin");
@@ -209,6 +210,48 @@ describe("Fastify HTTP server", () => {
     });
   });
 
+  it("rejects request bodies that exceed the supported input size", async () => {
+    const response = await app.inject(
+      authenticated({
+        method: "POST",
+        url: "/api/captures/parse",
+        payload: JSON.stringify({ text: "a".repeat(33 * 1024) }),
+      }),
+    );
+
+    expect(response.statusCode).toBe(413);
+    expect(response.json()).toMatchObject({
+      code: "request_too_large",
+      retryable: false,
+    });
+  });
+
+  it("limits AI-backed capture requests separately from general API traffic", async () => {
+    const responses = [];
+    for (let index = 0; index < 21; index += 1) {
+      responses.push(
+        await app.inject(
+          authenticated({
+            method: "POST",
+            url: "/api/captures/parse",
+            payload: {
+              text: "打工薪水 1500",
+              locale: "zh-TW",
+              referenceTime: "2026-07-13T12:00:00+08:00",
+            },
+          }),
+        ),
+      );
+    }
+
+    expect(responses.filter((response) => response.statusCode === 200)).toHaveLength(
+      20,
+    );
+    expect(
+      responses.find((response) => response.statusCode === 429)?.json(),
+    ).toMatchObject({ code: "rate_limited", retryable: true });
+  });
+
   it("rejects a lesson answer that was not presented", async () => {
     const generated = await app.inject(
       authenticated({
@@ -229,6 +272,30 @@ describe("Fastify HTTP server", () => {
     expect(response.statusCode).toBe(422);
     expect(response.json()).toMatchObject({
       code: "invalid_lesson_option",
+      retryable: false,
+    });
+  });
+
+  it("validates a missing lesson answer instead of returning an internal error", async () => {
+    const generated = await app.inject(
+      authenticated({
+        method: "POST",
+        url: "/api/lessons/generate",
+        payload: {},
+      }),
+    );
+    const lesson = generated.json().data as { id: string };
+    const response = await app.inject(
+      authenticated({
+        method: "PATCH",
+        url: `/api/lessons/${lesson.id}`,
+        payload: {},
+      }),
+    );
+
+    expect(response.statusCode).toBe(422);
+    expect(response.json()).toMatchObject({
+      code: "validation_error",
       retryable: false,
     });
   });

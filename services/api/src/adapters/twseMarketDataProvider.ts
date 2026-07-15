@@ -81,17 +81,28 @@ export class EducationalMarketDataProvider implements MarketDataProvider {
 
 export class TwseMarketDataProvider implements MarketDataProvider {
   private cached?: { expiresAt: number; snapshot: MarketSnapshot };
+  private inFlight?: Promise<MarketSnapshot>;
 
   constructor(
     private readonly fetcher: typeof fetch = fetch,
     private readonly now: () => Date = () => new Date(),
   ) {}
 
-  async getSnapshot(): Promise<MarketSnapshot> {
+  getSnapshot(): Promise<MarketSnapshot> {
     const now = this.now();
     if (this.cached && this.cached.expiresAt > now.getTime()) {
-      return this.cached.snapshot;
+      return Promise.resolve(this.cached.snapshot);
     }
+    if (this.inFlight) return this.inFlight;
+    let pending: Promise<MarketSnapshot>;
+    pending = this.fetchSnapshot(now).finally(() => {
+      if (this.inFlight === pending) this.inFlight = undefined;
+    });
+    this.inFlight = pending;
+    return pending;
+  }
+
+  private async fetchSnapshot(now: Date): Promise<MarketSnapshot> {
     try {
       const response = await this.fetcher(twseEndpoint, {
         headers: { accept: "application/json" },

@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:flutter/material.dart';
 
 import '../core/future_mint_repository.dart';
@@ -10,12 +12,14 @@ class AppController extends ChangeNotifier {
     required this.mode,
     this.accountEmail,
     this.onExit,
+    this.onUnauthorized,
   });
 
   FutureMintRepository repository;
   final AppMode mode;
   final String? accountEmail;
   final Future<void> Function()? onExit;
+  final Future<void> Function()? onUnauthorized;
   ThemeMode themeMode = ThemeMode.system;
 
   bool initialized = false;
@@ -38,6 +42,7 @@ class AppController extends ChangeNotifier {
   CoachReply? coachReply;
 
   Future<bool> _perform(Future<void> Function() operation) async {
+    if (busy) return false;
     busy = true;
     errorMessage = null;
     notifyListeners();
@@ -50,6 +55,9 @@ class AppController extends ChangeNotifier {
         ApiException(:final message) => message,
         _ => '目前無法完成操作，請稍後再試。',
       };
+      if (error case ApiException(code: 'unauthorized')) {
+        await onUnauthorized?.call();
+      }
       return false;
     } finally {
       busy = false;
@@ -61,37 +69,75 @@ class AppController extends ChangeNotifier {
     await _perform(operation);
   }
 
+  Future<void> _handlePartialFailure(
+    Object error, {
+    required String notice,
+  }) async {
+    if (error case ApiException(code: 'unauthorized')) {
+      await onUnauthorized?.call();
+      return;
+    }
+    noticeMessage = notice;
+  }
+
   Future<void> initialize() => _run(() async {
-    profile = await repository.getProfile();
-    events = await repository.listMoneyEvents();
-    dashboard = await repository.getDashboard();
-    insights = await repository.getInsights();
+    final results = await Future.wait<Object>([
+      repository.getProfile(),
+      repository.listMoneyEvents(),
+      repository.getDashboard(),
+      repository.getInsights(),
+    ]);
+    profile = results[0] as UserProfile;
+    events = results[1] as List<MoneyEvent>;
+    dashboard = results[2] as DashboardSummary;
+    insights = results[3] as FinancialInsights;
     initialized = true;
     notifyListeners();
-    try {
-      subscriptionComparison = await repository.compareSubscriptions();
-    } catch (_) {
-      noticeMessage = '訂閱比較暫時無法載入，其他資料仍可使用。';
-    }
+    unawaited(_loadSubscriptionComparison());
   });
 
   Future<void> refresh() async {
-    profile = await repository.getProfile();
-    events = await repository.listMoneyEvents();
-    dashboard = await repository.getDashboard();
-    insights = await repository.getInsights();
+    final results = await Future.wait<Object>([
+      repository.getProfile(),
+      repository.listMoneyEvents(),
+      repository.getDashboard(),
+      repository.getInsights(),
+    ]);
+    profile = results[0] as UserProfile;
+    events = results[1] as List<MoneyEvent>;
+    dashboard = results[2] as DashboardSummary;
+    insights = results[3] as FinancialInsights;
+  }
+
+  Future<void> _loadSubscriptionComparison({String? unavailableMessage}) async {
+    try {
+      subscriptionComparison = await repository.compareSubscriptions();
+    } catch (error) {
+      await _handlePartialFailure(
+        error,
+        notice: unavailableMessage ?? '訂閱比較暫時無法載入，其他資料仍可使用。',
+      );
+    } finally {
+      notifyListeners();
+    }
   }
 
   Future<void> refreshWithFeedback() => _run(refresh);
 
   Future<bool> updateProfile(UserProfile nextProfile) => _perform(() async {
     profile = await repository.updateProfile(nextProfile);
-    await refresh();
+    try {
+      await refresh();
+    } catch (error) {
+      await _handlePartialFailure(error, notice: '設定已儲存，但摘要暫時無法更新；請稍後重新整理。');
+    }
     initialized = true;
   });
 
   Future<void> parseCapture(String text, {DateTime? referenceTime}) =>
       _run(() async {
+        lastSavedEvent = null;
+        captureResult = null;
         captureResult = await repository.parseCapture(
           text,
           referenceTime: referenceTime ?? DateTime.now(),
@@ -114,19 +160,20 @@ class AppController extends ChangeNotifier {
         : CaptureResult(drafts: remainingDrafts);
     try {
       await refresh();
-    } catch (_) {
+    } catch (error) {
       events = [
         lastSavedEvent!,
         ...events.where((event) => event.id != lastSavedEvent!.id),
       ];
-      noticeMessage = '這筆已保存，但摘要暫時無法更新；請稍後在紀錄頁重新整理。';
+      await _handlePartialFailure(
+        error,
+        notice: '這筆已保存，但摘要暫時無法更新；請稍後在紀錄頁重新整理。',
+      );
     }
     if (draft.type == MoneyEventType.subscription) {
-      try {
-        subscriptionComparison = await repository.compareSubscriptions();
-      } catch (_) {
-        noticeMessage = '訂閱已保存，但方案比較暫時無法更新。';
-      }
+      await _loadSubscriptionComparison(
+        unavailableMessage: '訂閱已保存，但方案比較暫時無法更新。',
+      );
     }
   });
 
@@ -161,6 +208,16 @@ class AppController extends ChangeNotifier {
     );
     coachReply = null;
   });
+
+  Future<void> runInvestmentSimulation({
+    required int initialAmountMinor,
+    required int monthlyContributionMinor,
+    required int years,
+  }) => simulateInvestments(
+    initialAmountMinor: initialAmountMinor,
+    monthlyContributionMinor: monthlyContributionMinor,
+    years: years,
+  );
 
   Future<void> askCoach({
     required String topic,
