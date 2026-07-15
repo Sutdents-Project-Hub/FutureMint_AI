@@ -4,11 +4,13 @@
 
 目標是同一個 Coolify project／production environment 內的三個獨立 Resources：
 
-1. `futuremint-postgres`：PostgreSQL 17 Database。
-2. `futuremint-api`：private GitHub repository 的 `/services/api` Dockerfile Application。
-3. `futuremint-web`：同一 repository 的 `/apps/client` Dockerfile Application。
+1. `futuremint-ai-postgres`：PostgreSQL 17 Database。
+2. `futuremint-ai-api`：private GitHub repository 的 `/services/api` Dockerfile Application。
+3. `futuremint-ai-web`：同一 repository 的 `/apps/client` Dockerfile Application。
 
-Coolify 從 GitHub clone source，與開發者電腦無關。現在 repository 仍沒有 remote，尚未建立 resources、DNS、TLS、production secrets 或 deployment；以下是可直接照做的設定清單，不代表已執行。
+Coolify 從 GitHub clone source，與開發者電腦無關。現在 repository 已設定 GitHub remote，但尚未建立 resources、DNS、TLS、production secrets 或 deployment；以下是可直接照做的設定清單，不代表已執行。
+
+根目錄 `compose.yaml` 只供本機整合測試：頂層 `name: futuremint_ai` 讓 Docker Desktop 顯示 `futuremint_ai` Compose project，內含 `web`、`api`、`postgres` 三個容器。Coolify project 使用 `futuremint-ai`，production 仍應建立下列三個獨立 Resources，不使用 Compose 的本機免密碼 PostgreSQL 設定。
 
 ## 部署前準備
 
@@ -39,7 +41,7 @@ PostgreSQL Resource 不讀 GitHub，也不會因 push 被重建。
 | 欄位 | 值 |
 |---|---|
 | Type | PostgreSQL |
-| Name | `futuremint-postgres` |
+| Name | `futuremint-ai-postgres` |
 | Version | `17` |
 | Database | `futuremint` |
 | Username／Password | 由 Coolify 產生高強度值，不重用 |
@@ -62,7 +64,7 @@ Database 與 API 必須在同一 Coolify destination／network，否則 internal
 
 | Coolify 欄位 | 值 |
 |---|---|
-| Name | `futuremint-api` |
+| Name | `futuremint-ai-api` |
 | Repository／Branch | `FutureMint_AI`／`main` |
 | Build Pack | Dockerfile |
 | Base Directory | `/services/api` |
@@ -81,7 +83,7 @@ HOST=0.0.0.0
 PORT=3000
 AI_PROVIDER=liangjie
 DATA_PROVIDER=postgres
-DATABASE_URL=<貼上 futuremint-postgres Internal URL>
+DATABASE_URL=<貼上 futuremint-ai-postgres Internal URL>
 DATABASE_SSL=false
 LIANGJIE_BASE_URL=https://liangjiewis.com/v1
 LIANGJIE_MODEL=<量界帳號已驗證可用的 model id>
@@ -95,6 +97,7 @@ ALLOWED_ORIGINS=https://<frontend-domain>
 - Coolify 變數值若含 `$`，在 Normal View 勾 Literal，避免被當成其他變數插值。
 - 不設定 `ALLOW_DEMO_SEED`，production 自動部署不寫示範資料。
 - `ALLOWED_ORIGINS` 只放完整 HTTPS frontend origins；多個以逗號分隔，不用 `*`。
+- VPS／Coolify 必須允許 API 對 `https://openapi.twse.com.tw/` 的 outbound HTTPS；市場來源失敗時 UI 會顯示教育快照，不影響 health check。
 - Docker image 在 `DATA_PROVIDER=postgres` 時會先跑 migration；migration 失敗則 container 退出。
 - Dockerfile health check 會優先於 UI health check。只有 `/api/health` 回 200 時新 deployment 才應接流量。
 - 不設定 pre／post-deployment migration command，避免與 image entrypoint 重複執行。
@@ -113,7 +116,7 @@ curl -i https://api.<your-domain>/api/health
 
 | Coolify 欄位 | 值 |
 |---|---|
-| Name | `futuremint-web` |
+| Name | `futuremint-ai-web` |
 | Repository／Branch | `FutureMint_AI`／`main` |
 | Build Pack | Dockerfile |
 | Base Directory | `/apps/client` |
@@ -178,6 +181,7 @@ curl -fsSI https://<frontend-domain>/capture
 - Register → profile → event → dashboard → logout → login 完整。
 - 瀏覽器 Network 沒有 CORS、mixed content 或 5xx。
 - Web bundle 沒有 `LIANGJIE_API_KEY`、`DATABASE_URL` 或 password。
+- 投資練習場顯示 TWSE／fallback 來源與行情日期，虛擬訂單在 API restart 後仍存在。
 - API log 沒有 Authorization、capture 原文、SQL URL 或 provider response。
 - Database 沒有 public port。
 - Backup 與 restore 證據已保存於受控位置。

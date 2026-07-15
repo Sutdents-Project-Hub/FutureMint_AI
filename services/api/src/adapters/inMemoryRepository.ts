@@ -4,8 +4,11 @@ import type {
   Account,
   Lesson,
   MoneyEvent,
+  SaveInvestmentOrderInput,
   SessionRecord,
   UserProfile,
+  VirtualInvestmentAccount,
+  VirtualInvestmentOrder,
 } from "../contracts/models";
 import { DomainError } from "../contracts/errors";
 import type {
@@ -23,6 +26,7 @@ const profileSeed = (): UserProfile => ({
   goalSavedMinor: 4200,
   goalDate: "2026-10-31",
   preferredTone: "supportive",
+  accountRole: "child",
 });
 
 const eventSeed = (): MoneyEvent[] => [
@@ -45,6 +49,8 @@ const eventSeed = (): MoneyEvent[] => [
     amountMinor: 75,
     currency: "TWD",
     category: "food",
+    spendingIntent: "uncertain",
+    intentReason: "餐飲支出需要依當時情境由使用者確認。",
     merchant: "珍奶",
     occurredAt: "2026-07-08T16:30:00+08:00",
     createdAt: "2026-07-08T16:30:00+08:00",
@@ -57,6 +63,8 @@ const eventSeed = (): MoneyEvent[] => [
     amountMinor: 450,
     currency: "TWD",
     category: "entertainment",
+    spendingIntent: "want",
+    intentReason: "娛樂支出較接近提升體驗的選擇。",
     merchant: "遊戲點數",
     occurredAt: "2026-07-09T20:10:00+08:00",
     createdAt: "2026-07-09T20:10:00+08:00",
@@ -69,6 +77,8 @@ const eventSeed = (): MoneyEvent[] => [
     amountMinor: 390,
     currency: "TWD",
     category: "subscription",
+    spendingIntent: "uncertain",
+    intentReason: "訂閱是否必要要看使用頻率與替代方案。",
     merchant: "影音訂閱",
     occurredAt: "2026-07-01T08:00:00+08:00",
     recurrence: {
@@ -87,6 +97,8 @@ export class InMemoryRepository
   private profiles = new Map<string, UserProfile>();
   private events = new Map<string, MoneyEvent[]>();
   private lessons = new Map<string, Lesson[]>();
+  private investmentAccounts = new Map<string, VirtualInvestmentAccount>();
+  private investmentOrders = new Map<string, VirtualInvestmentOrder[]>();
   private accountsByEmail = new Map<string, Account>();
   private accountsById = new Map<string, Account>();
   private sessions = new Map<string, SessionRecord>();
@@ -101,6 +113,8 @@ export class InMemoryRepository
     this.profiles.set(userId, profile);
     this.events.set(userId, events);
     this.lessons.set(userId, []);
+    this.investmentAccounts.delete(userId);
+    this.investmentOrders.set(userId, []);
   }
 
   async getProfile(userId: string): Promise<UserProfile> {
@@ -142,6 +156,8 @@ export class InMemoryRepository
       occurredAt: input.occurredAt,
       recurrence: input.recurrence,
       split: input.split,
+      spendingIntent: input.spendingIntent,
+      intentReason: input.intentReason,
       idempotencyKey: input.idempotencyKey,
       createdAt: now,
       updatedAt: now,
@@ -169,6 +185,49 @@ export class InMemoryRepository
     else lessons.push(lesson);
     this.lessons.set(lesson.userId, lessons);
     return { ...lesson };
+  }
+
+  async getOrCreateInvestmentAccount(
+    userId: string,
+    startingCashMinor: number,
+  ): Promise<VirtualInvestmentAccount> {
+    const existing = this.investmentAccounts.get(userId);
+    if (existing) return { ...existing };
+    const account: VirtualInvestmentAccount = {
+      userId,
+      startingCashMinor,
+      createdAt: new Date().toISOString(),
+    };
+    this.investmentAccounts.set(userId, account);
+    return { ...account };
+  }
+
+  async listInvestmentOrders(
+    userId: string,
+  ): Promise<VirtualInvestmentOrder[]> {
+    return (this.investmentOrders.get(userId) ?? []).map((order) => ({
+      ...order,
+    }));
+  }
+
+  async saveInvestmentOrder(
+    userId: string,
+    input: SaveInvestmentOrderInput,
+  ): Promise<VirtualInvestmentOrder> {
+    const orders = this.investmentOrders.get(userId) ?? [];
+    const existing = orders.find(
+      (order) => order.idempotencyKey === input.idempotencyKey,
+    );
+    if (existing) return { ...existing };
+    const order: VirtualInvestmentOrder = {
+      id: randomUUID(),
+      userId,
+      ...input,
+      createdAt: new Date().toISOString(),
+    };
+    orders.push(order);
+    this.investmentOrders.set(userId, orders);
+    return { ...order };
   }
 
   async resetDemo(userId: string): Promise<void> {

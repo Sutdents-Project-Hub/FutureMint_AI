@@ -8,17 +8,19 @@
 - Session 七天到期；logout 設 revoked timestamp。
 - API 每次從 session 推導 account，所有 repository query 都依 account `user_id`；不接受 Client 指定 ownership。
 
-這是競賽 prototype authentication，不是 production identity system。目前未實作 email ownership verification、password reset、MFA、global logout、帳號鎖定、breached-password screening、CSRF cookie flow、帳號刪除或家長共管。
+這是競賽 prototype authentication，不是 production identity system。目前的孩子／家長欄位只控制內容視角，不代表親子關係、授權或跨帳號存取。尚未實作 email ownership verification、password reset、MFA、global logout、帳號鎖定、breached-password screening、CSRF cookie flow、帳號刪除或家長共管。
 
 ## API 邊界
 
 - Fastify body limit 32 KiB；Zod 驗證 request。
 - CORS 僅允許 `ALLOWED_ORIGINS` 完整 origins；production 只放正式 frontend HTTPS domain。
-- 全域 rate limit 120 requests／minute；auth routes 10 requests／minute。現況為單 instance memory counter，水平擴充前應改 shared store／edge rate limit。
+- 全域 rate limit 120 requests／minute；auth routes 10 requests／minute；AI 產生／陪讀 routes 20 requests／minute。現況為單 instance memory counter，水平擴充前應改 shared store／edge rate limit。
 - Response 使用 no-store、nosniff、frame deny、referrer policy 與 restrictive CSP。
 - PostgreSQL query 全部使用 parameter placeholders。
 - AI 回覆視為不可信任：去 fence／抽 JSON 後再做 schema、列舉、金額、日期與範圍驗證。
-- 金額、預算、訂閱與複利由 deterministic code 計算。
+- 金額、預算、訂閱、六個月收支與三條投資情境由 deterministic code 計算；AI 不產生資產數值。
+- 虛擬投資價格只由後端市場 adapter 選取，Client 不可自訂成交價；後端驗證現金、持有量、教學標的與 idempotency。
+- 公開市場 route 只回傳已篩選的 TWSE 日資料並有獨立 rate limit；不含使用者、帳號或投資組合資訊。
 
 ## 秘密
 
@@ -45,7 +47,9 @@
 
 ## 隱私與外部 AI
 
-量界智算會收到單次 capture 原文或產課所需的最小摘要，因此它是外部資料處理邊界。比賽只輸入合成資料。任何真實未成年人資料使用前，都必須先取得適當同意、確認 relay／上游模型的資料條款、設定保留與刪除流程，並完成法遵與 incident response。
+量界智算會收到單次 capture 原文；學習規劃只送角色、分類與布林／加總摘要，陪讀只送使用者問題與所選合成情境，不送完整流水。它仍是外部資料處理邊界。比賽只輸入合成資料。任何真實未成年人資料使用前，都必須先取得適當同意、確認 relay／上游模型的資料條款、設定保留與刪除流程，並完成法遵與 incident response。
+
+TWSE OpenAPI 是另一個外部可用性邊界，但 request 只要求公開市場資料，不傳帳號、持倉、訂單或任何個資。內建標的與事件骰子都必須標示為教育範例，不得以推薦、勝率、排名或獎勵高風險交易的方式呈現。
 
 ## 部署 checklist
 

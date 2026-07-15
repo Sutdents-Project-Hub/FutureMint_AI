@@ -1,6 +1,6 @@
 # FutureMint Fastify API
 
-Node.js 22／TypeScript 後端，提供帳號與 session、Zod 契約、確定性財務計算、量界智算／Demo AI providers，以及 PostgreSQL／Memory repositories。正式部署為 Coolify 中獨立的 `futuremint-api` Application。
+Node.js 22／TypeScript 後端，提供帳號與 session、Zod 契約、確定性財務計算、量界智算／Demo AI providers、證交所市場資料 adapter，以及 PostgreSQL／Memory repositories。正式部署為 Coolify 中獨立的 `futuremint-api` Application。
 
 ## Runtime
 
@@ -63,6 +63,7 @@ curl http://localhost:3000/api/health
 | Method | Route | Authentication |
 |---|---|---|
 | GET | `/api/health` | 無 |
+| GET | `/api/market/quotes` | 無 |
 | POST | `/api/auth/register` | 無 |
 | POST | `/api/auth/login` | 無 |
 | GET | `/api/auth/me` | Bearer |
@@ -71,14 +72,23 @@ curl http://localhost:3000/api/health
 | POST | `/api/captures/parse` | Bearer |
 | GET／POST | `/api/money-events` | Bearer |
 | GET | `/api/dashboard` | Bearer |
+| GET | `/api/insights` | Bearer |
 | GET | `/api/subscriptions` | Bearer |
 | POST | `/api/subscriptions/compare` | Bearer |
 | POST | `/api/lessons/generate` | Bearer |
 | GET | `/api/lessons/current` | Bearer |
 | PATCH | `/api/lessons/:lessonId` | Bearer |
+| GET | `/api/learning-plan` | Bearer |
 | POST | `/api/future-seed/preview` | Bearer |
+| POST | `/api/future-seed/simulate` | Bearer |
+| GET | `/api/investment-lab` | Bearer |
+| POST | `/api/investment-lab/orders` | Bearer |
+| POST | `/api/investment-lab/dice` | Bearer |
+| POST | `/api/coach/chat` | Bearer |
 
-成功回應包含 `requestId` 與 `data`；錯誤回應包含安全的 `code`、`message`、`retryable` 與 `requestId`，不回傳 stack、SQL、prompt 或 provider response。
+成功回應包含 `requestId` 與 `data`；錯誤回應包含安全的 `code`、`message`、`retryable` 與 `requestId`，不回傳 stack、SQL、prompt 或 provider response。`insights`、投資曲線、虛擬持倉、成本、配置與訂單限制由 deterministic domain 計算；AI 只提供分類理由、學習規劃與白話解釋。
+
+`/api/market/quotes` 使用不需金鑰的證交所 OpenAPI 每日成交資料，server 端快取 15 分鐘。來源逾時或格式異常時會回明確標示的教育快照，不會把 fallback 冒充即時行情。投資練習場只接受內建教學標的與虛擬買賣，不連券商或交易所下單。
 
 ## PostgreSQL migrations 與種子
 

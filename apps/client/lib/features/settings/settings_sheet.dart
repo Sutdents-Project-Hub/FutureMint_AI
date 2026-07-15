@@ -6,6 +6,7 @@ import '../../design/soft_components.dart';
 import '../../design/tokens.dart';
 import '../../shared/date_text.dart';
 import '../../state/app_controller.dart';
+import 'help_sheets.dart';
 
 Future<void> showSettingsSheet(BuildContext context) =>
     showModalBottomSheet<void>(
@@ -38,6 +39,7 @@ class _SettingsSheet extends StatelessWidget {
     );
     var goalDate =
         current?.goalDate ?? DateTime.now().add(const Duration(days: 90));
+    var accountRole = current?.accountRole ?? AccountRole.child;
     await showDialog<void>(
       context: context,
       builder: (dialogContext) => StatefulBuilder(
@@ -49,6 +51,25 @@ class _SettingsSheet extends StatelessWidget {
               child: Column(
                 mainAxisSize: MainAxisSize.min,
                 children: [
+                  SegmentedButton<AccountRole>(
+                    showSelectedIcon: false,
+                    segments: const [
+                      ButtonSegment(
+                        value: AccountRole.child,
+                        icon: Icon(Icons.face_outlined),
+                        label: Text('孩子'),
+                      ),
+                      ButtonSegment(
+                        value: AccountRole.parent,
+                        icon: Icon(Icons.family_restroom_outlined),
+                        label: Text('家長'),
+                      ),
+                    ],
+                    selected: {accountRole},
+                    onSelectionChanged: (value) =>
+                        setDialogState(() => accountRole = value.first),
+                  ),
+                  const SizedBox(height: 12),
                   TextField(
                     controller: budget,
                     keyboardType: TextInputType.number,
@@ -128,6 +149,7 @@ class _SettingsSheet extends StatelessWidget {
                 final didSave = await controller.updateProfile(
                   UserProfile(
                     userId: current?.userId ?? 'guest-user',
+                    accountRole: accountRole,
                     monthlyBudgetMinor: monthly,
                     weeklyBudgetMinor: current?.weeklyBudgetMinor,
                     goalName: goalName.text.trim(),
@@ -213,6 +235,18 @@ class _SettingsSheet extends StatelessWidget {
                         label: Text(
                           controller.profile == null ? '建立預算與目標' : '編輯預算與目標',
                         ),
+                      ),
+                      const SizedBox(height: FutureMintTokens.space3),
+                      OutlinedButton.icon(
+                        onPressed: () => showAppWalkthrough(context),
+                        icon: const Icon(Icons.route_outlined),
+                        label: const Text('使用步驟介紹'),
+                      ),
+                      const SizedBox(height: FutureMintTokens.space3),
+                      OutlinedButton.icon(
+                        onPressed: () => showSupportBot(context),
+                        icon: const Icon(Icons.support_agent_rounded),
+                        label: const Text('機器人服務諮詢'),
                       ),
                       const SizedBox(height: FutureMintTokens.space3),
                       OutlinedButton.icon(

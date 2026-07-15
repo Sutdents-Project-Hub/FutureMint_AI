@@ -4,6 +4,7 @@ import { afterEach, beforeEach, describe, expect, it } from "vitest";
 import { demoCatalog } from "../../src/adapters/demoCatalog";
 import { DemoAiProvider } from "../../src/adapters/demoAiProvider";
 import { InMemoryRepository } from "../../src/adapters/inMemoryRepository";
+import { EducationalMarketDataProvider } from "../../src/adapters/twseMarketDataProvider";
 import { FutureMintService } from "../../src/application/futureMintService";
 import { AuthService } from "../../src/auth/authService";
 import { buildServer } from "../../src/http/server";
@@ -23,7 +24,12 @@ describe("authenticated HTTP routes", () => {
       mode: "demo",
       aiProvider: "demo",
       dataProvider: "memory",
-      service: new FutureMintService(repository, new DemoAiProvider(), demoCatalog),
+      service: new FutureMintService(
+        repository,
+        new DemoAiProvider(),
+        demoCatalog,
+        new EducationalMarketDataProvider(),
+      ),
       authService: new AuthService(repository),
       healthCheck: async () => undefined,
       close: async () => undefined,

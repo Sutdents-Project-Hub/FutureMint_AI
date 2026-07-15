@@ -4,13 +4,19 @@ import { FutureMintService } from "../../src/application/futureMintService";
 import { demoCatalog } from "../../src/adapters/demoCatalog";
 import { DemoAiProvider } from "../../src/adapters/demoAiProvider";
 import { InMemoryRepository } from "../../src/adapters/inMemoryRepository";
+import { EducationalMarketDataProvider } from "../../src/adapters/twseMarketDataProvider";
 
 const createService = () => {
   const repository = new InMemoryRepository();
   const aiProvider = new DemoAiProvider();
   return {
     repository,
-    service: new FutureMintService(repository, aiProvider, demoCatalog),
+    service: new FutureMintService(
+      repository,
+      aiProvider,
+      demoCatalog,
+      new EducationalMarketDataProvider(),
+    ),
   };
 };
 

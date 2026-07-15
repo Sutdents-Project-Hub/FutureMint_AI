@@ -1,10 +1,18 @@
 import type {
   Account,
+  CoachReply,
+  CoachRequest,
   CaptureParseResult,
+  FinancialInsights,
+  MarketSnapshot,
   Lesson,
+  LearningPlan,
   MoneyEvent,
+  SaveInvestmentOrderInput,
   SessionRecord,
   UserProfile,
+  VirtualInvestmentAccount,
+  VirtualInvestmentOrder,
 } from "../contracts/models";
 
 export interface CaptureInput {
@@ -19,9 +27,19 @@ export interface LessonContext {
   events: MoneyEvent[];
 }
 
+export interface LearningPlanContext extends LessonContext {
+  insights: FinancialInsights;
+}
+
 export interface AiProvider {
   parseCapture(input: CaptureInput): Promise<CaptureParseResult>;
   generateLesson(context: LessonContext): Promise<Lesson>;
+  generateLearningPlan(context: LearningPlanContext): Promise<LearningPlan>;
+  coach(request: CoachRequest): Promise<CoachReply>;
+}
+
+export interface MarketDataProvider {
+  getSnapshot(): Promise<MarketSnapshot>;
 }
 
 export interface ConfirmedMoneyEventInput {
@@ -33,6 +51,8 @@ export interface ConfirmedMoneyEventInput {
   occurredAt: string;
   recurrence?: MoneyEvent["recurrence"];
   split?: MoneyEvent["split"];
+  spendingIntent?: MoneyEvent["spendingIntent"];
+  intentReason?: MoneyEvent["intentReason"];
   confirmed: true;
   idempotencyKey: string;
 }
@@ -48,6 +68,15 @@ export interface FutureMintRepository {
   getLesson(userId: string, lessonId: string): Promise<Lesson | null>;
   getLatestLesson(userId: string): Promise<Lesson | null>;
   saveLesson(lesson: Lesson): Promise<Lesson>;
+  getOrCreateInvestmentAccount(
+    userId: string,
+    startingCashMinor: number,
+  ): Promise<VirtualInvestmentAccount>;
+  listInvestmentOrders(userId: string): Promise<VirtualInvestmentOrder[]>;
+  saveInvestmentOrder(
+    userId: string,
+    input: SaveInvestmentOrderInput,
+  ): Promise<VirtualInvestmentOrder>;
   resetDemo(userId: string): Promise<void>;
 }
 

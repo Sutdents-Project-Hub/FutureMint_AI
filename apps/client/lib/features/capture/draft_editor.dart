@@ -38,6 +38,8 @@ class _DraftEditorState extends State<DraftEditor> {
   late BillingCycle billingCycle =
       widget.draft.recurrence?.billingCycle ?? BillingCycle.monthly;
   late DateTime? nextBillingAt = widget.draft.recurrence?.nextBillingAt;
+  late SpendingIntent spendingIntent =
+      widget.draft.spendingIntent ?? SpendingIntent.uncertain;
   late bool splitEnabled = widget.draft.split != null;
   late int participants = widget.draft.split?.participants ?? 2;
 
@@ -98,6 +100,7 @@ class _DraftEditorState extends State<DraftEditor> {
               )
             : null,
         clearSplit: !splitEnabled,
+        spendingIntent: spendingIntent,
       ),
     );
   }
@@ -312,6 +315,40 @@ class _DraftEditorState extends State<DraftEditor> {
             ),
           ],
           if (eventType != MoneyEventType.income) ...[
+            const SizedBox(height: FutureMintTokens.space5),
+            Text('AI 需要／想要建議', style: Theme.of(context).textTheme.titleMedium),
+            const SizedBox(height: FutureMintTokens.space2),
+            Text(
+              widget.draft.intentReason ?? 'AI 無法確定當時情境，最後由你決定。',
+              style: TextStyle(
+                color: Theme.of(context).colorScheme.onSurfaceVariant,
+              ),
+            ),
+            const SizedBox(height: FutureMintTokens.space3),
+            SegmentedButton<SpendingIntent>(
+              showSelectedIcon: false,
+              segments: const [
+                ButtonSegment(
+                  value: SpendingIntent.need,
+                  icon: Icon(Icons.check_circle_outline_rounded),
+                  label: Text('需要'),
+                ),
+                ButtonSegment(
+                  value: SpendingIntent.want,
+                  icon: Icon(Icons.favorite_border_rounded),
+                  label: Text('想要'),
+                ),
+                ButtonSegment(
+                  value: SpendingIntent.uncertain,
+                  icon: Icon(Icons.help_outline_rounded),
+                  label: Text('不確定'),
+                ),
+              ],
+              selected: {spendingIntent},
+              onSelectionChanged: widget.busy
+                  ? null
+                  : (value) => setState(() => spendingIntent = value.first),
+            ),
             const SizedBox(height: FutureMintTokens.space5),
             Text('分帳設定', style: Theme.of(context).textTheme.titleMedium),
             const SizedBox(height: FutureMintTokens.space2),

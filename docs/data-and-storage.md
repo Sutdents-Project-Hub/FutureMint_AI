@@ -10,18 +10,22 @@
 
 ## PostgreSQL schema
 
-Schema 由 `services/api/migrations/001_initial.sql` 管理：
+Schema 由 `services/api/migrations/001_initial.sql`、`002_roles_and_intents.sql` 與 `003_investment_lab.sql` 管理：
 
 | Table | 內容 | 重要約束 |
 |---|---|---|
 | `accounts` | Email、scrypt password hash/salt、profile 完成狀態 | email／user_id unique |
 | `sessions` | Token hash、建立／到期／撤銷時間 | token hash unique，account cascade delete |
-| `profiles` | 月／週預算、目標、偏好語氣 | 一個 user 一筆；金額與 tone checks |
-| `money_events` | 收入、支出、訂閱、日期、recurrence、split | `(user_id, idempotency_key)` unique |
+| `profiles` | 月／週預算、目標、偏好語氣、孩子／家長內容角色 | 一個 user 一筆；金額、tone、account role checks |
+| `money_events` | 收入、支出、訂閱、日期、recurrence、split、需要／想要判斷與理由 | `(user_id, idempotency_key)` unique；收入不得有 spending intent |
 | `lessons` | 個人化課程、options、action、完成狀態、來源 | user FK；source 只允許量界或 demo |
+| `virtual_investment_accounts` | 每個登入帳號的起始虛擬現金 | 一個 user 一筆；起始金額不可為負 |
+| `virtual_investment_orders` | 教學標的、買賣方向、數量、成交快照價格／來源／日期 | `(user_id, idempotency_key)` unique；方向、數量與來源 checks |
 | `schema_migrations` | 已套用 migration name 與 checksum | migration runner 管理 |
 
-金額以 TWD 最小單位整數保存，不使用浮點數。Recurrence、split、lesson options 與 source IDs 使用 JSONB，但讀寫仍經 Zod 型別驗證。
+金額以 TWD 最小單位整數保存，不使用浮點數；虛擬成交單價用固定精度 decimal 保存。Recurrence、split、lesson options 與 source IDs 使用 JSONB，但讀寫仍經 Zod 型別驗證。圖表、通知、學習規劃、FutureSeed 與虛擬持倉可由既有 profile／events／orders 即時計算，不保存 AI 推論，也不建立市場行情歷史表。
+
+登入帳號的虛擬投資帳戶與訂單保存於 PostgreSQL，重啟 API 後仍可重建持倉。訪客模式的虛擬現金、訂單與事件骰子只留在 Flutter process memory，重新整理後清除。
 
 ## Migration
 

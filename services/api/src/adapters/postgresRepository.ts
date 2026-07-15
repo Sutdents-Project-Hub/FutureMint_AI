@@ -12,8 +12,11 @@ import type {
   Account,
   Lesson,
   MoneyEvent,
+  SaveInvestmentOrderInput,
   SessionRecord,
   UserProfile,
+  VirtualInvestmentAccount,
+  VirtualInvestmentOrder,
 } from "../contracts/models";
 
 export interface SqlClient {
@@ -52,6 +55,7 @@ interface ProfileRow extends Record<string, unknown> {
   goal_saved_minor: number;
   goal_date: Date | string;
   preferred_tone: "supportive" | "direct";
+  account_role: UserProfile["accountRole"];
 }
 
 interface MoneyEventRow extends Record<string, unknown> {
@@ -65,6 +69,8 @@ interface MoneyEventRow extends Record<string, unknown> {
   occurred_at: Date | string;
   recurrence: MoneyEvent["recurrence"] | null;
   split: MoneyEvent["split"] | null;
+  spending_intent: MoneyEvent["spendingIntent"] | null;
+  intent_reason: string | null;
   idempotency_key: string | null;
   created_at: Date | string;
   updated_at: Date | string;
@@ -84,6 +90,27 @@ interface LessonRow extends Record<string, unknown> {
   source: Lesson["source"];
   selected_option: string | null;
   completed_at: Date | string | null;
+  created_at: Date | string;
+}
+
+interface InvestmentAccountRow extends Record<string, unknown> {
+  user_id: string;
+  starting_cash_minor: number;
+  created_at: Date | string;
+}
+
+interface InvestmentOrderRow extends Record<string, unknown> {
+  id: string;
+  user_id: string;
+  symbol: string;
+  name: string;
+  side: VirtualInvestmentOrder["side"];
+  quantity: number;
+  unit_price: number | string;
+  total_minor: number;
+  quote_as_of: Date | string;
+  quote_source: VirtualInvestmentOrder["quoteSource"];
+  idempotency_key: string;
   created_at: Date | string;
 }
 
@@ -126,6 +153,7 @@ const profileFromRow = (row: ProfileRow): UserProfile => ({
   goalSavedMinor: row.goal_saved_minor,
   goalDate: dateOnly(row.goal_date),
   preferredTone: row.preferred_tone,
+  accountRole: row.account_role,
 });
 
 const moneyEventFromRow = (row: MoneyEventRow): MoneyEvent => ({
@@ -139,6 +167,10 @@ const moneyEventFromRow = (row: MoneyEventRow): MoneyEvent => ({
   occurredAt: isoDateTime(row.occurred_at),
   ...(row.recurrence ? { recurrence: row.recurrence } : {}),
   ...(row.split ? { split: row.split } : {}),
+  ...(row.spending_intent
+    ? { spendingIntent: row.spending_intent }
+    : {}),
+  ...(row.intent_reason ? { intentReason: row.intent_reason } : {}),
   ...(row.idempotency_key
     ? { idempotencyKey: row.idempotency_key }
     : {}),
@@ -160,6 +192,31 @@ const lessonFromRow = (row: LessonRow): Lesson => ({
   source: row.source,
   ...(row.selected_option ? { selectedOption: row.selected_option } : {}),
   ...(row.completed_at ? { completedAt: isoDateTime(row.completed_at) } : {}),
+  createdAt: isoDateTime(row.created_at),
+});
+
+const investmentAccountFromRow = (
+  row: InvestmentAccountRow,
+): VirtualInvestmentAccount => ({
+  userId: row.user_id,
+  startingCashMinor: row.starting_cash_minor,
+  createdAt: isoDateTime(row.created_at),
+});
+
+const investmentOrderFromRow = (
+  row: InvestmentOrderRow,
+): VirtualInvestmentOrder => ({
+  id: row.id,
+  userId: row.user_id,
+  symbol: row.symbol,
+  name: row.name,
+  side: row.side,
+  quantity: row.quantity,
+  unitPrice: Number(row.unit_price),
+  totalMinor: row.total_minor,
+  quoteAsOf: dateOnly(row.quote_as_of),
+  quoteSource: row.quote_source,
+  idempotencyKey: row.idempotency_key,
   createdAt: isoDateTime(row.created_at),
 });
 
@@ -194,8 +251,9 @@ export class PostgresRepository
     const { rows } = await this.client.query<ProfileRow>(
       `INSERT INTO profiles (
         user_id, monthly_budget_minor, weekly_budget_minor, goal_name,
-        goal_target_minor, goal_saved_minor, goal_date, preferred_tone
-      ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8)
+        goal_target_minor, goal_saved_minor, goal_date, preferred_tone,
+        account_role
+      ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9)
       ON CONFLICT (user_id) DO UPDATE SET
         monthly_budget_minor = EXCLUDED.monthly_budget_minor,
         weekly_budget_minor = EXCLUDED.weekly_budget_minor,
@@ -203,7 +261,8 @@ export class PostgresRepository
         goal_target_minor = EXCLUDED.goal_target_minor,
         goal_saved_minor = EXCLUDED.goal_saved_minor,
         goal_date = EXCLUDED.goal_date,
-        preferred_tone = EXCLUDED.preferred_tone
+        preferred_tone = EXCLUDED.preferred_tone,
+        account_role = EXCLUDED.account_role
       RETURNING *`,
       [
         profile.userId,
@@ -214,6 +273,7 @@ export class PostgresRepository
         profile.goalSavedMinor,
         profile.goalDate,
         profile.preferredTone,
+        profile.accountRole,
       ],
     );
     return profileFromRow(rows[0]);
@@ -232,14 +292,18 @@ export class PostgresRepository
     input: ConfirmedMoneyEventInput,
   ): Promise<MoneyEvent> {
     const id = `event-${createHash("sha256")
-      .update(input.idempotencyKey)
+      .update(`${userId}:${input.idempotencyKey}`)
       .digest("hex")
       .slice(0, 32)}`;
     const { rows } = await this.client.query<MoneyEventRow>(
       `INSERT INTO money_events (
         id, user_id, type, amount_minor, currency, category, merchant,
-        occurred_at, recurrence, split, idempotency_key
-      ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9::jsonb, $10::jsonb, $11)
+        occurred_at, recurrence, split, spending_intent, intent_reason,
+        idempotency_key
+      ) VALUES (
+        $1, $2, $3, $4, $5, $6, $7, $8, $9::jsonb, $10::jsonb, $11, $12,
+        $13
+      )
       ON CONFLICT (user_id, idempotency_key) DO UPDATE SET
         idempotency_key = EXCLUDED.idempotency_key
       RETURNING *`,
@@ -254,6 +318,8 @@ export class PostgresRepository
         input.occurredAt,
         input.recurrence ? JSON.stringify(input.recurrence) : null,
         input.split ? JSON.stringify(input.split) : null,
+        input.spendingIntent ?? null,
+        input.intentReason ?? null,
         input.idempotencyKey,
       ],
     );
@@ -317,6 +383,66 @@ export class PostgresRepository
       ],
     );
     return lessonFromRow(rows[0]);
+  }
+
+  async getOrCreateInvestmentAccount(
+    userId: string,
+    startingCashMinor: number,
+  ): Promise<VirtualInvestmentAccount> {
+    const { rows } = await this.client.query<InvestmentAccountRow>(
+      `INSERT INTO virtual_investment_accounts (
+        user_id, starting_cash_minor
+      ) VALUES ($1, $2)
+      ON CONFLICT (user_id) DO UPDATE SET user_id = EXCLUDED.user_id
+      RETURNING *`,
+      [userId, startingCashMinor],
+    );
+    return investmentAccountFromRow(rows[0]);
+  }
+
+  async listInvestmentOrders(
+    userId: string,
+  ): Promise<VirtualInvestmentOrder[]> {
+    const { rows } = await this.client.query<InvestmentOrderRow>(
+      `SELECT * FROM virtual_investment_orders
+      WHERE user_id = $1
+      ORDER BY created_at ASC`,
+      [userId],
+    );
+    return rows.map(investmentOrderFromRow);
+  }
+
+  async saveInvestmentOrder(
+    userId: string,
+    input: SaveInvestmentOrderInput,
+  ): Promise<VirtualInvestmentOrder> {
+    const id = `order-${createHash("sha256")
+      .update(`${userId}:${input.idempotencyKey}`)
+      .digest("hex")
+      .slice(0, 32)}`;
+    const { rows } = await this.client.query<InvestmentOrderRow>(
+      `INSERT INTO virtual_investment_orders (
+        id, user_id, symbol, name, side, quantity, unit_price, total_minor,
+        quote_as_of, quote_source, idempotency_key
+      ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11)
+      ON CONFLICT (user_id, idempotency_key) DO UPDATE SET
+        idempotency_key = EXCLUDED.idempotency_key
+      RETURNING *`,
+      [
+        id,
+        userId,
+        input.symbol,
+        input.name,
+        input.side,
+        input.quantity,
+        input.unitPrice,
+        input.totalMinor,
+        input.quoteAsOf,
+        input.quoteSource,
+        input.idempotencyKey,
+      ],
+    );
+    return investmentOrderFromRow(rows[0]);
   }
 
   async resetDemo(_userId: string): Promise<void> {

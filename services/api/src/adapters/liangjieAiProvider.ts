@@ -7,14 +7,19 @@ import type {
   AiProvider,
   CaptureInput,
   LessonContext,
+  LearningPlanContext,
 } from "../application/ports";
 import { DomainError } from "../contracts/errors";
 import {
   billingCycles,
   moneyCategories,
   moneyEventTypes,
+  spendingIntents,
+  type CoachReply,
+  type CoachRequest,
   type CaptureParseResult,
   type Lesson,
+  type LearningPlan,
 } from "../contracts/models";
 
 interface ChatClient {
@@ -68,6 +73,8 @@ const draftSchema = z
       })
       .nullable()
       .optional(),
+    spendingIntent: z.enum(spendingIntents).nullable().optional(),
+    intentReason: z.string().trim().min(1).max(160).nullable().optional(),
     confidence: z.number().min(0).max(1),
     missingFields: z.array(z.string()).max(5),
   })
@@ -99,6 +106,13 @@ const draftSchema = z
         message: "收入事件不使用分帳。",
       });
     }
+    if (draft.type === "income" && draft.spendingIntent) {
+      context.addIssue({
+        code: "custom",
+        path: ["spendingIntent"],
+        message: "收入不使用需要或想要分類。",
+      });
+    }
   });
 
 const captureOutputSchema = z.object({
@@ -128,6 +142,34 @@ const lessonOutputSchema = z.object({
   disclaimer: z.string().min(1).max(120),
 });
 
+const learningPlanOutputSchema = z.object({
+  title: lessonText(60),
+  summary: lessonText(180),
+  modules: z
+    .array(
+      z.object({
+        id: z.enum(["need-want", "subscription", "compound", "risk"]),
+        title: lessonText(60),
+        reason: lessonText(140),
+        nextAction: lessonText(120),
+      }),
+    )
+    .length(4)
+    .refine((modules) => new Set(modules.map((item) => item.id)).size === 4, {
+      message: "學習規劃主題不得重複。",
+    }),
+  disclaimer: z.string().min(1).max(120),
+});
+
+const unsafeCoachLanguage =
+  /(?:建議|推薦).{0,6}(?:買入|賣出|投資)|買進|賣出|穩賺|保證報酬|必定獲利/u;
+const coachOutputSchema = z.object({
+  answer: z.string().min(1).max(320).refine((value) => !unsafeCoachLanguage.test(value)),
+  takeaway: z.string().min(1).max(160).refine((value) => !unsafeCoachLanguage.test(value)),
+  suggestions: z.array(z.string().min(1).max(80)).min(2).max(3),
+  disclaimer: z.string().min(1).max(120),
+});
+
 const captureJsonSchema = {
   type: "object",
   additionalProperties: false,
@@ -147,6 +189,8 @@ const captureJsonSchema = {
           "occurredAt",
           "recurrence",
           "split",
+          "spendingIntent",
+          "intentReason",
           "confidence",
           "missingFields",
         ],
@@ -184,6 +228,11 @@ const captureJsonSchema = {
               { type: "null" },
             ],
           },
+          spendingIntent: {
+            type: ["string", "null"],
+            enum: [...spendingIntents, null],
+          },
+          intentReason: { type: ["string", "null"] },
           confidence: { type: "number", minimum: 0, maximum: 1 },
           missingFields: { type: "array", items: { type: "string" } },
         },
@@ -218,6 +267,53 @@ const lessonJsonSchema = {
       items: { type: "string" },
     },
     action: { type: "string" },
+    disclaimer: { type: "string" },
+  },
+};
+
+const learningPlanJsonSchema = {
+  type: "object",
+  additionalProperties: false,
+  required: ["title", "summary", "modules", "disclaimer"],
+  properties: {
+    title: { type: "string" },
+    summary: { type: "string" },
+    modules: {
+      type: "array",
+      minItems: 4,
+      maxItems: 4,
+      items: {
+        type: "object",
+        additionalProperties: false,
+        required: ["id", "title", "reason", "nextAction"],
+        properties: {
+          id: {
+            type: "string",
+            enum: ["need-want", "subscription", "compound", "risk"],
+          },
+          title: { type: "string" },
+          reason: { type: "string" },
+          nextAction: { type: "string" },
+        },
+      },
+    },
+    disclaimer: { type: "string" },
+  },
+};
+
+const coachJsonSchema = {
+  type: "object",
+  additionalProperties: false,
+  required: ["answer", "takeaway", "suggestions", "disclaimer"],
+  properties: {
+    answer: { type: "string" },
+    takeaway: { type: "string" },
+    suggestions: {
+      type: "array",
+      minItems: 2,
+      maxItems: 3,
+      items: { type: "string" },
+    },
     disclaimer: { type: "string" },
   },
 };
@@ -362,7 +458,7 @@ export class LiangjieAiProvider implements AiProvider {
         {
           role: "system",
           content:
-            `你是青少年金錢事件解析器。只抽取已發生的收入、支出或訂閱；否定句不得建立草稿。金額不可猜測。只輸出一個 JSON object，不得加上 Markdown 或解釋。JSON Schema：${JSON.stringify(captureJsonSchema)}`,
+            `你是青少年金錢事件解析器。只抽取已發生的收入、支出或訂閱；否定句不得建立草稿。金額不可猜測。對支出與訂閱提供 need、want 或 uncertain 建議與非責備理由；資訊不足必須選 uncertain，這只是可修改建議。收入的 spendingIntent 與 intentReason 都輸出 null。只輸出一個 JSON object，不得加上 Markdown 或解釋。JSON Schema：${JSON.stringify(captureJsonSchema)}`,
         },
         {
           role: "user",
@@ -401,6 +497,14 @@ export class LiangjieAiProvider implements AiProvider {
                 },
               }),
           ...(draft.split == null ? {} : { split: draft.split }),
+          ...(draft.type === "income"
+            ? {}
+            : {
+                spendingIntent: draft.spendingIntent ?? "uncertain",
+                intentReason:
+                  draft.intentReason ??
+                  "AI 沒有足夠情境判斷，請依當時狀況自行確認。",
+              }),
           confidence: draft.confidence,
           missingFields: draft.missingFields,
           needsConfirmation: true,
@@ -462,6 +566,86 @@ export class LiangjieAiProvider implements AiProvider {
       throw new DomainError(
         "ai_invalid_output",
         "AI 課程格式無法驗證。",
+        503,
+        true,
+      );
+    }
+  }
+
+  async generateLearningPlan(
+    context: LearningPlanContext,
+  ): Promise<LearningPlan> {
+    const response = await this.request({
+      model: this.model,
+      messages: [
+        {
+          role: "system",
+          content:
+            `你是青少年金融教育規劃助手。依聚合分類調整四個固定主題的順序與理由：need-want、subscription、compound、risk。不得推薦標的、保證報酬或自行新增任何數量。每個 id 必須恰好出現一次。只輸出 JSON object。JSON Schema：${JSON.stringify(learningPlanJsonSchema)}`,
+        },
+        {
+          role: "user",
+          content: JSON.stringify({
+            accountRole: context.profile.accountRole,
+            hasGoal: context.profile.goalName.length > 0,
+            eventCategories: context.events.map((event) => event.category),
+            hasSubscriptions: context.insights.subscriptionMinor > 0,
+            hasUncertainIntent: context.insights.uncertainMinor > 0,
+          }),
+        },
+      ],
+    });
+    try {
+      const parsed = learningPlanOutputSchema.parse(completionJson(response));
+      return {
+        ...parsed,
+        modules: parsed.modules.map((module, index) => ({
+          ...module,
+          status: index === 0 ? "next" : "queued",
+        })),
+        source: "liangjie-ai",
+      };
+    } catch (error) {
+      if (error instanceof DomainError) throw error;
+      throw new DomainError(
+        "ai_invalid_output",
+        "AI 學習規劃格式無法驗證。",
+        503,
+        true,
+      );
+    }
+  }
+
+  async coach(request: CoachRequest): Promise<CoachReply> {
+    const response = await this.request({
+      model: this.model,
+      messages: [
+        {
+          role: "system",
+          content:
+            `你是青少年金融教育陪讀員，只能解釋需要與想要、訂閱檢查、複利、波動與分散。不得推薦或評價任何投資標的，不得保證報酬，不得重算或新增金額、報酬率、期限。使用繁體中文與非責備語氣，只輸出 JSON object。JSON Schema：${JSON.stringify(coachJsonSchema)}`,
+        },
+        {
+          role: "user",
+          content: JSON.stringify({
+            topic: request.topic,
+            question: request.question,
+            scenarioId: request.scenarioId,
+            selectedYear: request.selectedYear,
+          }),
+        },
+      ],
+    });
+    try {
+      return {
+        ...coachOutputSchema.parse(completionJson(response)),
+        source: "liangjie-ai",
+      };
+    } catch (error) {
+      if (error instanceof DomainError) throw error;
+      throw new DomainError(
+        "ai_invalid_output",
+        "AI 陪讀回覆格式無法驗證。",
         503,
         true,
       );

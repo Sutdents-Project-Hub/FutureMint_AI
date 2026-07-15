@@ -4,7 +4,9 @@ import 'package:go_router/go_router.dart';
 import '../features/capture/capture_screen.dart';
 import '../features/dashboard/dashboard_screen.dart';
 import '../features/future_seed/future_seed_screen.dart';
+import '../features/future_seed/investment_lab_screen.dart';
 import '../features/learning/learning_screen.dart';
+import '../features/notifications/notification_center_screen.dart';
 import '../features/records/records_screen.dart';
 import '../features/subscriptions/subscription_coach.dart';
 import 'app_shell.dart';
@@ -21,8 +23,16 @@ GoRouter createAppRouter() => GoRouter(
         GoRoute(path: '/capture', builder: (_, _) => const CaptureScreen()),
         GoRoute(path: '/learning', builder: (_, _) => const LearningScreen()),
         GoRoute(
+          path: '/notifications',
+          builder: (_, _) => const NotificationCenterScreen(),
+        ),
+        GoRoute(
           path: '/future-seed',
           builder: (_, _) => const FutureSeedScreen(),
+        ),
+        GoRoute(
+          path: '/future-seed/investment-lab',
+          builder: (_, _) => const InvestmentLabScreen(),
         ),
         GoRoute(
           path: '/subscriptions',

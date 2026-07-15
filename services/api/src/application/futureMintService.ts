@@ -3,10 +3,15 @@ import type {
   CaptureInput,
   ConfirmedMoneyEventInput,
   FutureMintRepository,
+  MarketDataProvider,
 } from "./ports";
 import type {
+  CoachRequest,
   DashboardSummary,
+  FinancialInsights,
   FutureSeedInput,
+  InvestmentSimulationInput,
+  InvestmentOrderInput,
   Lesson,
   MoneyEvent,
   SubscriptionCompareInput,
@@ -16,14 +21,25 @@ import type {
 } from "../contracts/models";
 import {
   captureParseInputSchema,
+  coachRequestSchema,
   futureSeedInputSchema,
+  investmentSimulationInputSchema,
+  investmentOrderInputSchema,
   moneyEventInputSchema,
   moneyEventListQuerySchema,
   profileInputSchema,
+  practiceDiceInputSchema,
   subscriptionCompareInputSchema,
 } from "../contracts/schemas";
 import { calculateDashboard } from "../domain/budget";
+import { calculateFinancialInsights } from "../domain/analytics";
 import { calculateFutureSeed } from "../domain/futureSeed";
+import { simulateInvestmentScenarios } from "../domain/investmentSimulation";
+import {
+  buildInvestmentLab,
+  rollPracticeEvent,
+  validateInvestmentOrder,
+} from "../domain/investmentLab";
 import { compareSubscription } from "../domain/subscriptions";
 import { DomainError } from "../contracts/errors";
 
@@ -32,6 +48,7 @@ export class FutureMintService {
     private readonly repository: FutureMintRepository,
     private readonly aiProvider: AiProvider,
     private readonly subscriptionCatalog: SubscriptionPlan[],
+    private readonly marketDataProvider: MarketDataProvider,
   ) {}
 
   private recentEvents(events: MoneyEvent[]): MoneyEvent[] {
@@ -115,6 +132,17 @@ export class FutureMintService {
     return calculateDashboard(profile, events, now);
   }
 
+  async getInsights(
+    userId: string,
+    now = new Date(),
+  ): Promise<FinancialInsights> {
+    const [profile, events] = await Promise.all([
+      this.repository.getProfile(userId),
+      this.repository.listMoneyEvents(userId),
+    ]);
+    return calculateFinancialInsights(profile, events, now);
+  }
+
   compareSubscriptions(
     input: SubscriptionCompareInput,
   ): SubscriptionComparison {
@@ -136,6 +164,20 @@ export class FutureMintService {
       events: recentEvents,
     });
     return this.repository.saveLesson(lesson);
+  }
+
+  async getLearningPlan(userId: string) {
+    const [profile, events] = await Promise.all([
+      this.repository.getProfile(userId),
+      this.repository.listMoneyEvents(userId),
+    ]);
+    const insights = calculateFinancialInsights(profile, events);
+    return this.aiProvider.generateLearningPlan({
+      userId,
+      profile,
+      events: this.recentEvents(events),
+      insights,
+    });
   }
 
   async getCurrentLesson(userId: string): Promise<Lesson> {
@@ -189,6 +231,90 @@ export class FutureMintService {
 
   previewFutureSeed(input: FutureSeedInput) {
     return calculateFutureSeed(futureSeedInputSchema.parse(input));
+  }
+
+  simulateInvestments(input: InvestmentSimulationInput) {
+    return simulateInvestmentScenarios(
+      investmentSimulationInputSchema.parse(input),
+    );
+  }
+
+  coach(input: CoachRequest) {
+    return this.aiProvider.coach(coachRequestSchema.parse(input));
+  }
+
+  getMarketSnapshot() {
+    return this.marketDataProvider.getSnapshot();
+  }
+
+  async getInvestmentLab(userId: string) {
+    const [profile, market] = await Promise.all([
+      this.repository.getProfile(userId),
+      this.marketDataProvider.getSnapshot(),
+    ]);
+    const account = await this.repository.getOrCreateInvestmentAccount(
+      userId,
+      profile.goalSavedMinor > 0 ? profile.goalSavedMinor : 1000,
+    );
+    const orders = await this.repository.listInvestmentOrders(userId);
+    return buildInvestmentLab(account, orders, market);
+  }
+
+  async placeInvestmentOrder(userId: string, input: InvestmentOrderInput) {
+    const parsed = investmentOrderInputSchema.parse(input);
+    const [profile, market, existingOrders] = await Promise.all([
+      this.repository.getProfile(userId),
+      this.marketDataProvider.getSnapshot(),
+      this.repository.listInvestmentOrders(userId),
+    ]);
+    const account = await this.repository.getOrCreateInvestmentAccount(
+      userId,
+      profile.goalSavedMinor > 0 ? profile.goalSavedMinor : 1000,
+    );
+    if (
+      existingOrders.some(
+        (order) => order.idempotencyKey === parsed.idempotencyKey,
+      )
+    ) {
+      return buildInvestmentLab(account, existingOrders, market);
+    }
+    const quote = market.quotes.find(
+      (candidate) => candidate.symbol === parsed.symbol,
+    );
+    if (!quote) {
+      throw new DomainError(
+        "market_quote_not_found",
+        "目前找不到這個教學標的的盤後價格。",
+        404,
+      );
+    }
+    const totalMinor = Math.round(quote.price * parsed.quantity);
+    const current = buildInvestmentLab(account, existingOrders, market);
+    validateInvestmentOrder(
+      current,
+      parsed.symbol,
+      parsed.side,
+      parsed.quantity,
+      totalMinor,
+    );
+    await this.repository.saveInvestmentOrder(userId, {
+      ...parsed,
+      name: quote.name,
+      unitPrice: quote.price,
+      totalMinor,
+      quoteAsOf: quote.asOf,
+      quoteSource: quote.source,
+    });
+    return buildInvestmentLab(
+      account,
+      await this.repository.listInvestmentOrders(userId),
+      market,
+    );
+  }
+
+  rollInvestmentPracticeEvent(userId: string, input: { rollIndex: number }) {
+    const parsed = practiceDiceInputSchema.parse(input);
+    return rollPracticeEvent(userId, parsed.rollIndex);
   }
 
   resetDemo(userId: string): Promise<void> {

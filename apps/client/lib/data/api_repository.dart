@@ -131,6 +131,11 @@ class ApiRepository implements FutureMintRepository {
   );
 
   @override
+  Future<FinancialInsights> getInsights() async => FinancialInsights.fromJson(
+    await _send('GET', 'insights') as Map<String, dynamic>,
+  );
+
+  @override
   Future<CaptureResult> parseCapture(
     String text, {
     required DateTime referenceTime,
@@ -184,6 +189,10 @@ class ApiRepository implements FutureMintRepository {
                     ),
                 },
               if (draft.split != null) 'split': draft.split!.toJson(),
+              if (draft.spendingIntent != null)
+                'spendingIntent': draft.spendingIntent!.name,
+              if (draft.intentReason != null)
+                'intentReason': draft.intentReason,
               'confirmed': true,
               'idempotencyKey': idempotencyKey,
             },
@@ -262,6 +271,11 @@ class ApiRepository implements FutureMintRepository {
       );
 
   @override
+  Future<LearningPlan> getLearningPlan() async => LearningPlan.fromJson(
+    await _send('GET', 'learning-plan') as Map<String, dynamic>,
+  );
+
+  @override
   Future<FutureSeedPreview> previewFutureSeed({
     required int monthlyContributionMinor,
     required int years,
@@ -276,6 +290,82 @@ class ApiRepository implements FutureMintRepository {
             'annualRatePercent': annualRatePercent,
           },
         )
+        as Map<String, dynamic>,
+  );
+
+  @override
+  Future<InvestmentSimulation> simulateInvestments({
+    required int initialAmountMinor,
+    required int monthlyContributionMinor,
+    required int years,
+  }) async => InvestmentSimulation.fromJson(
+    await _send(
+          'POST',
+          'future-seed/simulate',
+          body: {
+            'initialAmountMinor': initialAmountMinor,
+            'monthlyContributionMinor': monthlyContributionMinor,
+            'years': years,
+          },
+        )
+        as Map<String, dynamic>,
+  );
+
+  @override
+  Future<CoachReply> askCoach({
+    required String topic,
+    required String question,
+    InvestmentScenarioId? scenarioId,
+    int? selectedYear,
+  }) async => CoachReply.fromJson(
+    await _send(
+          'POST',
+          'coach/chat',
+          body: {
+            'topic': topic,
+            'question': question,
+            if (scenarioId != null) 'scenarioId': scenarioToJson(scenarioId),
+            'selectedYear': ?selectedYear,
+          },
+        )
+        as Map<String, dynamic>,
+  );
+
+  @override
+  Future<MarketSnapshot> getMarketSnapshot() async => MarketSnapshot.fromJson(
+    await _send('GET', 'market/quotes') as Map<String, dynamic>,
+  );
+
+  @override
+  Future<InvestmentLab> getInvestmentLab() async => InvestmentLab.fromJson(
+    await _send('GET', 'investment-lab') as Map<String, dynamic>,
+  );
+
+  @override
+  Future<InvestmentLab> placeInvestmentOrder({
+    required String symbol,
+    required InvestmentOrderSide side,
+    required int quantity,
+    required String idempotencyKey,
+  }) async => InvestmentLab.fromJson(
+    await _send(
+          'POST',
+          'investment-lab/orders',
+          body: {
+            'symbol': symbol,
+            'side': side.name,
+            'quantity': quantity,
+            'idempotencyKey': idempotencyKey,
+          },
+        )
+        as Map<String, dynamic>,
+  );
+
+  @override
+  Future<PracticeDiceEvent> rollInvestmentDice({
+    required int rollIndex,
+  }) async => PracticeDiceEvent.fromJson(
+    await _send('POST', 'investment-lab/dice', body: {'rollIndex': rollIndex})
         as Map<String, dynamic>,
   );
 

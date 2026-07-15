@@ -7,6 +7,9 @@
 - Project name：FutureMint AI
 - Repository name：`FutureMint_AI`
 - Project slug：`futuremint-ai`
+- Local Docker Compose project：`futuremint_ai`
+- Coolify project：`futuremint-ai`
+- Coolify services：`futuremint-ai-web`、`futuremint-ai-api`、`futuremint-ai-postgres`
 - Stage：`competition`
 - Product type：`hybrid`
 - Bootstrap mode：`executable`

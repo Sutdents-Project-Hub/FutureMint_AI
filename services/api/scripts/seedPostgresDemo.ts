@@ -90,6 +90,7 @@ const run = async (): Promise<void> => {
       goalSavedMinor: 4200,
       goalDate: "2026-10-31",
       preferredTone: "supportive",
+      accountRole: "child",
     });
     for (const event of events) {
       await repository.saveMoneyEvent(userId, event);

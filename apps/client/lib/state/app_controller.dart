@@ -29,7 +29,13 @@ class AppController extends ChangeNotifier {
   MoneyEvent? lastSavedEvent;
   SubscriptionComparison? subscriptionComparison;
   Lesson? lesson;
+  FinancialInsights? insights;
+  LearningPlan? learningPlan;
   FutureSeedPreview? futureSeedPreview;
+  InvestmentSimulation? investmentSimulation;
+  InvestmentLab? investmentLab;
+  PracticeDiceEvent? practiceDiceEvent;
+  CoachReply? coachReply;
 
   Future<bool> _perform(Future<void> Function() operation) async {
     busy = true;
@@ -59,6 +65,7 @@ class AppController extends ChangeNotifier {
     profile = await repository.getProfile();
     events = await repository.listMoneyEvents();
     dashboard = await repository.getDashboard();
+    insights = await repository.getInsights();
     initialized = true;
     notifyListeners();
     try {
@@ -72,6 +79,7 @@ class AppController extends ChangeNotifier {
     profile = await repository.getProfile();
     events = await repository.listMoneyEvents();
     dashboard = await repository.getDashboard();
+    insights = await repository.getInsights();
   }
 
   Future<void> refreshWithFeedback() => _run(refresh);
@@ -133,6 +141,66 @@ class AppController extends ChangeNotifier {
       lesson = await repository.generateLesson();
     });
   }
+
+  Future<void> loadLearningPlan() async {
+    if (learningPlan != null || busy) return;
+    await _run(() async {
+      learningPlan = await repository.getLearningPlan();
+    });
+  }
+
+  Future<void> simulateInvestments({
+    required int initialAmountMinor,
+    required int monthlyContributionMinor,
+    required int years,
+  }) => _run(() async {
+    investmentSimulation = await repository.simulateInvestments(
+      initialAmountMinor: initialAmountMinor,
+      monthlyContributionMinor: monthlyContributionMinor,
+      years: years,
+    );
+    coachReply = null;
+  });
+
+  Future<void> askCoach({
+    required String topic,
+    required String question,
+    InvestmentScenarioId? scenarioId,
+    int? selectedYear,
+  }) => _run(() async {
+    coachReply = await repository.askCoach(
+      topic: topic,
+      question: question,
+      scenarioId: scenarioId,
+      selectedYear: selectedYear,
+    );
+  });
+
+  Future<void> loadInvestmentLab() => _run(() async {
+    investmentLab = await repository.getInvestmentLab();
+  });
+
+  Future<void> placeInvestmentOrder({
+    required String symbol,
+    required InvestmentOrderSide side,
+    required int quantity,
+  }) => _run(() async {
+    investmentLab = await repository.placeInvestmentOrder(
+      symbol: symbol,
+      side: side,
+      quantity: quantity,
+      idempotencyKey:
+          'order-${DateTime.now().microsecondsSinceEpoch}-$symbol-${side.name}',
+    );
+  });
+
+  Future<void> rollInvestmentDice() => _run(() async {
+    final nextRoll = (practiceDiceEvent?.rollIndex ?? -1) + 1;
+    coachReply = null;
+    practiceDiceEvent = await repository.rollInvestmentDice(
+      rollIndex: nextRoll,
+    );
+  });
 
   Future<void> previewFutureSeed({
     required int monthlyContributionMinor,

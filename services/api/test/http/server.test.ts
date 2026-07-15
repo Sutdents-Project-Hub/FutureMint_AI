@@ -4,6 +4,7 @@ import { afterEach, beforeEach, describe, expect, it } from "vitest";
 import { demoCatalog } from "../../src/adapters/demoCatalog";
 import { DemoAiProvider } from "../../src/adapters/demoAiProvider";
 import { InMemoryRepository } from "../../src/adapters/inMemoryRepository";
+import { EducationalMarketDataProvider } from "../../src/adapters/twseMarketDataProvider";
 import { FutureMintService } from "../../src/application/futureMintService";
 import { AuthService } from "../../src/auth/authService";
 import { buildServer } from "../../src/http/server";
@@ -13,7 +14,12 @@ const createRuntime = (repository: InMemoryRepository): Runtime => ({
   mode: "demo",
   aiProvider: "demo",
   dataProvider: "memory",
-  service: new FutureMintService(repository, new DemoAiProvider(), demoCatalog),
+  service: new FutureMintService(
+    repository,
+    new DemoAiProvider(),
+    demoCatalog,
+    new EducationalMarketDataProvider(),
+  ),
   authService: new AuthService(repository),
   healthCheck: async () => undefined,
   close: async () => undefined,
@@ -227,7 +233,7 @@ describe("Fastify HTTP server", () => {
     });
   });
 
-  it("serves dashboard, subscription, lesson, and FutureSeed results", async () => {
+  it("serves dashboard, insights, learning, simulation, and coach results", async () => {
     const dashboard = await app.inject(
       authenticated({ method: "GET", url: "/api/dashboard" }),
     );
@@ -243,6 +249,9 @@ describe("Fastify HTTP server", () => {
           isStudent: true,
         },
       }),
+    );
+    const insights = await app.inject(
+      authenticated({ method: "GET", url: "/api/insights" }),
     );
     const lesson = await app.inject(
       authenticated({ method: "POST", url: "/api/lessons/generate", payload: {} }),
@@ -261,12 +270,39 @@ describe("Fastify HTTP server", () => {
         },
       }),
     );
+    const learningPlan = await app.inject(
+      authenticated({ method: "GET", url: "/api/learning-plan" }),
+    );
+    const simulation = await app.inject(
+      authenticated({
+        method: "POST",
+        url: "/api/future-seed/simulate",
+        payload: {
+          initialAmountMinor: 4200,
+          monthlyContributionMinor: 500,
+          years: 10,
+        },
+      }),
+    );
+    const coach = await app.inject(
+      authenticated({
+        method: "POST",
+        url: "/api/coach/chat",
+        payload: {
+          topic: "risk",
+          question: "為什麼曲線中間掉下去？",
+          scenarioId: "high-risk",
+          selectedYear: 4,
+        },
+      }),
+    );
     const subscriptionList = await app.inject(
       authenticated({ method: "GET", url: "/api/subscriptions" }),
     );
 
     expect(dashboard.statusCode).toBe(200);
     expect(subscriptions.statusCode).toBe(200);
+    expect(insights.statusCode).toBe(200);
     expect(lesson.statusCode).toBe(200);
     expect(currentLesson.statusCode).toBe(200);
     expect(currentLesson.json()).toMatchObject({
@@ -275,12 +311,109 @@ describe("Fastify HTTP server", () => {
     expect(futureSeed.json()).toMatchObject({
       data: { principalMinor: 30000 },
     });
+    expect(insights.json()).toMatchObject({
+      data: {
+        monthlyCashflow: expect.any(Array),
+        notices: expect.any(Array),
+      },
+    });
+    expect(learningPlan.json()).toMatchObject({
+      data: {
+        modules: expect.arrayContaining([
+          expect.objectContaining({ id: "compound" }),
+        ]),
+      },
+    });
+    expect(simulation.json()).toMatchObject({
+      data: {
+        scenarios: [
+          expect.objectContaining({ id: "steady" }),
+          expect.objectContaining({ id: "balanced" }),
+          expect.objectContaining({ id: "high-risk" }),
+        ],
+      },
+    });
+    expect(coach.json()).toMatchObject({
+      data: {
+        answer: expect.stringContaining("下跌"),
+        source: "deterministic-demo",
+      },
+    });
     expect(subscriptionList.json()).toMatchObject({
       data: {
         subscriptions: expect.any(Array),
         catalog: expect.arrayContaining([
           expect.objectContaining({ sourceType: "synthetic" }),
         ]),
+      },
+    });
+  });
+
+  it("serves public delayed quotes and authenticated virtual trading", async () => {
+    const quotes = await app.inject({
+      method: "GET",
+      url: "/api/market/quotes",
+    });
+    const initial = await app.inject(
+      authenticated({ method: "GET", url: "/api/investment-lab" }),
+    );
+    const buy = await app.inject(
+      authenticated({
+        method: "POST",
+        url: "/api/investment-lab/orders",
+        payload: {
+          symbol: "0050",
+          side: "buy",
+          quantity: 2,
+          idempotencyKey: "buy-0050-once",
+        },
+      }),
+    );
+    const repeated = await app.inject(
+      authenticated({
+        method: "POST",
+        url: "/api/investment-lab/orders",
+        payload: {
+          symbol: "0050",
+          side: "buy",
+          quantity: 2,
+          idempotencyKey: "buy-0050-once",
+        },
+      }),
+    );
+    const dice = await app.inject(
+      authenticated({
+        method: "POST",
+        url: "/api/investment-lab/dice",
+        payload: { rollIndex: 0 },
+      }),
+    );
+
+    expect(quotes.statusCode).toBe(200);
+    expect(quotes.json()).toMatchObject({
+      data: {
+        source: "educational-snapshot",
+        isFallback: true,
+        quotes: expect.arrayContaining([
+          expect.objectContaining({ symbol: "0050" }),
+        ]),
+      },
+    });
+    expect(initial.json()).toMatchObject({
+      data: { startingCashMinor: 4200, holdings: [] },
+    });
+    expect(buy.statusCode).toBe(201);
+    expect(buy.json()).toMatchObject({
+      data: {
+        holdings: [expect.objectContaining({ symbol: "0050", quantity: 2 })],
+        orders: [expect.objectContaining({ side: "buy", quantity: 2 })],
+      },
+    });
+    expect(repeated.json().data.orders).toHaveLength(1);
+    expect(dice.json()).toMatchObject({
+      data: {
+        deckVersion: "investment-lab-events-v1",
+        rollIndex: 0,
       },
     });
   });

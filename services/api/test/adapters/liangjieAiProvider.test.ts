@@ -38,6 +38,8 @@ describe("LiangjieAiProvider", () => {
     expect(result.drafts[0]).toMatchObject({
       type: "expense",
       amountMinor: 75,
+      spendingIntent: "uncertain",
+      intentReason: expect.stringContaining("自行確認"),
       source: "liangjie-ai",
       needsConfirmation: true,
     });
@@ -315,5 +317,31 @@ describe("LiangjieAiProvider", () => {
         events: [],
       }),
     ).rejects.toMatchObject({ code: "ai_invalid_output", status: 503 });
+  });
+
+  it("accepts a safe coach disclaimer that says it does not recommend assets", async () => {
+    const create = vi.fn().mockResolvedValue(
+      completion(
+        JSON.stringify({
+          answer: "分散可以降低單一來源的集中風險，但不能保證不虧損。",
+          takeaway: "先理解波動，再比較自己能承受的風險。",
+          suggestions: ["比較最大回落", "觀察持續投入"],
+          disclaimer: "只供教育解釋，不推薦投資標的。",
+        }),
+      ),
+    );
+    const provider = new LiangjieAiProvider({
+      client: { chat: { completions: { create } } },
+      model: "gemini-2.5-flash",
+    });
+
+    const reply = await provider.coach({
+      topic: "risk",
+      question: "什麼是分散風險？",
+      scenarioId: "balanced",
+    });
+
+    expect(reply.source).toBe("liangjie-ai");
+    expect(reply.disclaimer).toContain("不推薦");
   });
 });

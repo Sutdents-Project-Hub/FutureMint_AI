@@ -177,6 +177,12 @@ export const buildServer = async (
   const authRateLimit = {
     config: { rateLimit: { max: 10, timeWindow: "1 minute" } },
   };
+  const aiRateLimit = {
+    config: { rateLimit: { max: 20, timeWindow: "1 minute" } },
+  };
+  const marketRateLimit = {
+    config: { rateLimit: { max: 60, timeWindow: "1 minute" } },
+  };
 
   app.post("/api/auth/register", authRateLimit, async (request, reply) =>
     success(
@@ -255,6 +261,14 @@ export const buildServer = async (
       await runtime.service.getDashboard(account.id),
     );
   });
+  app.get("/api/insights", async (request, reply) => {
+    const account = await requireAuthenticatedUser(request, runtime);
+    return success(
+      request,
+      reply,
+      await runtime.service.getInsights(account.id),
+    );
+  });
 
   app.get("/api/subscriptions", async (request, reply) => {
     const account = await requireAuthenticatedUser(request, runtime);
@@ -303,6 +317,14 @@ export const buildServer = async (
       ),
     );
   });
+  app.get("/api/learning-plan", aiRateLimit, async (request, reply) => {
+    const account = await requireAuthenticatedUser(request, runtime);
+    return success(
+      request,
+      reply,
+      await runtime.service.getLearningPlan(account.id),
+    );
+  });
 
   app.post("/api/future-seed/preview", async (request, reply) => {
     await requireAuthenticatedUser(request, runtime);
@@ -310,6 +332,61 @@ export const buildServer = async (
       request,
       reply,
       runtime.service.previewFutureSeed(request.body as never),
+    );
+  });
+  app.post("/api/future-seed/simulate", async (request, reply) => {
+    await requireAuthenticatedUser(request, runtime);
+    return success(
+      request,
+      reply,
+      runtime.service.simulateInvestments(request.body as never),
+    );
+  });
+  app.post("/api/coach/chat", aiRateLimit, async (request, reply) => {
+    await requireAuthenticatedUser(request, runtime);
+    return success(
+      request,
+      reply,
+      await runtime.service.coach(request.body as never),
+    );
+  });
+
+  app.get("/api/market/quotes", marketRateLimit, async (request, reply) =>
+    success(
+      request,
+      reply,
+      await runtime.service.getMarketSnapshot(),
+    ),
+  );
+  app.get("/api/investment-lab", marketRateLimit, async (request, reply) => {
+    const account = await requireAuthenticatedUser(request, runtime);
+    return success(
+      request,
+      reply,
+      await runtime.service.getInvestmentLab(account.id),
+    );
+  });
+  app.post("/api/investment-lab/orders", async (request, reply) => {
+    const account = await requireAuthenticatedUser(request, runtime);
+    return success(
+      request,
+      reply,
+      await runtime.service.placeInvestmentOrder(
+        account.id,
+        request.body as never,
+      ),
+      201,
+    );
+  });
+  app.post("/api/investment-lab/dice", async (request, reply) => {
+    const account = await requireAuthenticatedUser(request, runtime);
+    return success(
+      request,
+      reply,
+      runtime.service.rollInvestmentPracticeEvent(
+        account.id,
+        request.body as never,
+      ),
     );
   });
 

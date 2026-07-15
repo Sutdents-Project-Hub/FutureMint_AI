@@ -11,6 +11,7 @@ const profile: UserProfile = {
   goalSavedMinor: 4200,
   goalDate: "2026-10-31",
   preferredTone: "supportive",
+  accountRole: "child",
 };
 
 const event = (

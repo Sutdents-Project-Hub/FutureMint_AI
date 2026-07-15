@@ -17,8 +17,11 @@ class _LearningScreenState extends State<LearningScreen> {
   @override
   void initState() {
     super.initState();
-    WidgetsBinding.instance.addPostFrameCallback((_) {
-      if (mounted) context.read<AppController>().loadLesson();
+    WidgetsBinding.instance.addPostFrameCallback((_) async {
+      if (!mounted) return;
+      final controller = context.read<AppController>();
+      await controller.loadLearningPlan();
+      if (mounted) await controller.loadLesson();
     });
   }
 
@@ -26,6 +29,7 @@ class _LearningScreenState extends State<LearningScreen> {
   Widget build(BuildContext context) {
     final controller = context.watch<AppController>();
     final lesson = controller.lesson;
+    final plan = controller.learningPlan;
     final gutter = FutureMintTokens.pageGutter(context);
     return SingleChildScrollView(
       padding: EdgeInsets.fromLTRB(
@@ -49,6 +53,10 @@ class _LearningScreenState extends State<LearningScreen> {
                 accent: FutureMintTokens.lavender,
               ),
               const SizedBox(height: FutureMintTokens.space5),
+              if (plan != null) ...[
+                _LearningPlanCard(plan: plan),
+                const SizedBox(height: FutureMintTokens.space5),
+              ],
               if (lesson == null)
                 SoftCard(
                   color: Theme.of(context).brightness == Brightness.dark
@@ -79,6 +87,79 @@ class _LearningScreenState extends State<LearningScreen> {
       ),
     );
   }
+}
+
+class _LearningPlanCard extends StatelessWidget {
+  const _LearningPlanCard({required this.plan});
+
+  final LearningPlan plan;
+
+  @override
+  Widget build(BuildContext context) => SoftCard(
+    color: Theme.of(context).brightness == Brightness.dark
+        ? FutureMintTokens.darkSurfaceRaised
+        : FutureMintTokens.skySoft,
+    borderWidth: 1,
+    child: Column(
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      children: [
+        Wrap(
+          alignment: WrapAlignment.spaceBetween,
+          crossAxisAlignment: WrapCrossAlignment.center,
+          spacing: FutureMintTokens.space3,
+          runSpacing: FutureMintTokens.space2,
+          children: [
+            Text(plan.title, style: Theme.of(context).textTheme.titleLarge),
+            Chip(
+              avatar: const Icon(Icons.auto_awesome_outlined, size: 16),
+              label: Text(
+                plan.source == CaptureSource.liangjieAi ? 'AI 規劃' : '離線規劃',
+              ),
+            ),
+          ],
+        ),
+        const SizedBox(height: FutureMintTokens.space2),
+        Text(plan.summary),
+        const SizedBox(height: FutureMintTokens.space4),
+        for (var index = 0; index < plan.modules.length; index++)
+          Padding(
+            padding: const EdgeInsets.only(bottom: FutureMintTokens.space3),
+            child: Row(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                CircleAvatar(
+                  radius: 16,
+                  backgroundColor: plan.modules[index].status == 'current'
+                      ? FutureMintTokens.mint
+                      : FutureMintTokens.paper,
+                  foregroundColor: FutureMintTokens.ink,
+                  child: Text('${index + 1}'),
+                ),
+                const SizedBox(width: FutureMintTokens.space3),
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        plan.modules[index].title,
+                        style: const TextStyle(fontWeight: FontWeight.w700),
+                      ),
+                      const SizedBox(height: FutureMintTokens.space1),
+                      Text(plan.modules[index].reason),
+                      Text(
+                        '下一步：${plan.modules[index].nextAction}',
+                        style: Theme.of(context).textTheme.bodySmall,
+                      ),
+                    ],
+                  ),
+                ),
+              ],
+            ),
+          ),
+        Text(plan.disclaimer, style: Theme.of(context).textTheme.bodySmall),
+      ],
+    ),
+  );
 }
 
 class _LessonContent extends StatelessWidget {

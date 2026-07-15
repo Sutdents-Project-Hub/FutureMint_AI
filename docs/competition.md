@@ -23,17 +23,20 @@
 
 1. 中學生收到零用錢，卻沒有先分配目標。
 2. 輸入「今天午餐跟飲料 185」，量界 AI 拆成可修改結構化草稿。
-3. 使用者確認後才寫 PostgreSQL；確定性規則更新預算。
-4. 比較合成訂閱方案的月負擔、節省差額與資格。
-5. 量界 AI 把事件轉成微課；schema 與限制由 API 驗證。
-6. FutureSeed 以程式公式顯示教育情境。
-7. 簡短展示 Coolify 的 Web／API healthy 與 PostgreSQL Resource，但不露 secrets。
+3. 使用者確認需要／想要建議後才寫 PostgreSQL；確定性規則更新預算與分析。
+4. 從六個月收支圖與圖形化提醒看模式，再檢查即將續訂的合成方案。
+5. 量界 AI 把摘要轉成個人學習路線與微課；schema 與限制由 API 驗證。
+6. FutureSeed 比較 1.5%／5%／8% 三條版本化合成曲線，點選回檔後由 AI 陪讀員解釋；明說不是行情或預測。
+7. 進入投資練習場，指出 TWSE 延遲日期與來源，用虛擬現金完成一筆買入並擲一次學習事件；明說骰子不是買賣建議。
+8. 簡短展示孩子／家長內容角色與使用導覽，但不宣稱跨帳號監控。
+9. 簡短展示 Coolify 的 Web／API healthy 與 PostgreSQL Resource，但不露 secrets。
 
 ## PoC 最小證據
 
 - Deterministic provider：30 筆全合成繁中 fixture、schema 與欄位回歸；不可當成量界準確率。
 - 量界 provider：同一組或代表性合成案例的成功率、人工修正率、平均／P95 latency、429／timeout 與 invalid-output 統計。
 - Database：register → save → API restart／redeploy → login → read，證明使用 PostgreSQL 而非 memory。
+- Market lab：TWSE source／日期／fallback 可見，虛擬訂單的 cash／holding／idempotency tests 通過，登入訂單重啟後仍存在。
 - Deployment：兩個 Application health checks、private database、GitHub `main` auto deploy、rollback 與 backup／restore。
 - Security：UI／log／簡報不顯示 email、password、token、key、database URL、prompt 或完整財務原文。
 - 所有數字標示「本機實測」、「Coolify 實測」或「目標」，不混用。

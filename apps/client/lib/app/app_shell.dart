@@ -51,7 +51,11 @@ class AppShell extends StatelessWidget {
   final Widget child;
 
   int get _selectedIndex {
-    final index = appDestinations.indexWhere((item) => item.path == location);
+    final index = appDestinations.indexWhere(
+      (item) =>
+          item.path == location ||
+          (item.path != '/' && location.startsWith('${item.path}/')),
+    );
     return index < 0 ? 0 : index;
   }
 
@@ -97,7 +101,14 @@ class AppShell extends StatelessWidget {
               surfaceTintColor: Colors.transparent,
               title: const _Brand(),
               actions: [
-                _ModeChip(guest: guest, accountEmail: controller.accountEmail),
+                _ModeChip(
+                  guest: guest,
+                  accountEmail: controller.accountEmail,
+                  accountRole: controller.profile?.accountRole,
+                ),
+                _NotificationButton(
+                  count: controller.insights?.notices.length ?? 0,
+                ),
                 IconButton(
                   tooltip: '設定',
                   onPressed: () => showSettingsSheet(context),
@@ -162,6 +173,7 @@ class AppShell extends StatelessWidget {
                             child: _ModeChip(
                               guest: guest,
                               accountEmail: controller.accountEmail,
+                              accountRole: controller.profile?.accountRole,
                             ),
                           ),
                         ),
@@ -175,10 +187,30 @@ class AppShell extends StatelessWidget {
                           color: Theme.of(context).brightness == Brightness.dark
                               ? FutureMintTokens.darkSurfaceRaised
                               : FutureMintTokens.mintSoft,
-                          child: TextButton.icon(
-                            onPressed: () => showSettingsSheet(context),
-                            icon: const Icon(Icons.tune_rounded),
-                            label: const Text('設定與服務狀態'),
+                          child: Column(
+                            children: [
+                              TextButton.icon(
+                                onPressed: () => context.go('/notifications'),
+                                icon: Badge(
+                                  isLabelVisible:
+                                      (controller.insights?.notices.length ??
+                                          0) >
+                                      0,
+                                  label: Text(
+                                    '${controller.insights?.notices.length ?? 0}',
+                                  ),
+                                  child: const Icon(
+                                    Icons.notifications_outlined,
+                                  ),
+                                ),
+                                label: const Text('分析提醒'),
+                              ),
+                              TextButton.icon(
+                                onPressed: () => showSettingsSheet(context),
+                                icon: const Icon(Icons.tune_rounded),
+                                label: const Text('設定與服務狀態'),
+                              ),
+                            ],
                           ),
                         ),
                       );
@@ -311,7 +343,7 @@ class _Brand extends StatelessWidget {
           style: Theme.of(context).textTheme.titleLarge?.copyWith(
             fontSize: 18,
             fontWeight: FontWeight.w700,
-            letterSpacing: -.4,
+            letterSpacing: 0,
           ),
         ),
       ),
@@ -320,18 +352,19 @@ class _Brand extends StatelessWidget {
 }
 
 class _ModeChip extends StatelessWidget {
-  const _ModeChip({required this.guest, this.accountEmail});
+  const _ModeChip({required this.guest, this.accountEmail, this.accountRole});
   final bool guest;
   final String? accountEmail;
+  final AccountRole? accountRole;
 
   @override
   Widget build(BuildContext context) {
     final dark = Theme.of(context).brightness == Brightness.dark;
     final labelColor = dark ? FutureMintTokens.paper : FutureMintTokens.ink;
     return Tooltip(
-      message: guest
-          ? '訪客資料只保留在這次使用期間，不會寫入帳號。'
-          : '已登入 ${accountEmail ?? '你的帳號'}；資料會依帳號分開保存。',
+      message:
+          '${guest ? '訪客資料只保留在這次使用期間，不會寫入帳號。' : '已登入 ${accountEmail ?? '你的帳號'}；資料會依帳號分開保存。'}'
+          ' 目前角色：${accountRole == AccountRole.parent ? '家長陪伴' : '孩子使用'}。',
       child: Chip(
         visualDensity: VisualDensity.compact,
         backgroundColor: guest
@@ -351,6 +384,23 @@ class _ModeChip extends StatelessWidget {
       ),
     );
   }
+}
+
+class _NotificationButton extends StatelessWidget {
+  const _NotificationButton({required this.count});
+
+  final int count;
+
+  @override
+  Widget build(BuildContext context) => IconButton(
+    tooltip: '分析提醒',
+    onPressed: () => context.go('/notifications'),
+    icon: Badge(
+      isLabelVisible: count > 0,
+      label: Text('$count'),
+      child: const Icon(Icons.notifications_outlined),
+    ),
+  );
 }
 
 class _GuestNotice extends StatelessWidget {

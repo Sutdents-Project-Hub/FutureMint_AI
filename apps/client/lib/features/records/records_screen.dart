@@ -8,6 +8,7 @@ import '../../shared/money_text.dart';
 import '../../shared/date_text.dart';
 import '../../state/app_controller.dart';
 import '../dashboard/dashboard_screen.dart';
+import 'analysis_widgets.dart';
 
 enum _RecordFilter { all, expense, income, subscription }
 
@@ -59,12 +60,18 @@ class _RecordsScreenState extends State<RecordsScreen> {
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
                   const PageHeading(
-                    kicker: '金錢時間軸',
-                    title: '每一筆，都看得懂',
-                    description: '這裡只顯示你確認保存的合成紀錄。下拉可重新整理。',
+                    kicker: '分析優先的金錢時間軸',
+                    title: '先看模式，再看每一筆',
+                    description: '收支、需要與想要會先整理成趨勢；下方仍保留所有確認紀錄。',
                     accent: FutureMintTokens.sky,
                   ),
                   const SizedBox(height: FutureMintTokens.space5),
+                  if (controller.insights != null) ...[
+                    CashflowAnalysis(insights: controller.insights!),
+                    const SizedBox(height: FutureMintTokens.space6),
+                  ],
+                  Text('交易明細', style: Theme.of(context).textTheme.titleLarge),
+                  const SizedBox(height: FutureMintTokens.space3),
                   SegmentedButton<_RecordFilter>(
                     showSelectedIcon: false,
                     segments: const [
@@ -155,7 +162,7 @@ class _RecordRow extends StatelessWidget {
         style: const TextStyle(fontWeight: FontWeight.w700),
       ),
       subtitle: Text(
-        '${categoryLabel(event.category)} · ${formatTaipeiDateTime(event.occurredAt, includeYear: true)}${event.split == null ? '' : ' · ${event.split!.participants} 人分帳'}',
+        '${categoryLabel(event.category)}${event.spendingIntent == null ? '' : ' · ${_intentLabel(event.spendingIntent!)}'} · ${formatTaipeiDateTime(event.occurredAt, includeYear: true)}${event.split == null ? '' : ' · ${event.split!.participants} 人分帳'}',
       ),
       trailing: MoneyText(
         income ? event.effectiveAmountMinor : -event.effectiveAmountMinor,
@@ -167,3 +174,9 @@ class _RecordRow extends StatelessWidget {
     );
   }
 }
+
+String _intentLabel(SpendingIntent intent) => switch (intent) {
+  SpendingIntent.need => '需要',
+  SpendingIntent.want => '想要',
+  SpendingIntent.uncertain => '不確定',
+};

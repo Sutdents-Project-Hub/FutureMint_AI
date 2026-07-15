@@ -1,0 +1,53 @@
+name: futuremint_ai
+
+services:
+  postgres:
+    image: postgres:17-alpine
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: futuremint
+      POSTGRES_DB: futuremint
+      POSTGRES_HOST_AUTH_METHOD: trust
+    volumes:
+      - futuremint-postgres-data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U futuremint -d futuremint"]
+      interval: 5s
+      timeout: 5s
+      retries: 12
+      start_period: 10s
+
+  api:
+    build:
+      context: ./services/api
+    restart: unless-stopped
+    init: true
+    environment:
+      NODE_ENV: production
+      HOST: 0.0.0.0
+      PORT: 3000
+      AI_PROVIDER: demo
+      DATA_PROVIDER: postgres
+      DATABASE_URL: postgresql://futuremint@postgres:5432/futuremint
+      DATABASE_SSL: "false"
+      ALLOWED_ORIGINS: ${WEB_ORIGIN:-http://localhost:14173}
+    ports:
+      - "${API_PORT:-13000}:3000"
+    depends_on:
+      postgres:
+        condition: service_healthy
+
+  web:
+    build:
+      context: ./apps/client
+      args:
+        API_BASE_URL: ${PUBLIC_API_BASE_URL:-http://localhost:13000/api/}
+    restart: unless-stopped
+    ports:
+      - "${WEB_PORT:-14173}:3000"
+    depends_on:
+      api:
+        condition: service_healthy
+
+volumes:
+  futuremint-postgres-data:

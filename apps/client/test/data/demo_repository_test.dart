@@ -32,6 +32,8 @@ void main() {
 
     expect(result.drafts.single.amountMinor, 75);
     expect(result.drafts.single.source.name, 'deterministicDemo');
+    expect(result.drafts.single.spendingIntent, SpendingIntent.want);
+    expect(result.drafts.single.intentReason, contains('AI 建議'));
     expect(after, before);
   });
 
@@ -153,4 +155,108 @@ void main() {
       expect(shared.userMonthlyCostMinor, 130);
     },
   );
+
+  test(
+    'builds analysis from confirmed need and want classifications',
+    () async {
+      final insights = await repository.getInsights();
+
+      expect(insights.monthlyCashflow, hasLength(6));
+      expect(insights.wantMinor, greaterThan(0));
+      expect(insights.summary, contains('想要'));
+      expect(
+        insights.notices.any((notice) => notice.kind == InsightKind.saving),
+        isTrue,
+      );
+    },
+  );
+
+  test(
+    'simulates three versioned paths with visible risk differences',
+    () async {
+      final simulation = await repository.simulateInvestments(
+        initialAmountMinor: 4200,
+        monthlyContributionMinor: 500,
+        years: 10,
+      );
+
+      expect(simulation.scenarios, hasLength(3));
+      expect(simulation.assumptionVersion, 'education-scenarios-2026-07-v1');
+      expect(
+        simulation.scenarios
+            .firstWhere(
+              (scenario) => scenario.id == InvestmentScenarioId.highRisk,
+            )
+            .maxDrawdownPercent,
+        greaterThan(0),
+      );
+      expect(simulation.disclaimer, contains('不是即時行情'));
+    },
+  );
+
+  test('tailors the learning plan to a parent companion role', () async {
+    final profile = await repository.getProfile();
+    await repository.updateProfile(
+      UserProfile(
+        userId: profile.userId,
+        accountRole: AccountRole.parent,
+        monthlyBudgetMinor: profile.monthlyBudgetMinor,
+        weeklyBudgetMinor: profile.weeklyBudgetMinor,
+        goalName: profile.goalName,
+        goalTargetMinor: profile.goalTargetMinor,
+        goalSavedMinor: profile.goalSavedMinor,
+        goalDate: profile.goalDate,
+      ),
+    );
+
+    final plan = await repository.getLearningPlan();
+
+    expect(plan.title, contains('親子'));
+    expect(plan.modules.map((module) => module.id), contains('compound'));
+  });
+
+  test(
+    'uses saved money for an idempotent virtual investment practice',
+    () async {
+      final initial = await repository.getInvestmentLab();
+      final bought = await repository.placeInvestmentOrder(
+        symbol: '0050',
+        side: InvestmentOrderSide.buy,
+        quantity: 2,
+        idempotencyKey: 'guest-buy-0050',
+      );
+      final repeated = await repository.placeInvestmentOrder(
+        symbol: '0050',
+        side: InvestmentOrderSide.buy,
+        quantity: 2,
+        idempotencyKey: 'guest-buy-0050',
+      );
+
+      expect(initial.startingCashMinor, 4200);
+      expect(initial.market.isFallback, isTrue);
+      expect(bought.holdings.single, isA<VirtualHolding>());
+      expect(bought.holdings.single.quantity, 2);
+      expect(repeated.orders, hasLength(1));
+    },
+  );
+
+  test('rejects selling more than the virtual holding', () async {
+    await expectLater(
+      repository.placeInvestmentOrder(
+        symbol: '0050',
+        side: InvestmentOrderSide.sell,
+        quantity: 1,
+        idempotencyKey: 'guest-sell-too-much',
+      ),
+      throwsA(isA<FormatException>()),
+    );
+  });
+
+  test('returns a versioned market event card', () async {
+    final event = await repository.rollInvestmentDice(rollIndex: 0);
+
+    expect(event.deckVersion, 'investment-lab-events-v1');
+    expect(event.practicePrompt, isNotEmpty);
+    expect(event.disclaimer, contains('不是市場預測'));
+  });
 }
