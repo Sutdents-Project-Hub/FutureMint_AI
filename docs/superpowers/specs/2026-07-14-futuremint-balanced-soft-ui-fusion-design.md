@@ -158,7 +158,7 @@
 - 新增首頁 bento／學習堆疊與 375×812、812×375、200% text scale 無例外測試。
 - 執行 Dart format、`flutter analyze`、`flutter test`、`flutter build web --release` 與 `git diff --check`。
 - Flutter Web 人工檢查 375、768、1024、1440px 與 812×375；走訪 `/`、`/capture`、`/records`、`/learning`、`/subscriptions`、`/future-seed` 和 settings，檢查亮／深色模式與瀏覽器 console。
-- 同步 `design-system/futuremint-ai/MASTER.md`、`design-system/README.md`、`apps/client/README.md` 與 `docs/testing-and-evidence.md`，只記錄實際執行證據。
+- 同步 `design/futuremint-ai/MASTER.md`、`design/README.md`、`app/README.md` 與 `docs/testing-and-evidence.md`，只記錄實際執行證據。
 
 ## 不在範圍內
 

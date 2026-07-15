@@ -10,7 +10,7 @@
 
 ## PostgreSQL schema
 
-Schema 由 `services/api/migrations/001_initial.sql`、`002_roles_and_intents.sql` 與 `003_investment_lab.sql` 管理：
+Schema 由 `backend/migrations/001_initial.sql`、`002_roles_and_intents.sql` 與 `003_investment_lab.sql` 管理：
 
 | Table | 內容 | 重要約束 |
 |---|---|---|

@@ -37,18 +37,18 @@
 
 青少年 AI 金錢決策教練，將主動輸入的收入、支出與訂閱轉為預算回饋、個人化金融微課程與教育性複利預覽。
 
-- 已確認 executable components：`apps/client/` 是 Flutter Android／iOS／Web Client；`services/api/` 是 Fastify TypeScript／Node.js 22 後端。
-- `design-system/` 是沒有 runtime、manifest 或部署生命週期的設計支援資產；`docs/` 是產品、架構、競賽、測試與部署依據，兩者不冒充 executable component。
-- `structure_exception`：保留既有 `apps/client/` 與 `services/api/` monorepo 路徑；兩者本身就是 framework root，manifest 直接位於各 component，不得再建立 project-name 或 framework-name wrapper。這是既有專案例外，不是新專案的預設結構。
+- 已確認 executable components：`app/` 是 Flutter Android／iOS／Web Client；`backend/` 是 Fastify TypeScript／Node.js 22 後端。
+- `design/` 是沒有 runtime、manifest 或部署生命週期的設計支援資產；`docs/` 是產品、架構、競賽、測試與部署依據，兩者不冒充 executable component。
+- 專案結構採公司慣例的固定 component roots：`app/`、`backend/`、`design/` 與 `docs/`；`app/`、`backend/` 本身就是 framework root，manifest 直接位於 component 根目錄，不得再建立 project-name 或 framework-name wrapper。
 - Flutter、Fastify、Node.js 22 與 npm 是已實作且可驗證的學生技術選型；除非另行核准遷移，不為了套用公司新專案基線而更換框架、runtime 或 package manager。
 - 已選定 Coolify 三 Resource 架構：Flutter Web Application、Fastify API Application、PostgreSQL Database；AI 僅由 API 呼叫量界智算的 OpenAI-compatible endpoint。尚未建立的 VPS、Coolify、DNS、資料庫與外部 AI 連線不得描述成已完成。
 - Repository 與專案根目錄名稱維持 `FutureMint_AI`；Coolify resources 與新技術識別優先使用 `futuremint-ai` 或平台既有命名慣例。
-- 新 component id、路徑與一般文件名使用能表達責任的 lowercase kebab-case；保留既有 `apps/client`、`services/api` 與 `design-system`。
-- 保留現有且可工作的專案結構與框架慣例；新增元件時才選擇清楚、簡短、符合責任的路徑。
-- 不因範本而重新命名既有資料夾，不建立未使用的 `app/`、`web/`、`backend/`、`docs/` 或部署資源。
+- 新 component id、路徑與一般文件名使用能表達責任的 lowercase kebab-case；固定角色優先使用 `app`、`web`、`cms`、`backend`、`packages`、`design` 與 `docs`。
+- 保留現有且可工作的框架慣例；新增 executable component 時直接建立在對應固定 root，不新增無必要的分類包層。
+- 不建立未使用的 component root 或部署資源；若需求確實需要非標準結構，必須在 `docs/project-profile.md` 記錄理由、影響與核准狀態。
 - 不把不同執行環境、依賴或部署生命週期硬塞進同一元件；需要共用程式碼時，先確認至少有兩個真實使用者。
 - Flutter／Web 不得直接持有量界智算 API key 或 PostgreSQL connection string；模型與資料存取一律經 Fastify API。AI 回覆必須經 schema／範圍驗證，金額、期限與複利使用確定性程式計算。
-- Flutter UI 以 `design-system/futuremint-ai/MASTER.md` 為共用視覺、響應式與可及性依據；實作與規範衝突時先確認需求並同步兩邊，不靜默漂移。
+- Flutter UI 以 `design/futuremint-ai/MASTER.md` 為共用視覺、響應式與可及性依據；實作與規範衝突時先確認需求並同步兩邊，不靜默漂移。
 
 ## 工作方式
 
@@ -65,9 +65,9 @@
 - 使用者當次明確要求即代表目前敘述方向已獲核准；一般範圍內實作與文件同步不需額外等待批准。只有結果會實質改變架構、權限／安全、保存資料、破壞性行為、外部服務／成本／授權、production／部署、競賽驗收或其他明示關卡時才停止確認。
 - 實作前辨識受影響的權威文件，完成前在同一任務同步；文件同步是完成條件，不是之後再補的工作。
 - 產品定位、功能範圍與驗收更新 `docs/product-spec.md`、`docs/project-overview.md`；專案分類、元件或部署狀態改變時同步 `docs/project-profile.md`。
-- 元件邊界、API、資料、安全或外部整合更新 `docs/architecture.md`、`docs/data-and-storage.md`、`docs/security-and-privacy.md`、`docs/integrations.md` 及受影響的 `apps/client/README.md`／`services/api/README.md`。
+- 元件邊界、API、資料、安全或外部整合更新 `docs/architecture.md`、`docs/data-and-storage.md`、`docs/security-and-privacy.md`、`docs/integrations.md` 及受影響的 `app/README.md`／`backend/README.md`。
 - 啟動、指令、環境變數、Compose、部署、rollback 或 hosting resource 改變時，更新根 `README.md`、元件 README、`.env.example`、`docs/deployment.md` 與 `docs/hosting-resources.md` 中實際受影響的文件。
-- Demo 流程、測試證據、競賽主張或限制改變時，更新 `docs/demo-script.md`、`docs/testing-and-evidence.md` 與 `docs/competition.md`；視覺規範或 UI 行為改變時同步 `design-system/README.md`、`design-system/futuremint-ai/MASTER.md` 與對應 Client 實作／測試。
+- Demo 流程、測試證據、競賽主張或限制改變時，更新 `docs/demo-script.md`、`docs/testing-and-evidence.md` 與 `docs/competition.md`；視覺規範或 UI 行為改變時同步 `design/README.md`、`design/futuremint-ai/MASTER.md` 與對應 Client 實作／測試。
 - 優先更新既有權威文件，不為了形式新增空 Markdown；不把規劃、假設或未執行結果寫成已實作或已驗證。
 - 完成回報列出變更分類與同步文件；若沒有文件需要變更，說明文件仍與實作一致的具體理由。
 
@@ -78,13 +78,13 @@
 - 功能、架構、依賴、指令、環境變數、資料、部署或限制改變時，同步更新根 README、相關元件 README 與 `docs/`。
 - 競賽專案若有 `docs/competition.md`，同步維護問題、對象、展示流程、證據來源、限制與提交清單。
 - Profile 分類或元件邊界改變時同步更新 `docs/project-profile.md`；個資、資料庫、AI 或外部 API 改變時同步更新 `docs/security-and-privacy.md`、`docs/data-and-storage.md` 與 `docs/integrations.md`。
-- 測試數量、建置結果、Demo 降級或平台限制改變時同步更新 `docs/testing-and-evidence.md`、`docs/demo-script.md` 與 `docs/competition.md`；設計規範改變時同步 `design-system/README.md`、`MASTER.md` 與 Client `lib/design/`。
+- 測試數量、建置結果、Demo 降級或平台限制改變時同步更新 `docs/testing-and-evidence.md`、`docs/demo-script.md` 與 `docs/competition.md`；設計規範改變時同步 `design/README.md`、`MASTER.md` 與 Client `lib/design/`。
 
 ## 資料、秘密與授權
 
 - 真實 API key、token、secret、password、private key、cookie、憑證、Webhook URL、production `.env`、個資與未公開資料不得寫入程式、文件、log、commit 或範例。
 - `.env.example` 只保留變數名稱與安全 placeholder；前端或 App 可見的設定不得被當成秘密，敏感操作必須由可信任後端或平台執行。
-- `services/api/.env.example` 是安全的變數名稱索引；本機實際值放在已忽略的 `.env`，部署值放 Coolify Environment Variables。`DATABASE_URL`、`LIANGJIE_API_KEY` 等秘密只能設為 runtime secret，不得設成前端 build argument 或寫入 repository。
+- `backend/.env.example` 是安全的變數名稱索引；本機實際值放在已忽略的 `.env`，部署值放 Coolify Environment Variables。`DATABASE_URL`、`LIANGJIE_API_KEY` 等秘密只能設為 runtime secret，不得設成前端 build argument 或寫入 repository。
 - 合約、協議、報價、法務／商業文件、客戶或學生個資預設不提交；若專案確實需要公開的競賽文件，先逐檔確認內容與授權。
 - 使用資料集、模型、圖片、字型、套件或程式碼前確認來源、授權與競賽規則；README 記錄必要 attribution，不自行選擇 LICENSE。
 

@@ -19,7 +19,7 @@ services:
 
   api:
     build:
-      context: ./services/api
+      context: ./backend
     restart: unless-stopped
     init: true
     environment:
@@ -39,7 +39,7 @@ services:
 
   web:
     build:
-      context: ./apps/client
+      context: ./app
       args:
         API_BASE_URL: ${PUBLIC_API_BASE_URL:-http://localhost:13000/api/}
     restart: unless-stopped

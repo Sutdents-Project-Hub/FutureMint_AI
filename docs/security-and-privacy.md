@@ -36,7 +36,7 @@
 - API `ALLOWED_ORIGINS`
 - `LIANGJIE_BASE_URL` 與 model id（不是 authentication secret）
 
-本機秘密只放已忽略的 `services/api/.env`。歷史上可能存在的 ignored `local.settings.json` 不再使用，也不得讀取、提交或複製。GitHub repository、Dockerfile、build arguments、Flutter bundle、文件、測試 fixture 與 log 都不得含真實 key、password、token、connection URL 或學生資料。
+本機秘密只放已忽略的 `backend/.env`。歷史上可能存在的 ignored `local.settings.json` 不再使用，也不得讀取、提交或複製。GitHub repository、Dockerfile、build arguments、Flutter bundle、文件、測試 fixture 與 log 都不得含真實 key、password、token、connection URL 或學生資料。
 
 ## Log 與錯誤
 

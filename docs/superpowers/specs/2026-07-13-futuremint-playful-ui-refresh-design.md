@@ -102,7 +102,7 @@
 - 新增或調整 widget tests，覆蓋 Theme、共用品牌卡片、主要頁面載入與窄寬版無例外。
 - 執行 Dart format、`flutter analyze`、`flutter test` 與 `flutter build web`。
 - 啟動 Flutter Web，人工檢查首頁、Capture、紀錄、微課、訂閱、FutureSeed 與設定；至少截取手機和桌面寬度確認資訊層級與溢位。
-- 同步更新 `design-system/futuremint-ai/MASTER.md`、`design-system/README.md`、Flutter `lib/design/` 與測試證據文件；不虛構未執行的裝置或可及性驗證。
+- 同步更新 `design/futuremint-ai/MASTER.md`、`design/README.md`、Flutter `lib/design/` 與測試證據文件；不虛構未執行的裝置或可及性驗證。
 
 ## 不在範圍內
 

@@ -14,7 +14,7 @@
 | PostgreSQL migration | PostgreSQL 17 clean test DB／Compose 執行 migration | 套用 `001_initial.sql`、`002_roles_and_intents.sql`、`003_investment_lab.sql`；角色／意圖欄位與兩個虛擬投資 tables 存在 |
 | PostgreSQL seed guard | 未設 `ALLOW_DEMO_SEED=true` 執行 seed | 在建立 repository／寫入前拒絕，exit code 1 |
 | PostgreSQL synthetic seed | 設安全開關後執行兩次 | 無法登入的 synthetic account／profile／4 events；idempotent，event count 仍為 4 |
-| API Docker build | `docker build -t futuremint-api:codex services/api` | 通過；Node.js 22 multi-stage image |
+| API Docker build | `docker build -t futuremint-api:codex backend` | 通過；Node.js 22 multi-stage image |
 | API Docker demo | `AI_PROVIDER=demo`、`DATA_PROVIDER=memory` | Container health 200；沒有要求 `DATABASE_URL` 或執行 migration |
 | API Docker + PostgreSQL | `DATA_PROVIDER=postgres` 指向 PostgreSQL 17 | 啟動 migration applied 0、health 200，回報 hosted／postgres |
 | Persistence E2E | Container register → profile → event → stop／new container → login → list | 通過；重啟後讀回 1 event |
@@ -26,7 +26,7 @@
 | Flutter tests | `flutter test` | 69 tests 通過 |
 | Flutter Web | `flutter build web --release --dart-define=API_BASE_URL=...` | 通過 |
 | UX visual QA | release Web + in-app Browser（桌面與 390×844） | 訪客模式、亮／深色主題、底部導覽與記錄頁可用；頁面直接切換、無左右滑動；無 console errors |
-| Frontend Docker build | `docker build --build-arg API_BASE_URL=... -t futuremint-web:codex apps/client` | 通過；固定 Flutter 3.41.9 commit，Nginx runtime image 約 34.4 MB |
+| Frontend Docker build | `docker build --build-arg API_BASE_URL=... -t futuremint-web:codex app` | 通過；固定 Flutter 3.41.9 commit，Nginx runtime image 約 34.4 MB |
 | Frontend container | root／`/capture`、Docker health、bundle config | HTTP 200、deep-link 回同一 SPA entry、health healthy、bundle 含指定公開 API URL |
 | Web cache | 檢查 response headers | `index.html` 回 `Cache-Control: no-store` |
 | Bundle secret scan | 搜尋 release bundle | 沒有 `LIANGJIE_API_KEY`、`DATABASE_URL`、`postgresql://` 或 placeholder password |
@@ -62,10 +62,10 @@
 
 ## 30 筆合成解析評估
 
-Fixture：`services/api/test/fixtures/capture-evaluation.json`；報告：
+Fixture：`backend/test/fixtures/capture-evaluation.json`；報告：
 
-- `services/api/reports/capture-evaluation.md`
-- `services/api/reports/capture-evaluation.json`
+- `backend/reports/capture-evaluation.md`
+- `backend/reports/capture-evaluation.json`
 
 涵蓋收入、單／多筆支出、相對日期、缺金額、訂閱、分帳、否定句、無關文字、折扣與合成通知。它評估 `deterministic-demo`，用途是 regression，不是量界真實模型準確率；簡報不可把 100% 混稱量界成效。
 
@@ -86,7 +86,7 @@ Fixture：`services/api/test/fixtures/capture-evaluation.json`；報告：
 API：
 
 ```bash
-cd services/api
+cd backend
 npm ci
 npm test
 npm run typecheck
@@ -99,7 +99,7 @@ docker build -t futuremint-api .
 Flutter：
 
 ```bash
-cd apps/client
+cd app
 flutter pub get
 dart format --output=none --set-exit-if-changed lib test integration_test
 flutter analyze

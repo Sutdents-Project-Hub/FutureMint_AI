@@ -114,14 +114,14 @@ docker build -t futuremint-api .
 
 Coolify Application 設定：
 
-- Base directory：`/services/api`
+- Base directory：`/backend`
 - Build pack：Dockerfile
 - Port：`3000`
 - Health check：`/api/health`
 - Runtime variables：依上表設定；`DATABASE_URL` 使用 PostgreSQL Resource 的 internal URL
 - 不公開 PostgreSQL port，不把秘密設成 build arguments
 
-完整部署順序與 private GitHub 自動部署見 [部署說明](../../docs/deployment.md)。
+完整部署順序與 private GitHub 自動部署見 [部署說明](../docs/deployment.md)。
 
 ## 品質
 

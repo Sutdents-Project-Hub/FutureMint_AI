@@ -35,7 +35,7 @@ docker build \
 
 Coolify Application 設定：
 
-- Base directory：`/apps/client`
+- Base directory：`/app`
 - Build pack：Dockerfile
 - Port：`3000`
 - Health check：`/`
@@ -71,6 +71,6 @@ flutter drive \
 - 投資練習場只建立虛擬訂單。登入帳號保存到 PostgreSQL；訪客持倉與訂單只留在記憶體，重新整理後清除。
 - 畫面中的五個標的是跨產業教學範例，不是推薦清單；骰子只產生學習事件，不代替使用者決定買賣。
 - 不連銀行、支付或真實金融帳戶。
-- Android／iOS 不是目前 Coolify deployment resources；原生 build／簽章狀態見 [測試證據](../../docs/testing-and-evidence.md)。
+- Android／iOS 不是目前 Coolify deployment resources；原生 build／簽章狀態見 [測試證據](../docs/testing-and-evidence.md)。
 
-視覺規則見 [Design System](../../design-system/README.md)；架構、安全與部署見 [系統架構](../../docs/architecture.md)、[安全與隱私](../../docs/security-and-privacy.md)、[部署說明](../../docs/deployment.md)。
+視覺規則見 [Design System](../design/README.md)；架構、安全與部署見 [系統架構](../docs/architecture.md)、[安全與隱私](../docs/security-and-privacy.md)、[部署說明](../docs/deployment.md)。

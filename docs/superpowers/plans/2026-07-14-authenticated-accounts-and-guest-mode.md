@@ -23,11 +23,11 @@
 ### Task 1: Define and test the server identity domain
 
 **Files:**
-- Create: `services/api/src/auth/authService.ts`
-- Create: `services/api/test/auth/authService.test.ts`
-- Modify: `services/api/src/contracts/models.ts`
-- Modify: `services/api/src/contracts/schemas.ts`
-- Modify: `services/api/src/application/ports.ts`
+- Create: `backend/src/auth/authService.ts`
+- Create: `backend/test/auth/authService.test.ts`
+- Modify: `backend/src/contracts/models.ts`
+- Modify: `backend/src/contracts/schemas.ts`
+- Modify: `backend/src/application/ports.ts`
 
 **Interfaces:**
 - Produces `Account`, `PublicAccount`, `SessionRecord`, `AuthRepository`, and `AuthService`.
@@ -102,9 +102,9 @@ Expected: PASS.
 ### Task 2: Add account/session persistence to Memory and Cosmos adapters
 
 **Files:**
-- Modify: `services/api/src/adapters/inMemoryRepository.ts`
-- Modify: `services/api/src/adapters/cosmosRepository.ts`
-- Create: `services/api/test/adapters/authRepository.test.ts`
+- Modify: `backend/src/adapters/inMemoryRepository.ts`
+- Modify: `backend/src/adapters/cosmosRepository.ts`
+- Create: `backend/test/adapters/authRepository.test.ts`
 
 **Interfaces:**
 - `InMemoryRepository` implements both `FutureMintRepository` and `AuthRepository` with maps keyed by normalized email, user ID, and token hash.
@@ -157,21 +157,21 @@ Expected: PASS.
 ### Task 3: Add auth routes and protect every personal API route
 
 **Files:**
-- Create: `services/api/src/http/authentication.ts`
-- Create: `services/api/src/functions/auth.ts`
-- Modify: `services/api/src/http/runtime.ts`
-- Modify: `services/api/src/http/responses.ts`
-- Modify: `services/api/src/functions/profile.ts`
-- Modify: `services/api/src/functions/moneyEvents.ts`
-- Modify: `services/api/src/functions/captures.ts`
-- Modify: `services/api/src/functions/dashboard.ts`
-- Modify: `services/api/src/functions/lessons.ts`
-- Modify: `services/api/src/functions/subscriptions.ts`
-- Modify: `services/api/src/functions/futureSeed.ts`
-- Modify: `services/api/src/functions/demo.ts`
-- Modify: `services/api/src/index.ts`
-- Create: `services/api/test/functions/auth.test.ts`
-- Modify: existing route tests under `services/api/test/functions/`
+- Create: `backend/src/http/authentication.ts`
+- Create: `backend/src/functions/auth.ts`
+- Modify: `backend/src/http/runtime.ts`
+- Modify: `backend/src/http/responses.ts`
+- Modify: `backend/src/functions/profile.ts`
+- Modify: `backend/src/functions/moneyEvents.ts`
+- Modify: `backend/src/functions/captures.ts`
+- Modify: `backend/src/functions/dashboard.ts`
+- Modify: `backend/src/functions/lessons.ts`
+- Modify: `backend/src/functions/subscriptions.ts`
+- Modify: `backend/src/functions/futureSeed.ts`
+- Modify: `backend/src/functions/demo.ts`
+- Modify: `backend/src/index.ts`
+- Create: `backend/test/functions/auth.test.ts`
+- Modify: existing route tests under `backend/test/functions/`
 
 **Interfaces:**
 - `requireAuthenticatedUser(request, runtime): Promise<PublicAccount>` reads exactly one `Bearer <token>` header and rejects missing, malformed, expired, or revoked tokens with `DomainError("unauthorized", ..., 401)`.
@@ -218,12 +218,12 @@ Expected: PASS; tests demonstrate account A cannot read account B data.
 ### Task 4: Implement client auth API, token storage, and authenticated repository headers
 
 **Files:**
-- Create: `apps/client/lib/auth/auth_models.dart`
-- Create: `apps/client/lib/auth/auth_api.dart`
-- Create: `apps/client/lib/auth/session_store.dart`
-- Modify: `apps/client/lib/data/api_repository.dart`
-- Create: `apps/client/test/auth/auth_api_test.dart`
-- Modify: `apps/client/test/data/api_repository_test.dart`
+- Create: `app/lib/auth/auth_models.dart`
+- Create: `app/lib/auth/auth_api.dart`
+- Create: `app/lib/auth/session_store.dart`
+- Modify: `app/lib/data/api_repository.dart`
+- Create: `app/test/auth/auth_api_test.dart`
+- Modify: `app/test/data/api_repository_test.dart`
 
 **Interfaces:**
 - `AuthApi.register(email, password)`, `login(email, password)`, `logout(token)`, `me(token)`.
@@ -271,11 +271,11 @@ Expected: PASS.
 ### Task 5: Add transient guest repository and session state controller
 
 **Files:**
-- Create: `apps/client/lib/data/guest_repository.dart`
-- Create: `apps/client/lib/state/session_controller.dart`
-- Modify: `apps/client/lib/state/app_controller.dart`
-- Modify: `apps/client/lib/main.dart`
-- Create: `apps/client/test/state/session_controller_test.dart`
+- Create: `app/lib/data/guest_repository.dart`
+- Create: `app/lib/state/session_controller.dart`
+- Modify: `app/lib/state/app_controller.dart`
+- Modify: `app/lib/main.dart`
+- Create: `app/test/state/session_controller_test.dart`
 
 **Interfaces:**
 - `GuestRepository.create()` returns a repository whose profile, event, lesson, and parse state live only in Dart object fields.
@@ -316,13 +316,13 @@ Expected: PASS.
 ### Task 6: Add login, registration, onboarding, and protected routing UI
 
 **Files:**
-- Create: `apps/client/lib/features/auth/auth_screen.dart`
-- Create: `apps/client/lib/features/auth/onboarding_screen.dart`
-- Modify: `apps/client/lib/app/future_mint_app.dart`
-- Modify: `apps/client/lib/app/app_router.dart`
-- Modify: `apps/client/lib/app/app_shell.dart`
-- Create: `apps/client/test/features/auth_screen_test.dart`
-- Modify: `apps/client/test/widget_test.dart`
+- Create: `app/lib/features/auth/auth_screen.dart`
+- Create: `app/lib/features/auth/onboarding_screen.dart`
+- Modify: `app/lib/app/future_mint_app.dart`
+- Modify: `app/lib/app/app_router.dart`
+- Modify: `app/lib/app/app_shell.dart`
+- Create: `app/test/features/auth_screen_test.dart`
+- Modify: `app/test/widget_test.dart`
 
 **Interfaces:**
 - `/auth` is public; `/onboarding` is only for `SessionStatus.onboarding`; existing shell routes only exist for authenticated or guest state.
@@ -362,10 +362,10 @@ Expected: PASS at 375px and desktop sizes with no layout exception.
 ### Task 7: Replace offline-demo UI with account and guest controls
 
 **Files:**
-- Modify: `apps/client/lib/features/settings/settings_sheet.dart`
-- Modify: `apps/client/lib/app/app_shell.dart`
-- Modify: `apps/client/lib/core/models.dart`
-- Delete: `apps/client/lib/data/demo_repository.dart`
+- Modify: `app/lib/features/settings/settings_sheet.dart`
+- Modify: `app/lib/app/app_shell.dart`
+- Modify: `app/lib/core/models.dart`
+- Delete: `app/lib/data/demo_repository.dart`
 - Modify: tests that assert `offline-demo` or `demo-user`
 
 **Interfaces:**
@@ -404,9 +404,9 @@ Expected: PASS.
 
 **Files:**
 - Modify: `README.md`
-- Modify: `apps/client/README.md`
-- Modify: `services/api/README.md`
-- Modify: `services/api/.env.example`
+- Modify: `app/README.md`
+- Modify: `backend/README.md`
+- Modify: `backend/.env.example`
 - Modify: `docs/architecture.md`
 - Modify: `docs/security-and-privacy.md`
 - Modify: `docs/data-and-storage.md`

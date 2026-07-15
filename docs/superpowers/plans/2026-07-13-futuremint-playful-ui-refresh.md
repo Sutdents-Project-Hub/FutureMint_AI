@@ -22,10 +22,10 @@
 ### Task 1: Semantic tokens, theme, and shared brand primitives
 
 **Files:**
-- Modify: `apps/client/lib/design/tokens.dart`
-- Modify: `apps/client/lib/design/theme.dart`
-- Create: `apps/client/lib/design/pop_components.dart`
-- Create: `apps/client/test/design/pop_components_test.dart`
+- Modify: `app/lib/design/tokens.dart`
+- Modify: `app/lib/design/theme.dart`
+- Create: `app/lib/design/pop_components.dart`
+- Create: `app/test/design/pop_components_test.dart`
 
 **Interfaces:**
 - Produces: `FutureMintTokens.ink`, `cream`, `mint`, `coral`, `sun`, `lavender`, `sky`, `hardShadowOffset`, `outlineWidth`.
@@ -57,7 +57,7 @@ testWidgets('SeedlingMascot has a semantic label', (tester) async {
 
 - [ ] **Step 2: Run the new test and verify missing symbols fail**
 
-Run: `cd apps/client && flutter test test/design/pop_components_test.dart`
+Run: `cd app && flutter test test/design/pop_components_test.dart`
 Expected: FAIL because `pop_components.dart`, `PopCard`, and `SeedlingMascot` do not exist.
 
 - [ ] **Step 3: Implement tokens and primitives**
@@ -70,14 +70,14 @@ Set the warm canvas, high-weight type scale, outlined inputs, pill buttons, comp
 
 - [ ] **Step 5: Format and run focused tests**
 
-Run: `cd apps/client && dart format lib/design test/design && flutter test test/design/pop_components_test.dart`
+Run: `cd app && dart format lib/design test/design && flutter test test/design/pop_components_test.dart`
 Expected: PASS with no exceptions.
 
 ### Task 2: App shell and navigation
 
 **Files:**
-- Modify: `apps/client/lib/app/app_shell.dart`
-- Modify: `apps/client/test/widget_test.dart`
+- Modify: `app/lib/app/app_shell.dart`
+- Modify: `app/test/widget_test.dart`
 
 **Interfaces:**
 - Consumes: `PopCard`, semantic tokens, and themed NavigationBar/NavigationRail from Task 1.
@@ -89,7 +89,7 @@ Add assertions that phone navigation is inside a dark rounded `DecoratedBox`, se
 
 - [ ] **Step 2: Run the focused test before implementation**
 
-Run: `cd apps/client && flutter test test/widget_test.dart`
+Run: `cd app && flutter test test/widget_test.dart`
 Expected: FAIL on the new branded-navigation decoration assertion while existing navigation assertions pass.
 
 - [ ] **Step 3: Implement the branded shell**
@@ -98,15 +98,15 @@ Keep the existing mobile/desktop branch. Wrap mobile bottom navigation in safe-a
 
 - [ ] **Step 4: Verify phone, desktop, and 200% text tests**
 
-Run: `cd apps/client && flutter test test/widget_test.dart`
+Run: `cd app && flutter test test/widget_test.dart`
 Expected: PASS; `tester.takeException()` stays null at 375×812 and 200% scale.
 
 ### Task 3: Dashboard hierarchy and color-block story
 
 **Files:**
-- Modify: `apps/client/lib/features/dashboard/dashboard_screen.dart`
-- Modify: `apps/client/lib/features/dashboard/widgets/budget_hero.dart`
-- Modify: `apps/client/test/widget_test.dart`
+- Modify: `app/lib/features/dashboard/dashboard_screen.dart`
+- Modify: `app/lib/features/dashboard/widgets/budget_hero.dart`
+- Modify: `app/test/widget_test.dart`
 
 **Interfaces:**
 - Consumes: `PopCard`, `SectionHeading`, `SeedlingMascot`, and semantic tokens.
@@ -118,7 +118,7 @@ Assert `FutureMint 種子夥伴`, `本月安心可用`, `教練提醒`, `成長�
 
 - [ ] **Step 2: Run dashboard tests before implementation**
 
-Run: `cd apps/client && flutter test test/widget_test.dart`
+Run: `cd app && flutter test test/widget_test.dart`
 Expected: FAIL only because the new mascot semantics is absent.
 
 - [ ] **Step 3: Rebuild dashboard presentation**
@@ -127,17 +127,17 @@ Use `SectionHeading` for the welcome header and keep the Capture action. Convert
 
 - [ ] **Step 4: Verify dashboard behavior**
 
-Run: `cd apps/client && flutter test test/widget_test.dart`
+Run: `cd app && flutter test test/widget_test.dart`
 Expected: PASS on phone, desktop, and text-scale cases.
 
 ### Task 4: Capture, records, and shared async states
 
 **Files:**
-- Modify: `apps/client/lib/features/capture/capture_screen.dart`
-- Modify: `apps/client/lib/features/capture/draft_editor.dart`
-- Modify: `apps/client/lib/features/records/records_screen.dart`
-- Modify: `apps/client/lib/shared/async_panel.dart`
-- Modify: `apps/client/test/features/capture_screen_test.dart`
+- Modify: `app/lib/features/capture/capture_screen.dart`
+- Modify: `app/lib/features/capture/draft_editor.dart`
+- Modify: `app/lib/features/records/records_screen.dart`
+- Modify: `app/lib/shared/async_panel.dart`
+- Modify: `app/test/features/capture_screen_test.dart`
 
 **Interfaces:**
 - Consumes: shared brand primitives and semantic tokens.
@@ -149,7 +149,7 @@ Retain existing Capture flow assertions and add a 375×812 case that finds `capt
 
 - [ ] **Step 2: Run Capture tests before implementation**
 
-Run: `cd apps/client && flutter test test/features/capture_screen_test.dart`
+Run: `cd app && flutter test test/features/capture_screen_test.dart`
 Expected: PASS on existing behavior and FAIL if the new semantics label is not yet present.
 
 - [ ] **Step 3: Restyle Capture and DraftEditor**
@@ -162,18 +162,18 @@ Use `SectionHeading`, pill segmented controls, colored category markers, and out
 
 - [ ] **Step 5: Verify Capture and core widget suite**
 
-Run: `cd apps/client && flutter test test/features/capture_screen_test.dart test/widget_test.dart`
+Run: `cd app && flutter test test/features/capture_screen_test.dart test/widget_test.dart`
 Expected: PASS with no overflow or state regression.
 
 ### Task 5: Learning, subscriptions, FutureSeed, and settings
 
 **Files:**
-- Modify: `apps/client/lib/features/learning/learning_screen.dart`
-- Modify: `apps/client/lib/features/subscriptions/subscription_coach.dart`
-- Modify: `apps/client/lib/features/future_seed/future_seed_screen.dart`
-- Modify: `apps/client/lib/features/settings/settings_sheet.dart`
-- Modify: `apps/client/test/features/learning_and_subscription_test.dart`
-- Modify: `apps/client/test/features/future_seed_screen_test.dart`
+- Modify: `app/lib/features/learning/learning_screen.dart`
+- Modify: `app/lib/features/subscriptions/subscription_coach.dart`
+- Modify: `app/lib/features/future_seed/future_seed_screen.dart`
+- Modify: `app/lib/features/settings/settings_sheet.dart`
+- Modify: `app/test/features/learning_and_subscription_test.dart`
+- Modify: `app/test/features/future_seed_screen_test.dart`
 
 **Interfaces:**
 - Consumes: shared brand primitives and semantic tokens.
@@ -185,7 +185,7 @@ For Learning, Subscription, and FutureSeed tests, set the view to 375×812 and a
 
 - [ ] **Step 2: Run feature tests before implementation**
 
-Run: `cd apps/client && flutter test test/features/learning_and_subscription_test.dart test/features/future_seed_screen_test.dart`
+Run: `cd app && flutter test test/features/learning_and_subscription_test.dart test/features/future_seed_screen_test.dart`
 Expected: Existing behavior passes; any added branded-widget assertion fails before restyling.
 
 - [ ] **Step 3: Restyle Learning and subscriptions**
@@ -198,15 +198,15 @@ Use sun controls, sky/teal results, and outlined year bars. Ensure metric Wrap l
 
 - [ ] **Step 5: Verify feature tests**
 
-Run: `cd apps/client && flutter test test/features/learning_and_subscription_test.dart test/features/future_seed_screen_test.dart`
+Run: `cd app && flutter test test/features/learning_and_subscription_test.dart test/features/future_seed_screen_test.dart`
 Expected: PASS without overflow exceptions.
 
 ### Task 6: Documentation, full validation, and visual QA
 
 **Files:**
-- Modify: `design-system/futuremint-ai/MASTER.md`
-- Modify: `design-system/README.md`
-- Modify: `apps/client/README.md`
+- Modify: `design/futuremint-ai/MASTER.md`
+- Modify: `design/README.md`
+- Modify: `app/README.md`
 - Modify: `docs/testing-and-evidence.md`
 - Verify: `README.md`
 
@@ -220,17 +220,17 @@ Replace the old restrained-card direction with the implemented color-block direc
 
 - [ ] **Step 2: Run formatting and static checks**
 
-Run: `cd apps/client && dart format --output=none --set-exit-if-changed lib test integration_test && flutter analyze`
+Run: `cd app && dart format --output=none --set-exit-if-changed lib test integration_test && flutter analyze`
 Expected: formatter reports no changes required; analyzer exits 0.
 
 - [ ] **Step 3: Run all Flutter tests**
 
-Run: `cd apps/client && flutter test`
+Run: `cd app && flutter test`
 Expected: all tests pass with exit code 0.
 
 - [ ] **Step 4: Build Flutter Web**
 
-Run: `cd apps/client && flutter build web`
+Run: `cd app && flutter build web`
 Expected: release Web build completes with exit code 0.
 
 - [ ] **Step 5: Perform browser visual QA**

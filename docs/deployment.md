@@ -5,8 +5,8 @@
 目標是同一個 Coolify project／production environment 內的三個獨立 Resources：
 
 1. `futuremint-ai-postgres`：PostgreSQL 17 Database。
-2. `futuremint-ai-api`：private GitHub repository 的 `/services/api` Dockerfile Application。
-3. `futuremint-ai-web`：同一 repository 的 `/apps/client` Dockerfile Application。
+2. `futuremint-ai-api`：private GitHub repository 的 `/backend` Dockerfile Application。
+3. `futuremint-ai-web`：同一 repository 的 `/app` Dockerfile Application。
 
 Coolify 從 GitHub clone source，與開發者電腦無關。現在 repository 已設定 GitHub remote，但尚未建立 resources、DNS、TLS、production secrets 或 deployment；以下是可直接照做的設定清單，不代表已執行。
 
@@ -67,7 +67,7 @@ Database 與 API 必須在同一 Coolify destination／network，否則 internal
 | Name | `futuremint-ai-api` |
 | Repository／Branch | `FutureMint_AI`／`main` |
 | Build Pack | Dockerfile |
-| Base Directory | `/services/api` |
+| Base Directory | `/backend` |
 | Dockerfile Location | `/Dockerfile`（若 UI 顯示此欄；相對 Base Directory） |
 | Port Exposes | `3000` |
 | Domain | `https://api.<your-domain>` |
@@ -119,7 +119,7 @@ curl -i https://api.<your-domain>/api/health
 | Name | `futuremint-ai-web` |
 | Repository／Branch | `FutureMint_AI`／`main` |
 | Build Pack | Dockerfile |
-| Base Directory | `/apps/client` |
+| Base Directory | `/app` |
 | Dockerfile Location | `/Dockerfile`（若 UI 顯示此欄；相對 Base Directory） |
 | Port Exposes | `3000` |
 | Domain | `https://<frontend-domain>` |
@@ -165,7 +165,7 @@ GitHub App + Auto Deploy 開啟後：
 - 前端與 API 都使用 Dockerfile health checks；新 container unhealthy 時先看 migration、environment、port 與 internal network，不要直接開 public database。
 - 團隊 Git 工作流仍以 task branch／PR／checks／squash merge 到 `main` 為主；merge 到 `main` 才觸發正式 deployment。
 
-Coolify 若支援 application watch paths，可將 API 限定 `services/api/**`、Web 限定 `apps/client/**` 與各自需要的共同文件；未在實際版本驗證前可以先接受兩邊都 redeploy，較不容易漏部署。
+Coolify 若支援 application watch paths，可將 API 限定 `backend/**`、Web 限定 `app/**` 與各自需要的共同文件；未在實際版本驗證前可以先接受兩邊都 redeploy，較不容易漏部署。
 
 ## 7. Smoke test
 

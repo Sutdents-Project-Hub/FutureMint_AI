@@ -16,7 +16,7 @@
 
 ### Web
 
-- Source：private GitHub `main`，Base Directory `/apps/client`。
+- Source：private GitHub `main`，Base Directory `/app`。
 - Build：從 Flutter 官方 Git repository 取得並核對固定的 3.41.9 commit，執行 `flutter build web --release`。
 - Runtime：Nginx 1.28 Alpine，port 3000。
 - Public config：build-only `API_BASE_URL`。
@@ -24,7 +24,7 @@
 
 ### API
 
-- Source：同一 private GitHub `main`，Base Directory `/services/api`。
+- Source：同一 private GitHub `main`，Base Directory `/backend`。
 - Build／runtime：Node.js 22 Docker multi-stage image，port 3000。
 - Health：`/api/health` 驗證 API 與 PostgreSQL readiness。
 - Runtime secrets：`DATABASE_URL`、`LIANGJIE_API_KEY`。
@@ -49,9 +49,9 @@ sequenceDiagram
     participant DB as PostgreSQL Resource
     Dev->>GH: PR checks / squash merge main
     GH->>C: push webhook
-    C->>API: clone services/api, build, migrate, health
+    C->>API: clone backend, build, migrate, health
     API->>DB: private connection
-    C->>WEB: clone apps/client, build with API_BASE_URL, health
+    C->>WEB: clone app, build with API_BASE_URL, health
 ```
 
 Coolify 讀的是 GitHub commit snapshot，不是團隊電腦目錄。沒有 push 的本機修改不會出現在 Coolify。Private repository 建議使用只授權單一 repository 的 GitHub App；Auto Deploy 綁定 `main`。

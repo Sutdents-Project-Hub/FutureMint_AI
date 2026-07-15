@@ -24,12 +24,12 @@
 ### Task 1: Soft design primitives and theme
 
 **Files:**
-- Modify: `apps/client/lib/design/tokens.dart`
-- Create: `apps/client/lib/design/soft_components.dart`
-- Modify: `apps/client/lib/design/theme.dart`
-- Create: `apps/client/test/design/soft_components_test.dart`
-- Delete after migration: `apps/client/lib/design/pop_components.dart`
-- Delete after migration: `apps/client/test/design/pop_components_test.dart`
+- Modify: `app/lib/design/tokens.dart`
+- Create: `app/lib/design/soft_components.dart`
+- Modify: `app/lib/design/theme.dart`
+- Create: `app/test/design/soft_components_test.dart`
+- Delete after migration: `app/lib/design/pop_components.dart`
+- Delete after migration: `app/test/design/pop_components_test.dart`
 
 **Interfaces:**
 - Produces: `FutureMintTokens.space1` through `space8`, `pageGutter(BuildContext)`, `cardPadding(BuildContext)`, `pageMaxWidth = 1200`, `contentNarrow = 760`, `contentReading = 840`, `contentCanvas = 980`.
@@ -89,7 +89,7 @@ void main() {
 
 - [ ] **Step 2: Verify RED**
 
-Run: `cd apps/client && flutter test test/design/soft_components_test.dart`
+Run: `cd app && flutter test test/design/soft_components_test.dart`
 
 Expected: FAIL because `soft_components.dart`, `SoftCard`, `PageHeading`, and `MoneyBuddy` do not exist and `pageMaxWidth` is still 1240.
 
@@ -149,17 +149,17 @@ Set the light canvas to a teal-tinted near-white, neutral cards to white, global
 
 - [ ] **Step 5: Verify GREEN**
 
-Run: `cd apps/client && dart format lib/design test/design && flutter test test/design/soft_components_test.dart`
+Run: `cd app && dart format lib/design test/design && flutter test test/design/soft_components_test.dart`
 
 Expected: PASS with four tests and no exceptions.
 
 ### Task 2: Adaptive shell and Dashboard bento hierarchy
 
 **Files:**
-- Modify: `apps/client/lib/app/app_shell.dart`
-- Modify: `apps/client/lib/features/dashboard/dashboard_screen.dart`
-- Modify: `apps/client/lib/features/dashboard/widgets/budget_hero.dart`
-- Modify: `apps/client/test/widget_test.dart`
+- Modify: `app/lib/app/app_shell.dart`
+- Modify: `app/lib/features/dashboard/dashboard_screen.dart`
+- Modify: `app/lib/features/dashboard/widgets/budget_hero.dart`
+- Modify: `app/test/widget_test.dart`
 
 **Interfaces:**
 - Consumes: `SoftCard`, `PageHeading`, `MoneyBuddy`, semantic spacing and width tokens.
@@ -198,7 +198,7 @@ testWidgets('uses bento dashboard when content width reaches 900', (tester) asyn
 
 - [ ] **Step 2: Verify RED**
 
-Run: `cd apps/client && flutter test test/widget_test.dart`
+Run: `cd app && flutter test test/widget_test.dart`
 
 Expected: FAIL because the new layout keys and MoneyBuddy semantics are absent.
 
@@ -212,19 +212,19 @@ Wrap Dashboard content in `LayoutBuilder`. When `constraints.maxWidth >= 900`, r
 
 - [ ] **Step 5: Verify GREEN and responsive regressions**
 
-Run: `cd apps/client && flutter test test/widget_test.dart`
+Run: `cd app && flutter test test/widget_test.dart`
 
 Expected: PASS for phone navigation, desktop rail, 1100 compact Dashboard, 1440 bento Dashboard, 200% text scale, and 812×375 rail reachability.
 
 ### Task 3: Capture flow, Records list, and shared states
 
 **Files:**
-- Modify: `apps/client/lib/features/capture/capture_screen.dart`
-- Modify: `apps/client/lib/features/capture/draft_editor.dart`
-- Modify: `apps/client/lib/features/records/records_screen.dart`
-- Modify: `apps/client/lib/shared/async_panel.dart`
-- Modify: `apps/client/test/features/capture_screen_test.dart`
-- Modify: `apps/client/test/widget_test.dart`
+- Modify: `app/lib/features/capture/capture_screen.dart`
+- Modify: `app/lib/features/capture/draft_editor.dart`
+- Modify: `app/lib/features/records/records_screen.dart`
+- Modify: `app/lib/shared/async_panel.dart`
+- Modify: `app/test/features/capture_screen_test.dart`
+- Modify: `app/test/widget_test.dart`
 
 **Interfaces:**
 - Preserves: `capture-input`, parsing/saving callbacks, draft fields, `AI 已整理草稿，尚未保存`, filters, refresh, retry, error copy, and event values.
@@ -242,7 +242,7 @@ Add a Records navigation case at 1200×900 that expects exactly one `records-lis
 
 - [ ] **Step 2: Verify RED**
 
-Run: `cd apps/client && flutter test test/features/capture_screen_test.dart test/widget_test.dart`
+Run: `cd app && flutter test test/features/capture_screen_test.dart test/widget_test.dart`
 
 Expected: FAIL on the new structural keys while existing Capture behavior remains green.
 
@@ -256,19 +256,19 @@ Bound Records to `contentReading`, use one neutral `SoftCard(key: Key('records-l
 
 - [ ] **Step 5: Verify GREEN**
 
-Run: `cd apps/client && flutter test test/features/capture_screen_test.dart test/widget_test.dart`
+Run: `cd app && flutter test test/features/capture_screen_test.dart test/widget_test.dart`
 
 Expected: PASS; draft stays unsaved until confirmation, narrow Capture has no exception, and Records renders in a bounded single surface.
 
 ### Task 4: Learning stack, subscriptions, FutureSeed, and settings
 
 **Files:**
-- Modify: `apps/client/lib/features/learning/learning_screen.dart`
-- Modify: `apps/client/lib/features/subscriptions/subscription_coach.dart`
-- Modify: `apps/client/lib/features/future_seed/future_seed_screen.dart`
-- Modify: `apps/client/lib/features/settings/settings_sheet.dart`
-- Modify: `apps/client/test/features/learning_and_subscription_test.dart`
-- Modify: `apps/client/test/features/future_seed_screen_test.dart`
+- Modify: `app/lib/features/learning/learning_screen.dart`
+- Modify: `app/lib/features/subscriptions/subscription_coach.dart`
+- Modify: `app/lib/features/future_seed/future_seed_screen.dart`
+- Modify: `app/lib/features/settings/settings_sheet.dart`
+- Modify: `app/test/features/learning_and_subscription_test.dart`
+- Modify: `app/test/features/future_seed_screen_test.dart`
 
 **Interfaces:**
 - Preserves: lesson selection, `learning-color-block`, subscription source/disclaimer, `subscription-current-card`, FutureSeed controls/results/disclaimer, theme/mode/profile/reset actions.
@@ -290,7 +290,7 @@ Add 200% text-scale cases for Subscription and FutureSeed at 375×812. Before ca
 
 - [ ] **Step 2: Verify RED**
 
-Run: `cd apps/client && flutter test test/features/learning_and_subscription_test.dart test/features/future_seed_screen_test.dart`
+Run: `cd app && flutter test test/features/learning_and_subscription_test.dart test/features/future_seed_screen_test.dart`
 
 Expected: FAIL because the new stack/empty-state keys and `SoftCard` migration are absent.
 
@@ -304,19 +304,19 @@ Keep the 4:6 wide composition but derive it from `LayoutBuilder`. Replace the 36
 
 - [ ] **Step 5: Verify GREEN**
 
-Run: `cd apps/client && flutter test test/features/learning_and_subscription_test.dart test/features/future_seed_screen_test.dart`
+Run: `cd app && flutter test test/features/learning_and_subscription_test.dart test/features/future_seed_screen_test.dart`
 
 Expected: PASS with no nested `SoftCard`, no overflow at 200% text scale, preserved lesson choice and subscription/FutureSeed disclaimers.
 
 ### Task 5: Migration cleanup, documentation, and full verification
 
 **Files:**
-- Delete: `apps/client/lib/design/pop_components.dart`
-- Delete: `apps/client/test/design/pop_components_test.dart`
-- Modify: all remaining imports under `apps/client/lib/` from `pop_components.dart` to `soft_components.dart`
-- Modify: `design-system/futuremint-ai/MASTER.md`
-- Modify: `design-system/README.md`
-- Modify: `apps/client/README.md`
+- Delete: `app/lib/design/pop_components.dart`
+- Delete: `app/test/design/pop_components_test.dart`
+- Modify: all remaining imports under `app/lib/` from `pop_components.dart` to `soft_components.dart`
+- Modify: `design/futuremint-ai/MASTER.md`
+- Modify: `design/README.md`
+- Modify: `app/README.md`
 - Modify: `docs/testing-and-evidence.md`
 - Verify: `README.md`
 
@@ -326,7 +326,7 @@ Expected: PASS with no nested `SoftCard`, no overflow at 200% text scale, preser
 
 - [ ] **Step 1: Remove the old visual language completely**
 
-Run: `rg -n "PopCard|SectionHeading|SeedlingMascot|hardShadow|outlineWidth|pop_components" apps/client/lib apps/client/test`
+Run: `rg -n "PopCard|SectionHeading|SeedlingMascot|hardShadow|outlineWidth|pop_components" app/lib app/test`
 
 Expected before cleanup: matches. Replace every production/test reference with the new primitives, then delete the obsolete source/test files.
 
@@ -340,25 +340,25 @@ Update `MASTER.md`, Design System README, and Client README to describe near-whi
 
 - [ ] **Step 3: Run formatting and static analysis**
 
-Run: `cd apps/client && dart format --output=none --set-exit-if-changed lib test integration_test && flutter analyze`
+Run: `cd app && dart format --output=none --set-exit-if-changed lib test integration_test && flutter analyze`
 
 Expected: formatter exits 0 with no changes required; analyzer reports `No issues found!`.
 
 - [ ] **Step 4: Run the full Flutter test suite**
 
-Run: `cd apps/client && flutter test`
+Run: `cd app && flutter test`
 
 Expected: exit 0 with all tests passing and zero failures.
 
 - [ ] **Step 5: Build Flutter Web**
 
-Run: `cd apps/client && flutter build web --release`
+Run: `cd app && flutter build web --release`
 
 Expected: release Web build completes with exit code 0.
 
 - [ ] **Step 6: Perform browser visual QA**
 
-Run the local Web app and inspect widths 375, 768, 1024, 1440, and 812×375. Visit `/`, `/capture`, `/records`, `/learning`, `/subscriptions`, `/future-seed`; open settings; switch light/dark. Verify browser console has zero errors, no content is hidden by navigation, and the Dashboard visually reads as teal Hero → supporting bento → quiet records. Capture fresh phone and desktop screenshots in the existing ignored `apps/client/output/playwright/` directory.
+Run the local Web app and inspect widths 375, 768, 1024, 1440, and 812×375. Visit `/`, `/capture`, `/records`, `/learning`, `/subscriptions`, `/future-seed`; open settings; switch light/dark. Verify browser console has zero errors, no content is hidden by navigation, and the Dashboard visually reads as teal Hero → supporting bento → quiet records. Capture fresh phone and desktop screenshots in the existing ignored `app/output/playwright/` directory.
 
 - [ ] **Step 7: Record evidence and inspect the worktree**
 

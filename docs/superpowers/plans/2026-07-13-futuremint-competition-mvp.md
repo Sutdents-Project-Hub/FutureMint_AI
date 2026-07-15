@@ -16,24 +16,24 @@
 - Client code never contains Azure OpenAI or Cosmos secrets.
 - Do not create Azure resources, deploy, commit, push, or open a PR without separate user authorization.
 - All human-readable product copy and project documentation use Traditional Chinese.
-- UI follows `design-system/futuremint-ai/MASTER.md`, including 48dp targets, semantic colors, light/dark themes, responsive navigation, and accessible error recovery.
+- UI follows `design/futuremint-ai/MASTER.md`, including 48dp targets, semantic colors, light/dark themes, responsive navigation, and accessible error recovery.
 
 ---
 
 ### Task 1: Functions contracts and deterministic finance domain
 
 **Files:**
-- Modify: `services/api/package.json`
-- Modify: `services/api/tsconfig.json`
-- Create: `services/api/src/contracts/models.ts`
-- Create: `services/api/src/contracts/schemas.ts`
-- Create: `services/api/src/contracts/errors.ts`
-- Create: `services/api/src/domain/budget.ts`
-- Create: `services/api/src/domain/futureSeed.ts`
-- Create: `services/api/src/domain/subscriptions.ts`
-- Create: `services/api/test/domain/budget.test.ts`
-- Create: `services/api/test/domain/futureSeed.test.ts`
-- Create: `services/api/test/domain/subscriptions.test.ts`
+- Modify: `backend/package.json`
+- Modify: `backend/tsconfig.json`
+- Create: `backend/src/contracts/models.ts`
+- Create: `backend/src/contracts/schemas.ts`
+- Create: `backend/src/contracts/errors.ts`
+- Create: `backend/src/domain/budget.ts`
+- Create: `backend/src/domain/futureSeed.ts`
+- Create: `backend/src/domain/subscriptions.ts`
+- Create: `backend/test/domain/budget.test.ts`
+- Create: `backend/test/domain/futureSeed.test.ts`
+- Create: `backend/test/domain/subscriptions.test.ts`
 
 **Interfaces:**
 - Produces: `MoneyEvent`, `UserProfile`, `DashboardSummary`, `FutureSeedPreview`, `SubscriptionComparison`, and Zod request schemas.
@@ -44,7 +44,7 @@
 Run:
 
 ```bash
-cd services/api
+cd backend
 npm install zod
 npm install --save-dev vitest
 ```
@@ -86,25 +86,25 @@ Expected: all domain tests pass, TypeScript emits no errors, and `dist` is gener
 ### Task 2: Repository ports, demo AI, application service, and HTTP API
 
 **Files:**
-- Create: `services/api/src/application/ports.ts`
-- Create: `services/api/src/application/futureMintService.ts`
-- Create: `services/api/src/adapters/inMemoryRepository.ts`
-- Create: `services/api/src/adapters/demoAiProvider.ts`
-- Create: `services/api/src/adapters/demoCatalog.ts`
-- Create: `services/api/src/http/responses.ts`
-- Create: `services/api/src/http/runtime.ts`
-- Create: `services/api/src/functions/health.ts`
-- Create: `services/api/src/functions/profile.ts`
-- Create: `services/api/src/functions/captures.ts`
-- Create: `services/api/src/functions/moneyEvents.ts`
-- Create: `services/api/src/functions/dashboard.ts`
-- Create: `services/api/src/functions/subscriptions.ts`
-- Create: `services/api/src/functions/lessons.ts`
-- Create: `services/api/src/functions/futureSeed.ts`
-- Create: `services/api/src/functions/demo.ts`
-- Modify: `services/api/src/index.ts`
-- Create: `services/api/test/application/futureMintService.test.ts`
-- Create: `services/api/test/http/functions.test.ts`
+- Create: `backend/src/application/ports.ts`
+- Create: `backend/src/application/futureMintService.ts`
+- Create: `backend/src/adapters/inMemoryRepository.ts`
+- Create: `backend/src/adapters/demoAiProvider.ts`
+- Create: `backend/src/adapters/demoCatalog.ts`
+- Create: `backend/src/http/responses.ts`
+- Create: `backend/src/http/runtime.ts`
+- Create: `backend/src/functions/health.ts`
+- Create: `backend/src/functions/profile.ts`
+- Create: `backend/src/functions/captures.ts`
+- Create: `backend/src/functions/moneyEvents.ts`
+- Create: `backend/src/functions/dashboard.ts`
+- Create: `backend/src/functions/subscriptions.ts`
+- Create: `backend/src/functions/lessons.ts`
+- Create: `backend/src/functions/futureSeed.ts`
+- Create: `backend/src/functions/demo.ts`
+- Modify: `backend/src/index.ts`
+- Create: `backend/test/application/futureMintService.test.ts`
+- Create: `backend/test/http/functions.test.ts`
 
 **Interfaces:**
 - Produces: `AiProvider.parseCapture()` and `AiProvider.generateLesson()`.
@@ -138,13 +138,13 @@ Run `npm test && npm run typecheck && npm run build`; expected all service and h
 ### Task 3: Azure OpenAI and Cosmos adapters
 
 **Files:**
-- Modify: `services/api/package.json`
-- Modify: `services/api/.env.example`
-- Create: `services/api/src/adapters/azureOpenAiProvider.ts`
-- Create: `services/api/src/adapters/cosmosRepository.ts`
-- Modify: `services/api/src/http/runtime.ts`
-- Create: `services/api/test/adapters/azureOpenAiProvider.test.ts`
-- Create: `services/api/test/adapters/cosmosRepository.test.ts`
+- Modify: `backend/package.json`
+- Modify: `backend/.env.example`
+- Create: `backend/src/adapters/azureOpenAiProvider.ts`
+- Create: `backend/src/adapters/cosmosRepository.ts`
+- Modify: `backend/src/http/runtime.ts`
+- Create: `backend/test/adapters/azureOpenAiProvider.test.ts`
+- Create: `backend/test/adapters/cosmosRepository.test.ts`
 
 **Interfaces:**
 - Consumes: `AiProvider`, `FutureMintRepository`, and shared Zod schemas from Tasks 1–2.
@@ -179,21 +179,21 @@ Run all API tests, typecheck, build, and `npm audit --omit=dev`; record results 
 ### Task 4: Flutter foundation, models, repositories, and state
 
 **Files:**
-- Modify: `apps/client/pubspec.yaml`
-- Replace: `apps/client/lib/main.dart`
-- Create: `apps/client/lib/app/future_mint_app.dart`
-- Create: `apps/client/lib/app/app_router.dart`
-- Create: `apps/client/lib/app/app_shell.dart`
-- Create: `apps/client/lib/design/theme.dart`
-- Create: `apps/client/lib/design/tokens.dart`
-- Create: `apps/client/lib/core/models.dart`
-- Create: `apps/client/lib/core/future_mint_repository.dart`
-- Create: `apps/client/lib/data/api_repository.dart`
-- Create: `apps/client/lib/data/demo_repository.dart`
-- Create: `apps/client/lib/state/app_controller.dart`
-- Create: `apps/client/test/core/models_test.dart`
-- Create: `apps/client/test/data/demo_repository_test.dart`
-- Create: `apps/client/test/state/app_controller_test.dart`
+- Modify: `app/pubspec.yaml`
+- Replace: `app/lib/main.dart`
+- Create: `app/lib/app/future_mint_app.dart`
+- Create: `app/lib/app/app_router.dart`
+- Create: `app/lib/app/app_shell.dart`
+- Create: `app/lib/design/theme.dart`
+- Create: `app/lib/design/tokens.dart`
+- Create: `app/lib/core/models.dart`
+- Create: `app/lib/core/future_mint_repository.dart`
+- Create: `app/lib/data/api_repository.dart`
+- Create: `app/lib/data/demo_repository.dart`
+- Create: `app/lib/state/app_controller.dart`
+- Create: `app/test/core/models_test.dart`
+- Create: `app/test/data/demo_repository_test.dart`
+- Create: `app/test/state/app_controller_test.dart`
 
 **Interfaces:**
 - Produces: client equivalents of API contracts and `FutureMintRepository` methods.
@@ -232,21 +232,21 @@ Run `dart format --output=none --set-exit-if-changed lib test`, `flutter analyze
 ### Task 5: Complete Flutter product screens
 
 **Files:**
-- Create: `apps/client/lib/features/dashboard/dashboard_screen.dart`
-- Create: `apps/client/lib/features/dashboard/widgets/budget_hero.dart`
-- Create: `apps/client/lib/features/capture/capture_screen.dart`
-- Create: `apps/client/lib/features/capture/draft_editor.dart`
-- Create: `apps/client/lib/features/records/records_screen.dart`
-- Create: `apps/client/lib/features/subscriptions/subscription_coach.dart`
-- Create: `apps/client/lib/features/learning/learning_screen.dart`
-- Create: `apps/client/lib/features/future_seed/future_seed_screen.dart`
-- Create: `apps/client/lib/features/settings/settings_sheet.dart`
-- Create: `apps/client/lib/shared/async_panel.dart`
-- Create: `apps/client/lib/shared/money_text.dart`
-- Replace: `apps/client/test/widget_test.dart`
-- Create: `apps/client/test/features/capture_screen_test.dart`
-- Create: `apps/client/test/features/responsive_shell_test.dart`
-- Create: `apps/client/test/features/future_seed_screen_test.dart`
+- Create: `app/lib/features/dashboard/dashboard_screen.dart`
+- Create: `app/lib/features/dashboard/widgets/budget_hero.dart`
+- Create: `app/lib/features/capture/capture_screen.dart`
+- Create: `app/lib/features/capture/draft_editor.dart`
+- Create: `app/lib/features/records/records_screen.dart`
+- Create: `app/lib/features/subscriptions/subscription_coach.dart`
+- Create: `app/lib/features/learning/learning_screen.dart`
+- Create: `app/lib/features/future_seed/future_seed_screen.dart`
+- Create: `app/lib/features/settings/settings_sheet.dart`
+- Create: `app/lib/shared/async_panel.dart`
+- Create: `app/lib/shared/money_text.dart`
+- Replace: `app/test/widget_test.dart`
+- Create: `app/test/features/capture_screen_test.dart`
+- Create: `app/test/features/responsive_shell_test.dart`
+- Create: `app/test/features/future_seed_screen_test.dart`
 
 **Interfaces:**
 - Consumes: `AppController`, design tokens, and repository contracts from Task 4.
@@ -279,11 +279,11 @@ Run all Flutter tests, analyze, and Web build. Inspect at 375, 768, 1024, and 14
 ### Task 6: End-to-end contract and competition evidence
 
 **Files:**
-- Create: `services/api/test/fixtures/capture-evaluation.json`
-- Create: `services/api/scripts/evaluateCaptures.ts`
-- Modify: `services/api/package.json`
-- Create: `apps/client/integration_test/demo_flow_test.dart`
-- Modify: `apps/client/pubspec.yaml`
+- Create: `backend/test/fixtures/capture-evaluation.json`
+- Create: `backend/scripts/evaluateCaptures.ts`
+- Modify: `backend/package.json`
+- Create: `app/integration_test/demo_flow_test.dart`
+- Modify: `app/pubspec.yaml`
 - Create: `docs/testing-and-evidence.md`
 - Create: `docs/demo-script.md`
 
@@ -314,8 +314,8 @@ Run evaluation, API suite, Flutter suite, integration test where the environment
 
 **Files:**
 - Modify: `README.md`
-- Modify: `apps/client/README.md`
-- Modify: `services/api/README.md`
+- Modify: `app/README.md`
+- Modify: `backend/README.md`
 - Modify: `docs/architecture.md`
 - Modify: `docs/data-and-storage.md`
 - Modify: `docs/integrations.md`
@@ -339,14 +339,14 @@ Document synthetic fixtures, original-text non-persistence, sanitized logging, A
 - [ ] **Step 3: Run complete verification**
 
 ```bash
-cd services/api
+cd backend
 PATH="/opt/homebrew/opt/node@22/bin:$PATH" npm ci
 PATH="/opt/homebrew/opt/node@22/bin:$PATH" npm test
 PATH="/opt/homebrew/opt/node@22/bin:$PATH" npm run typecheck
 PATH="/opt/homebrew/opt/node@22/bin:$PATH" npm run build
 PATH="/opt/homebrew/opt/node@22/bin:$PATH" npm run evaluate:captures
 
-cd ../../apps/client
+cd ../../app
 flutter pub get
 dart format --output=none --set-exit-if-changed lib test integration_test
 flutter analyze

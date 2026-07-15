@@ -9,7 +9,7 @@
 
 ## 與程式碼的關係
 
-- Flutter tokens 與 Material theme 位於 `apps/client/lib/design/`。
+- Flutter tokens 與 Material theme 位於 `app/lib/design/`。
 - `soft_components.dart` 提供共用 `SoftCard`、`PageHeading` 與 Flutter 原生幾何 `MoneyBuddy`；不依賴外部圖片或遠端字型。
 - 新畫面先重用既有 semantic colors、type scale、spacing 與 components，不自行新增近似 token。
 - 規範與實作改變時必須同步兩邊；不得只改文件或只改 UI，造成交接內容漂移。
@@ -24,4 +24,4 @@
 - 200% text scale、reduced motion、loading／empty／error／網路不可用／disabled 狀態可用。
 - API 失敗不得靜默切換成合成資料；訪客模式必須由使用者明確選擇，並固定標示資料不會儲存。
 
-目前沒有自動化 design-system build；實測證據記錄於 [docs/testing-and-evidence.md](../docs/testing-and-evidence.md)。
+目前沒有自動化 design build；實測證據記錄於 [docs/testing-and-evidence.md](../docs/testing-and-evidence.md)。

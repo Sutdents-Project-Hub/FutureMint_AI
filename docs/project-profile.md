@@ -16,19 +16,19 @@
 - Deployment：`other (self-hosted Coolify)`
 - Team collaboration：`true`
 
-## 結構與技術例外
+## 結構與技術決策
 
-- `structure_exception`：保留初始化新版固定 component root 規則前已建立的 `apps/client/` 與 `services/api/`。兩者各自有獨立 runtime、manifest、品質指令與部署生命週期，且既有 Compose、文件與開發指令皆以此為準；不進行只為改名的搬移。
-- Framework root 證據：`apps/client/pubspec.yaml` 與 `services/api/package.json` 直接位於 component 根目錄，沒有 project-name／framework-name wrapper，也沒有巢狀 `.git/`。
+- `structure_exception`：無。採固定 component roots：`app/`、`backend/`、`design/` 與 `docs/`。
+- Framework root 證據：`app/pubspec.yaml` 與 `backend/package.json` 直接位於 component 根目錄，沒有 project-name／framework-name wrapper，也沒有巢狀 `.git/`。
 - `technology_source`：`existing-project`。Flutter、Fastify、Node.js 22 與 npm 是競賽期間已實作且通過品質檢查的技術選型；公司基線只作未指定技術之新專案預設，不自動觸發遷移。
 
 ## Executable components
 
-- `client`：path=`apps/client`，kind=`app`，framework=`Flutter`，package_manager=`flutter`，quality=analyze, test, build，deployment=Coolify Dockerfile Web Application。
-- `api`：path=`services/api`，kind=`backend`，framework=`Fastify`，package_manager=`npm`，quality=test, typecheck, build, evaluate:captures，deployment=Coolify Dockerfile API Application。
-- `database`：Coolify PostgreSQL 17 Resource，schema 由 `services/api/migrations` 管理；它不是 source component，但有獨立資料／備份生命週期。
+- `client`：path=`app`，kind=`app`，framework=`Flutter`，package_manager=`flutter`，quality=analyze, test, build，deployment=Coolify Dockerfile Web Application。
+- `api`：path=`backend`，kind=`backend`，framework=`Fastify`，package_manager=`npm`，quality=test, typecheck, build, evaluate:captures，deployment=Coolify Dockerfile API Application。
+- `database`：Coolify PostgreSQL 17 Resource，schema 由 `backend/migrations` 管理；它不是 source component，但有獨立資料／備份生命週期。
 
-`design-system` 與 `docs` 是非執行型支援資產，不列入 executable components。
+`design` 與 `docs` 是非執行型支援資產，不列入 executable components。
 
 ## 摘要
 
