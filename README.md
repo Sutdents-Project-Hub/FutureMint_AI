@@ -73,6 +73,8 @@ FutureMint_AI/
 └── AGENTS.md                     # 開發、資料與 Git 安全規則
 ```
 
+`apps/client/` 與 `services/api/` 是本專案已建立並持續使用的 `structure_exception`；兩個目錄本身就是 framework root，`pubspec.yaml`／`package.json` 直接位於 component 根目錄。不得再包成 `app/<project-name>/`、`apps/client/flutter/` 或其他額外層級；新學生專案仍以 `app/`、`backend/` 等固定 root 為預設。
+
 ## 本機快速啟動
 
 前置需求：Node.js 22.x、npm、Flutter 3.41.x／Dart 3.11.x；要測持久化需 PostgreSQL 17。

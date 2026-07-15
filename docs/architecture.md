@@ -4,6 +4,8 @@
 
 FutureMint AI 採三個 Coolify Resource，前端與 API 分離部署，PostgreSQL 僅存在於 Coolify private network。主辦方 Azure 環境關閉後，runtime 不再依賴 Azure Functions、Cosmos DB、Azure OpenAI 或 Static Web Apps。
 
+`apps/client/` 與 `services/api/` 是保留的既有專案結構例外，也分別是 Flutter 與 Fastify 的 framework root；manifest 直接位於 component 根目錄。此架構不再增加 project-name／framework-name wrapper，後續新元件才依新版固定 component root 規則選擇路徑。
+
 ```mermaid
 flowchart LR
     U["Flutter Web／Android／iOS"] -->|"HTTPS JSON + Bearer token"| A["Fastify API :3000"]

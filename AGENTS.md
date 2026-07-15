@@ -39,6 +39,8 @@
 
 - 已確認 executable components：`apps/client/` 是 Flutter Android／iOS／Web Client；`services/api/` 是 Fastify TypeScript／Node.js 22 後端。
 - `design-system/` 是沒有 runtime、manifest 或部署生命週期的設計支援資產；`docs/` 是產品、架構、競賽、測試與部署依據，兩者不冒充 executable component。
+- `structure_exception`：保留既有 `apps/client/` 與 `services/api/` monorepo 路徑；兩者本身就是 framework root，manifest 直接位於各 component，不得再建立 project-name 或 framework-name wrapper。這是既有專案例外，不是新專案的預設結構。
+- Flutter、Fastify、Node.js 22 與 npm 是已實作且可驗證的學生技術選型；除非另行核准遷移，不為了套用公司新專案基線而更換框架、runtime 或 package manager。
 - 已選定 Coolify 三 Resource 架構：Flutter Web Application、Fastify API Application、PostgreSQL Database；AI 僅由 API 呼叫量界智算的 OpenAI-compatible endpoint。尚未建立的 VPS、Coolify、DNS、資料庫與外部 AI 連線不得描述成已完成。
 - Repository 與專案根目錄名稱維持 `FutureMint_AI`；Coolify resources 與新技術識別優先使用 `futuremint-ai` 或平台既有命名慣例。
 - 新 component id、路徑與一般文件名使用能表達責任的 lowercase kebab-case；保留既有 `apps/client`、`services/api` 與 `design-system`。

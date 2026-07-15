@@ -16,6 +16,12 @@
 - Deployment：`other (self-hosted Coolify)`
 - Team collaboration：`true`
 
+## 結構與技術例外
+
+- `structure_exception`：保留初始化新版固定 component root 規則前已建立的 `apps/client/` 與 `services/api/`。兩者各自有獨立 runtime、manifest、品質指令與部署生命週期，且既有 Compose、文件與開發指令皆以此為準；不進行只為改名的搬移。
+- Framework root 證據：`apps/client/pubspec.yaml` 與 `services/api/package.json` 直接位於 component 根目錄，沒有 project-name／framework-name wrapper，也沒有巢狀 `.git/`。
+- `technology_source`：`existing-project`。Flutter、Fastify、Node.js 22 與 npm 是競賽期間已實作且通過品質檢查的技術選型；公司基線只作未指定技術之新專案預設，不自動觸發遷移。
+
 ## Executable components
 
 - `client`：path=`apps/client`，kind=`app`，framework=`Flutter`，package_manager=`flutter`，quality=analyze, test, build，deployment=Coolify Dockerfile Web Application。
