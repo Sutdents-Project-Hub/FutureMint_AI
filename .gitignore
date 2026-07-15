@@ -33,6 +33,7 @@ output/
 *.log
 local.settings.json
 .azure/
+.firecrawl/
 
 # IDE
 .idea/

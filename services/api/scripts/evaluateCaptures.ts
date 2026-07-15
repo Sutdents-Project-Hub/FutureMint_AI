@@ -156,13 +156,13 @@ const evaluate = async (): Promise<void> => {
     `- 完整通過：${summary.passedCases}/${summary.syntheticCases}（${percent(summary.casePassRate)}）`,
     `- Schema 合法：${summary.schemaValidCases}/${summary.syntheticCases}（${percent(summary.schemaValidityRate)}）`,
     `- 欄位檢查：${summary.checksPassed}/${summary.checksTotal}（${percent(summary.fieldAccuracyRate)}）`,
-    "- Provider：`deterministic-demo`（此報告不是 Azure OpenAI 成效證據）",
+    "- Provider：`deterministic-demo`（此報告不是量界智算真實模型成效證據）",
     "",
     "## 未通過案例",
-    "",
     ...results
       .filter((result) => !result.passed)
       .flatMap((result) => [
+        "",
         `### ${result.id}`,
         "",
         ...result.failures.map((failure) => `- ${failure}`),

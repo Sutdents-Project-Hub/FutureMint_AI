@@ -13,7 +13,7 @@ Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
   const apiBaseUrl = String.fromEnvironment(
     'API_BASE_URL',
-    defaultValue: 'http://localhost:7071/api/',
+    defaultValue: 'http://localhost:3000/api/',
   );
   final apiUri = Uri.parse(apiBaseUrl);
   final store = await SessionStore.create();

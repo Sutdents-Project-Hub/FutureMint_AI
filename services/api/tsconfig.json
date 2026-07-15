@@ -6,7 +6,7 @@
     "rootDir": ".",
     "sourceMap": true,
     "skipLibCheck": true,
-    "strict": false,
+    "strict": true,
     "esModuleInterop": true
   },
   "exclude": ["dist", "test"]

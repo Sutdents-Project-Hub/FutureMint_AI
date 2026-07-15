@@ -4,11 +4,11 @@
 
 - 本檔適用於整個 `FutureMint AI` repository；子目錄若有更具體的 `AGENTS.md`，只在該範圍內補充本檔。
 - 依序遵守使用者當次指示、本檔、根目錄 `README.md`、`docs/` 與元件 README；內容衝突時先停止並確認。
-- 目前階段：第六屆中學生黑客松決賽原型。目標部署平台為 Microsoft Azure，目前尚未部署。
+- 目前階段：第六屆中學生黑客松決賽原型。主辦方 Azure 環境已關閉；目前目標是由私人 GitHub repository 自動部署到團隊 VPS 的 Coolify，尚未部署。
 - Git repository 名稱：`FutureMint_AI`。全新專案的初始 branch 為 `main`。
 - Project slug：`futuremint-ai`。
 - 產品型態：`hybrid`。
-- Bootstrap 模式：`executable`；Flutter 與 Azure Functions 均需以 manifest、lockfile 與實際品質指令維持此狀態。
+- Bootstrap 模式：`executable`；Flutter 與 Fastify API 均需以 manifest、lockfile、Dockerfile 與實際品質指令維持此狀態。
 
 ### 已確認功能領域
 
@@ -22,27 +22,27 @@
 - 優先完成一條可重複、可降級的 Demo 主流程。
 - 不串接支付、銀行、電子發票、證券交易或真實未成年人金融服務。
 - 決賽只使用合成資料，或取得同意且完成去識別的資料。
-- 技術、操作與 Azure 證據必須能由學生團隊自行維護及說明。
+- 技術、操作與部署證據必須能由學生團隊自行維護及說明。
 
 ### 假設與未決事項
 
 - 主 Persona 是開始管理零用錢與數位消費的中學生；正式帳號與家長共管不在 MVP。
-- 主要 Demo 面為 Flutter Web 或 Android；iOS 簽章、展示裝置、網路備援與 Azure quota／RBAC 仍待確認。
+- 主要 Demo 面為 Flutter Web 或 Android；iOS 簽章、展示裝置、網路備援、正式 domain 與 VPS 備份仍待確認。
 - 訂閱方案資料來源及青少年可用性測試的同意／去識別方式尚待團隊定案。
 
 ## 專案事實與邊界
 
 青少年 AI 金錢決策教練，將主動輸入的收入、支出與訂閱轉為預算回饋、個人化金融微課程與教育性複利預覽。
 
-- 已確認 executable components：`apps/client/` 是 Flutter Android／iOS／Web Client；`services/api/` 是 Azure Functions TypeScript／Node.js 22 後端。
+- 已確認 executable components：`apps/client/` 是 Flutter Android／iOS／Web Client；`services/api/` 是 Fastify TypeScript／Node.js 22 後端。
 - `design-system/` 是沒有 runtime、manifest 或部署生命週期的設計支援資產；`docs/` 是產品、架構、競賽、測試與部署依據，兩者不冒充 executable component。
-- 已選定 Azure Static Web Apps、Functions、Cosmos DB、Azure OpenAI／Foundry 與 Application Insights 作為目標架構；尚未建立的雲端資源不得描述成已完成。
-- Repository 與專案根目錄名稱維持 `FutureMint_AI`；Azure 資源與新技術識別優先使用 `futuremint-ai` 或平台既有命名慣例。
+- 已選定 Coolify 三 Resource 架構：Flutter Web Application、Fastify API Application、PostgreSQL Database；AI 僅由 API 呼叫量界智算的 OpenAI-compatible endpoint。尚未建立的 VPS、Coolify、DNS、資料庫與外部 AI 連線不得描述成已完成。
+- Repository 與專案根目錄名稱維持 `FutureMint_AI`；Coolify resources 與新技術識別優先使用 `futuremint-ai` 或平台既有命名慣例。
 - 新 component id、路徑與一般文件名使用能表達責任的 lowercase kebab-case；保留既有 `apps/client`、`services/api` 與 `design-system`。
 - 保留現有且可工作的專案結構與框架慣例；新增元件時才選擇清楚、簡短、符合責任的路徑。
 - 不因範本而重新命名既有資料夾，不建立未使用的 `app/`、`web/`、`backend/`、`docs/` 或部署資源。
 - 不把不同執行環境、依賴或部署生命週期硬塞進同一元件；需要共用程式碼時，先確認至少有兩個真實使用者。
-- Flutter／Web 不得直接持有 Azure OpenAI 或 Cosmos DB secret；模型與資料存取一律經 Functions。AI 回覆必須經 schema／範圍驗證，金額、期限與複利使用確定性程式計算。
+- Flutter／Web 不得直接持有量界智算 API key 或 PostgreSQL connection string；模型與資料存取一律經 Fastify API。AI 回覆必須經 schema／範圍驗證，金額、期限與複利使用確定性程式計算。
 - Flutter UI 以 `design-system/futuremint-ai/MASTER.md` 為共用視覺、響應式與可及性依據；實作與規範衝突時先確認需求並同步兩邊，不靜默漂移。
 
 ## 工作方式
@@ -67,7 +67,7 @@
 
 - 真實 API key、token、secret、password、private key、cookie、憑證、Webhook URL、production `.env`、個資與未公開資料不得寫入程式、文件、log、commit 或範例。
 - `.env.example` 只保留變數名稱與安全 placeholder；前端或 App 可見的設定不得被當成秘密，敏感操作必須由可信任後端或平台執行。
-- `services/api/.env.example` 是安全的變數名稱索引；Azure Functions 本機實際值依平台慣例放在已忽略的 `local.settings.json`，部署值放 App Settings／受控 secret store。
+- `services/api/.env.example` 是安全的變數名稱索引；本機實際值放在已忽略的 `.env`，部署值放 Coolify Environment Variables。`DATABASE_URL`、`LIANGJIE_API_KEY` 等秘密只能設為 runtime secret，不得設成前端 build argument 或寫入 repository。
 - 合約、協議、報價、法務／商業文件、客戶或學生個資預設不提交；若專案確實需要公開的競賽文件，先逐檔確認內容與授權。
 - 使用資料集、模型、圖片、字型、套件或程式碼前確認來源、授權與競賽規則；README 記錄必要 attribution，不自行選擇 LICENSE。
 

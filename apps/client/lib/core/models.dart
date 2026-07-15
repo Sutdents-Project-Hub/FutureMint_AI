@@ -13,7 +13,7 @@ enum MoneyCategory {
   other,
 }
 
-enum CaptureSource { azureAi, deterministicDemo }
+enum CaptureSource { liangjieAi, deterministicDemo }
 
 enum BillingCycle { monthly, yearly }
 
@@ -21,12 +21,12 @@ T _enumByName<T extends Enum>(Iterable<T> values, String name) =>
     values.firstWhere((value) => value.name == name);
 
 String _sourceToJson(CaptureSource source) => switch (source) {
-  CaptureSource.azureAi => 'azure-ai',
+  CaptureSource.liangjieAi => 'liangjie-ai',
   CaptureSource.deterministicDemo => 'deterministic-demo',
 };
 
 CaptureSource _sourceFromJson(String value) => switch (value) {
-  'azure-ai' => CaptureSource.azureAi,
+  'liangjie-ai' => CaptureSource.liangjieAi,
   _ => CaptureSource.deterministicDemo,
 };
 

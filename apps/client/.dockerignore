@@ -1,0 +1,15 @@
+.dart_tool
+.git
+.github
+.idea
+.metadata
+.playwright-cli
+Dockerfile*
+README.md
+android/.gradle
+build
+coverage
+ios/Pods
+output
+*.iml
+*.log

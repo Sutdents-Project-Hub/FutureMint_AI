@@ -2,39 +2,44 @@
 
 ## 整合狀態
 
-| 服務 | 實作 | 已驗證 | 尚未驗證 |
+| 整合 | 已實作 | 已驗證 | 尚未驗證 |
 |---|---|---|---|
-| Azure OpenAI／Foundry | structured output adapter、Managed Identity／key 建立路徑、timeout／429／schema handling | fake client tests | 真實 endpoint、deployment、RBAC、quota、latency |
-| Cosmos DB for NoSQL | account／session／profile／event／learning repository、partition query、idempotency | fake client tests | 真實 account、containers、RBAC、吞吐與備份 |
-| Application Insights | 安全設定名稱與去識別 event 邊界 | 程式不輸出 capture 原文 | 真實 connection、dashboard 與 retention |
-| Static Web Apps | Flutter release Web 產物可建置 | `flutter build web --release` | Azure resource、domain、CORS 與 deployment |
+| 量界智算 | OpenAI-compatible adapter、timeout／429／schema handling、JSON fence 容錯 | fake client unit tests | 正式 key、model access、quota、內容品質、production latency |
+| PostgreSQL | accounts／sessions／profiles／events／lessons repository、migration、idempotency | PostgreSQL 17 本機容器與 API 重啟持久化 | Coolify internal URL、backup／restore、production capacity |
+| Coolify | 兩個 Dockerfile、ports、health checks、三 Resource 設定文件 | 本機 image／container 驗證 | Private GitHub App、webhook、domains、TLS、rollback |
+| GitHub | 目標為 private repository `main` 自動部署 | 本機 repository 存在 | 目前沒有 remote；尚未連 Coolify |
 
-## Functions authentication
+## 量界智算契約
 
-- Auth 是 application 自己的 email/password prototype，不是 Azure AD B2C、Entra ID 或第三方 OAuth 整合。
-- 帳號密碼用 `scrypt` 雜湊；登入 token 只以 hash 儲存於 server，並有 7 天到期及登出撤銷。
-- `Authorization: Bearer` 是 CORS 明確允許 header；登入後所有資料路由由後端 session 主體決定 ownership。
-- 不得把 password、token、Authorization header 或 session document 寫入 Application Insights／一般 log。
-- email verification、reset password、delete account、rate limit 與 age consent 尚未實作，不能宣稱 production-ready。
+- API base URL 預設 `https://liangjiewis.com/v1`，由 `LIANGJIE_BASE_URL` 注入。
+- Model id 由 `LIANGJIE_MODEL` 注入；範例值只是設定格式，實際可用 model 必須以團隊帳號驗證。
+- `LIANGJIE_API_KEY` 只存在 Fastify API runtime environment；Flutter、Nginx、GitHub 與 Docker build log 都不應取得。
+- Adapter 使用 OpenAI-compatible chat completions。因 relay 不保證所有 provider-specific parameters，程式以 prompt 要求 JSON，再自行去除 Markdown fence、抽取 object、做 schema 與語意驗證。
+- Timeout、429、invalid JSON、schema mismatch 都回安全且可觀察的 domain error；不記錄 prompt、原文、key 或完整 provider body。
+- 不自動 fallback 到 deterministic provider，避免把 Demo 結果冒充即時 AI。
 
-## Azure OpenAI 契約
-
-- Client 不直接呼叫模型；endpoint、deployment、API version 與可選 key 只在 Functions 設定。
-- 無 key 時使用 `DefaultAzureCredential`／Managed Identity token provider。
-- Parse 使用嚴格 JSON Schema，最多五筆 drafts；回覆仍經 Zod 驗證、列舉與數值範圍檢查。
-- Lesson 只收到類型、分類、是否週期／分帳與目標名稱，不傳事件金額；輸出若新增未驗證的金額、比例、期限或數量會被拒絕。
-- 單次呼叫 timeout 8 秒、整體 budget 12 秒；429 依 `Retry-After` 加 jitter，且最多一次 bounded retry。
-- 日誌只記 provider event、attempt、status 與 elapsed time，不記 prompt、原始財務文字或完整 response。
-- AI 不計算權威金額、預算、分帳、訂閱成本或複利，也不能直接寫資料庫。
+量界智算是第三方 relay。部署前需確認帳號、模型供應來源、資料處理條款、費率、額度、內容政策、穩定性與競賽規則；不應假設它等同原模型供應商的 SLA 或隱私承諾。
 
 ## Deterministic demo provider
 
-此 provider 支援繁中收入、餐飲／交通／娛樂／教育／購物支出、訂閱、中文／阿拉伯數字分帳、缺金額、否定句、多筆、折扣實付、昨天／前天與無關文字。所有 draft 標示 `deterministic-demo`。
+`AI_PROVIDER=demo` 用於：
 
-它只用於本機 Functions、可重現自動化測試與 30-case 評估；不是 Client 的離線資料來源。不得把 deterministic 結果描述成 Azure OpenAI 模型表現。
+- 本機無網路展示。
+- 可重現 unit／integration tests。
+- 30-case 合成繁中 regression evaluation。
 
-## 訂閱資料來源與未整合項目
+它不是量界模型，也不是登入模式的自動 fallback。簡報需將 deterministic 30/30 與量界真實模型實測分開陳述。
 
-MVP 方案目錄是版本化合成 fixture，所有 options 帶 `sourceType` 與 `asOf`，畫面明示不是即時市場資訊。AI 不會捏造價格、資格或官方條款。
+## PostgreSQL
 
-不整合支付、銀行、電子發票、證券、Apple Pay、LINE Pay、Email、SMS 或真實未成年人金融服務。主辦方若提供共享 Azure 資源，串接前必須確認授權、輪替任何已曝光金鑰，且不得修改其他隊伍 deployment。
+API 只透過 parameterized SQL 存取 Coolify PostgreSQL。`DATABASE_URL` 只放 API runtime secret。Database 不應有 public port；開發者若需管理，使用 Coolify console、受控 tunnel 或短時 allowlist，不把 connection URL 分享到群組或文件。
+
+## Private GitHub 自動部署
+
+Coolify 應以 GitHub App（只授權 `FutureMint_AI` private repository）或該 repository 的唯讀 Deploy Key 取得程式碼。啟用 webhook／automatic deployment 後，`main` push 會觸發前端與 API applications 重新 build；PostgreSQL Resource 不從 GitHub build。
+
+目前 workspace 沒有 remote，未執行 push，也沒有在 Coolify 建立 App。詳細設定見 [部署說明](deployment.md)。
+
+## 明確不整合
+
+不整合支付、銀行、電子發票、證券、Apple Pay、LINE Pay、Email、SMS 或真實未成年人金融服務。主辦方 Azure 關閉後，runtime 也不再依賴任何 Azure service。

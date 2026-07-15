@@ -90,7 +90,7 @@ void main() {
       confidence: 0.8,
       missingFields: const [],
       needsConfirmation: true,
-      source: CaptureSource.azureAi,
+      source: CaptureSource.liangjieAi,
     );
 
     await tester.pumpWidget(

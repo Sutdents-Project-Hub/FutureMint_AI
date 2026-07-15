@@ -175,8 +175,8 @@ class _DraftEditorState extends State<DraftEditor> {
               Chip(
                 avatar: const Icon(Icons.rule_rounded, size: 16),
                 label: Text(
-                  widget.draft.source == CaptureSource.azureAi
-                      ? 'Azure AI 解析'
+                  widget.draft.source == CaptureSource.liangjieAi
+                      ? '量界智算 AI 解析'
                       : '離線規則解析',
                 ),
               ),

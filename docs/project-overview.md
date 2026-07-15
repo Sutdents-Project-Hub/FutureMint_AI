@@ -4,65 +4,62 @@
 
 FutureMint AI 是專為青少年設計的 AI 金錢決策教練：把使用者主動輸入的收入、支出與訂閱，轉為當下可理解的選擇建議、個人化金融微課程與教育性未來預覽。
 
-## 核心問題
+## 核心問題與使用者
 
-青少年開始獨立面對零用錢、交通、飲食、遊戲與數位訂閱，卻常只有「月底才發現錢不夠」的記帳結果。現有工具多著重交易彙整或成人財務管理，較少把青少年當下的真實金錢事件，轉成能理解、能反思、能採取下一步的學習閉環。
+青少年開始獨立面對零用錢、交通、飲食、遊戲與數位訂閱，卻常只有「月底才發現錢不夠」的記帳結果。主要 Persona 是開始自行管理日常開銷與數位消費的中學生；家長、上班族與銀髮族不進入本次 MVP。
 
-## 主要使用者與情境
+## 決賽 MVP
 
-- 主 Persona：有零用錢與數位消費、開始自行管理日常開銷的中學生。
-- 主要情境：收入進帳後沒有分配、小額支出累積、共享或重複訂閱、想存錢卻看不見選擇的長期差異。
-- 家長、上班族與銀髮族只列未來延伸，不進入本次主要故事與 MVP。
+1. 用自然語言輸入收入、支出與訂閱；登入帳號由 Fastify API 呼叫量界智算或明確標示的 deterministic provider。
+2. Provider 回傳符合 schema 的可修改草稿；未確認前不寫資料庫。
+3. PostgreSQL 保存帳號自己的 profile、events 與 lessons，API 重啟後仍可取回。
+4. 程式以確定性規則計算預算、剩餘金額、分帳、訂閱成本與複利。
+5. 微課只取得需要的事件摘要，提供一個觀念、一個例子與一個可行動選擇。
+6. 訂閱比較使用版本化合成方案，不冒充即時市場資訊。
+7. FutureSeed 明示投入、期間與假設利率，不等於金融商品或實際報酬。
+8. 訪客模式可離線展示，但資料只留在 Flutter 記憶體。
 
-## 決賽 MVP 範圍
+## 非範圍
 
-1. 自然語言記錄收入、支出與訂閱；登入帳號經 Functions 呼叫 Azure AI provider 或明確標示的 deterministic provider 回傳符合 schema 的草稿，訪客模式只使用暫存合成資料。
-2. 使用者確認或修正草稿後，才保存交易。
-3. 以規則計算預算、剩餘金額、期限與分類統計。
-4. 教練 provider 根據事件與有限度的摘要背景提供青少年可理解的回饋；Azure AI 真實連線尚未驗證時不得冒充其成效。
-5. 產生與事件相關的微課程，包含一個觀念、一個例子與一個行動。
-6. 依已記錄的訂閱價格與分帳人數，比較版本化合成方案的成本、差額與資格；不假裝為即時市場資訊。
-7. 用明確公式展示儲蓄與複利情境，標示假設且不等同實際投資報酬。
-
-## 非本階段範圍
-
-- Apple Pay、LINE Pay、悠遊卡、銀行、電子發票或 Email 的自動同步。
+- Apple Pay、LINE Pay、悠遊卡、銀行、電子發票、Email 自動同步。
 - 付款、轉帳、證券下單、開戶、金融商品推薦、信用評分或保證報酬。
 - 家長監控、學校帳號、公開排行榜與跨世代完整產品線。
-- 正式營運等級的法遵、客服、付費、災難復原與大規模資料管線。
-- 將所有數學或分類工作交給 AI；可以確定計算的部分由程式處理。
+- 正式未成年人法遵、客服、付費、災難復原與大規模資料管線。
+- 將可確定計算的金額與公式交給 AI。
+- Azure runtime；主辦方 Azure 已關閉，現行部署目標是團隊 VPS／Coolify。
 
 ## 核心驗收
 
 | 流程 | 可觀察完成條件 |
 |---|---|
-| Quick Capture | deterministic provider 的 30 筆合成繁中案例與 225 個欄位檢查通過；Azure provider 另以 fake client 測試，真實模型成效尚待驗證 |
-| 交易保存 | 未確認草稿不寫入；確認後重新整理仍能取回 |
+| Quick Capture | 30 筆 deterministic 合成繁中回歸通過；量界 adapter 的 JSON／timeout／429／schema 行為有 fake client tests，真實模型另行實測 |
+| Authentication | Register／login／logout／session revoke；不同帳號無法讀寫彼此資料 |
+| 交易保存 | Parse 不寫入；確認後重新整理與 API restart 仍能取回 |
 | 預算回饋 | 相同輸入產生相同數學結果，金額與邊界條件有測試 |
-| 訂閱教練 | 至少能比較兩種方案，清楚區分已知價格、使用者輸入與 AI 建議 |
-| 微課程 | 內容與最近已確認事件相關、適合青少年、含限制提示；新事件會使舊課失效並產生新課 |
-| FutureSeed | 公式、期間、投入與假設利率可見；結果標示為教育模擬 |
-| AI 失敗 | timeout、429、格式錯誤或服務不可用時有重試／降級，不破壞既有資料 |
-| 決賽 Demo | 使用合成資料可在固定腳本內完成，另有錄影或靜態備援 |
+| 訂閱教練 | 比較至少兩種合成方案，區分已知價格、使用者輸入與解釋 |
+| 微課程 | 與最近確認事件相關、含限制提示；來源標示量界或 Demo |
+| FutureSeed | 公式、期間、投入與假設利率可見；結果標示教育模擬 |
+| AI 失敗 | Timeout、429、格式錯誤時不保存、不洩漏、不偷偷切 Demo |
+| Coolify | 三 Resources 分離；Web／API health、PostgreSQL persistence、private database、backup／restore 可證明 |
+| 決賽 Demo | 用合成資料完成固定腳本，另有訪客模式與錄影備援 |
 
-## 已知決定
+## 已決定技術
 
-- Client：Flutter，共用 Android、iOS 與 Web。
-- Server：Azure Functions TypeScript，Node.js 22。
-- Data：Cosmos DB for NoSQL；資料模型與容量模式在部署前確認。
-- AI：Azure OpenAI／Foundry adapter 與錯誤處理已用 fake client 驗證；真實 endpoint、deployment、quota、latency 與內容品質尚待實測。
-- Web Hosting：Azure Static Web Apps；API 可分離部署至 Functions Flex Consumption。
-- 監測：Application Insights，禁止記錄完整財務文字或秘密。
-- Design：`design-system/futuremint-ai/MASTER.md` 是 Flutter 視覺、響應式與可及性共同依據，不是獨立 executable component。
+- Client：Flutter 3.41.x，Web 由 Nginx container 服務。
+- API：Fastify 5 + TypeScript + Node.js 22。
+- Data：Coolify PostgreSQL 17，versioned SQL migrations。
+- AI：量界智算 OpenAI-compatible adapter；deterministic provider 只供 Demo／測試。
+- Hosting：private GitHub repository → Coolify Auto Deploy；Web、API、PostgreSQL 三個 Resources。
+- Security：scrypt password、hashed session token、Bearer ownership、Zod、CORS allowlist、rate limit 與 parameterized SQL。
+- Design：`design-system/futuremint-ai/MASTER.md` 是 Flutter 視覺、響應式與可及性共同依據，不是 runtime。
 
-## 尚待團隊確認
+## 待團隊確認
 
-- 決賽實際 demo 裝置與網路備援順序。
+- 正式 Web／API domains、VPS 容量、監測與現場網路備援。
+- 量界帳號可用 model、費率、quota、資料條款與競賽允許性。
+- PostgreSQL backup schedule、retention、S3 destination 與 restore 演練。
 - 青少年訪談／可用性測試人數，以及監護與去識別方式。
-- 訂閱方案資料採純合成資料、人工維護資料或公開來源；不得未經授權爬取。
-- 共享 Azure 配額、區域、模型 deployment 名稱與主辦方可提供的 RBAC 協助。
-- iOS 簽章 Team；未完成前以 Android 與 Web 作為主要展示面。
+- 訂閱方案資料來源與授權。
+- iOS signing Team；Android／Web 為主要展示面。
 
-完整版本演進、競品、簡報與問答見 [產品規格與決賽策略](product-spec.md)。
-
-可重現的實測結果見 [測試與證據](testing-and-evidence.md)，現場流程與降級說法見 [Demo 腳本](demo-script.md)。
+完整策略見 [產品規格](product-spec.md)，實測見 [測試與證據](testing-and-evidence.md)，現場流程見 [Demo 腳本](demo-script.md)。

@@ -1,11 +1,13 @@
-import type { HttpRequest } from "@azure/functions";
-
 import type { PublicAccount } from "../contracts/models";
 import { DomainError } from "../contracts/errors";
 import { getRuntime, type Runtime } from "./runtime";
 
-export const bearerToken = (request: Pick<HttpRequest, "headers">): string => {
-  const value = request.headers.get("authorization");
+interface HeaderRequest {
+  headers: { authorization?: string };
+}
+
+export const bearerToken = (request: HeaderRequest): string => {
+  const value = request.headers.authorization;
   const token = value?.match(/^Bearer ([A-Za-z0-9_-]{43})$/)?.[1];
   if (!token) {
     throw new DomainError("unauthorized", "請先登入後再繼續。", 401);
@@ -14,6 +16,6 @@ export const bearerToken = (request: Pick<HttpRequest, "headers">): string => {
 };
 
 export const requireAuthenticatedUser = async (
-  request: Pick<HttpRequest, "headers">,
+  request: HeaderRequest,
   runtime: Runtime = getRuntime(),
 ): Promise<PublicAccount> => runtime.authService.authenticate(bearerToken(request));

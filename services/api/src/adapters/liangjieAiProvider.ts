@@ -1,10 +1,6 @@
 import { randomUUID } from "node:crypto";
 
-import {
-  DefaultAzureCredential,
-  getBearerTokenProvider,
-} from "@azure/identity";
-import { AzureOpenAI } from "openai";
+import OpenAI from "openai";
 import { z } from "zod";
 
 import type {
@@ -34,7 +30,7 @@ interface ChatClient {
 
 interface ProviderOptions {
   client: ChatClient;
-  deployment: string;
+  model: string;
   perCallTimeoutMs?: number;
   totalBudgetMs?: number;
   sleep?: (milliseconds: number) => Promise<void>;
@@ -130,11 +126,6 @@ const lessonOutputSchema = z.object({
   options: z.array(lessonText(80)).min(2).max(4),
   action: lessonText(120),
   disclaimer: z.string().min(1).max(120),
-});
-
-const structuredOutput = (name: string, schema: Record<string, unknown>) => ({
-  type: "json_schema",
-  json_schema: { name, strict: true, schema },
 });
 
 const captureJsonSchema = {
@@ -246,6 +237,25 @@ const completionContent = (response: unknown): string => {
   return content;
 };
 
+const completionJson = (response: unknown): unknown => {
+  const content = completionContent(response).trim();
+  const withoutFence = content
+    .replace(/^```(?:json)?\s*/iu, "")
+    .replace(/\s*```$/u, "")
+    .trim();
+  const start = withoutFence.indexOf("{");
+  const end = withoutFence.lastIndexOf("}");
+  if (start < 0 || end < start) {
+    throw new DomainError(
+      "ai_invalid_output",
+      "AI 回覆格式無法驗證。",
+      503,
+      true,
+    );
+  }
+  return JSON.parse(withoutFence.slice(start, end + 1));
+};
+
 const retryAfterSeconds = (error: unknown): number => {
   const headers = (
     error as {
@@ -261,9 +271,9 @@ const retryAfterSeconds = (error: unknown): number => {
   return Number.isFinite(parsed) && parsed >= 0 ? parsed : 0;
 };
 
-export class AzureOpenAiProvider implements AiProvider {
+export class LiangjieAiProvider implements AiProvider {
   private readonly client: ChatClient;
-  private readonly deployment: string;
+  private readonly model: string;
   private readonly perCallTimeoutMs: number;
   private readonly totalBudgetMs: number;
   private readonly sleep: (milliseconds: number) => Promise<void>;
@@ -271,7 +281,7 @@ export class AzureOpenAiProvider implements AiProvider {
 
   constructor(options: ProviderOptions) {
     this.client = options.client;
-    this.deployment = options.deployment;
+    this.model = options.model;
     this.perCallTimeoutMs = options.perCallTimeoutMs ?? 8000;
     this.totalBudgetMs = options.totalBudgetMs ?? 12000;
     this.sleep =
@@ -294,7 +304,7 @@ export class AzureOpenAiProvider implements AiProvider {
           signal: controller.signal,
         });
         this.logger({
-          event: "azure_openai_success",
+          event: "liangjie_ai_success",
           attempt,
           elapsedMs: Date.now() - startedAt,
         });
@@ -303,7 +313,7 @@ export class AzureOpenAiProvider implements AiProvider {
         const status = (error as { status?: number }).status;
         const aborted = (error as { name?: string }).name === "AbortError";
         this.logger({
-          event: aborted ? "azure_openai_timeout" : "azure_openai_error",
+          event: aborted ? "liangjie_ai_timeout" : "liangjie_ai_error",
           attempt,
           status,
         });
@@ -347,12 +357,12 @@ export class AzureOpenAiProvider implements AiProvider {
 
   async parseCapture(input: CaptureInput): Promise<CaptureParseResult> {
     const response = await this.request({
-      model: this.deployment,
+      model: this.model,
       messages: [
         {
           role: "system",
           content:
-            "你是青少年金錢事件解析器。只抽取已發生的收入、支出或訂閱；否定句不得建立草稿。金額不可猜測。",
+            `你是青少年金錢事件解析器。只抽取已發生的收入、支出或訂閱；否定句不得建立草稿。金額不可猜測。只輸出一個 JSON object，不得加上 Markdown 或解釋。JSON Schema：${JSON.stringify(captureJsonSchema)}`,
         },
         {
           role: "user",
@@ -363,15 +373,11 @@ export class AzureOpenAiProvider implements AiProvider {
           }),
         },
       ],
-      response_format: structuredOutput(
-        "futuremint_capture",
-        captureJsonSchema,
-      ),
     });
 
     try {
       const parsed = captureOutputSchema.parse(
-        JSON.parse(completionContent(response)),
+        completionJson(response),
       );
       return {
         drafts: parsed.drafts.map((draft) => ({
@@ -398,7 +404,7 @@ export class AzureOpenAiProvider implements AiProvider {
           confidence: draft.confidence,
           missingFields: draft.missingFields,
           needsConfirmation: true,
-          source: "azure-ai",
+          source: "liangjie-ai",
         })),
         clarificationQuestion: parsed.clarificationQuestion ?? undefined,
         rejectedReason: parsed.rejectedReason ?? undefined,
@@ -422,12 +428,12 @@ export class AzureOpenAiProvider implements AiProvider {
       hasSplit: Boolean(event.split),
     }));
     const response = await this.request({
-      model: this.deployment,
+      model: this.model,
       messages: [
         {
           role: "system",
           content:
-            "產生非責備語氣的繁體中文青少年金融微課。不得推薦投資標的或保證報酬；不得自行新增、推算或回述任何金額、比例、期限或數量。",
+            `產生非責備語氣的繁體中文青少年金融微課。不得推薦投資標的或保證報酬；不得自行新增、推算或回述任何金額、比例、期限或數量。只輸出一個 JSON object，不得加上 Markdown 或解釋。JSON Schema：${JSON.stringify(lessonJsonSchema)}`,
         },
         {
           role: "user",
@@ -437,19 +443,18 @@ export class AzureOpenAiProvider implements AiProvider {
           }),
         },
       ],
-      response_format: structuredOutput("futuremint_lesson", lessonJsonSchema),
     });
 
     try {
       const parsed = lessonOutputSchema.parse(
-        JSON.parse(completionContent(response)),
+        completionJson(response),
       );
       return {
         id: randomUUID(),
         userId: context.userId,
         ...parsed,
         sourceEventIds: context.events.slice(-5).map((event) => event.id),
-        source: "azure-ai",
+        source: "liangjie-ai",
         createdAt: new Date().toISOString(),
       };
     } catch (error) {
@@ -464,34 +469,24 @@ export class AzureOpenAiProvider implements AiProvider {
   }
 }
 
-export const createAzureOpenAiProviderFromEnvironment =
-  (): AzureOpenAiProvider => {
-    const endpoint = process.env.AZURE_OPENAI_ENDPOINT;
-    const deployment = process.env.AZURE_OPENAI_DEPLOYMENT;
-    if (!endpoint || !deployment) {
+export const createLiangjieAiProviderFromEnvironment =
+  (): LiangjieAiProvider => {
+    const baseURL = process.env.LIANGJIE_BASE_URL;
+    const model = process.env.LIANGJIE_MODEL;
+    const apiKey = process.env.LIANGJIE_API_KEY;
+    if (!baseURL || !model || !apiKey) {
       throw new Error(
-        "AZURE_OPENAI_ENDPOINT and AZURE_OPENAI_DEPLOYMENT are required",
+        "LIANGJIE_BASE_URL, LIANGJIE_MODEL and LIANGJIE_API_KEY are required",
       );
     }
-    const apiVersion = process.env.AZURE_OPENAI_API_VERSION || "2024-10-21";
-    const apiKey = process.env.AZURE_OPENAI_API_KEY;
-    const azureADTokenProvider = apiKey
-      ? undefined
-      : getBearerTokenProvider(
-          new DefaultAzureCredential(),
-          "https://cognitiveservices.azure.com/.default",
-        );
-    const client = new AzureOpenAI({
-      endpoint,
-      deployment,
-      apiVersion,
+    const client = new OpenAI({
+      baseURL: baseURL.replace(/\/+$/u, ""),
       apiKey,
-      azureADTokenProvider,
       maxRetries: 0,
     });
-    return new AzureOpenAiProvider({
+    return new LiangjieAiProvider({
       client: client as unknown as ChatClient,
-      deployment,
+      model,
       logger: (event) => console.info("futuremint_ai_provider", event),
     });
   };

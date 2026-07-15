@@ -1,44 +1,13 @@
-import { HttpRequest, InvocationContext } from "@azure/functions";
-import { beforeEach, describe, expect, it } from "vitest";
+import type { FastifyInstance } from "fastify";
+import { afterEach, beforeEach, describe, expect, it } from "vitest";
 
-import { InMemoryRepository } from "../../src/adapters/inMemoryRepository";
 import { demoCatalog } from "../../src/adapters/demoCatalog";
 import { DemoAiProvider } from "../../src/adapters/demoAiProvider";
+import { InMemoryRepository } from "../../src/adapters/inMemoryRepository";
 import { FutureMintService } from "../../src/application/futureMintService";
 import { AuthService } from "../../src/auth/authService";
-import {
-  loginHandler,
-  meHandler,
-  registerHandler,
-} from "../../src/functions/auth";
-import {
-  createMoneyEventHandler,
-  listMoneyEventsHandler,
-} from "../../src/functions/moneyEvents";
-import { setRuntimeForTests } from "../../src/http/runtime";
-
-const context = () =>
-  new InvocationContext({
-    invocationId: "auth-test-request",
-    functionName: "auth-test",
-    logHandler: () => undefined,
-  });
-
-const request = (
-  path: string,
-  method = "GET",
-  body?: unknown,
-  token?: string,
-) =>
-  new HttpRequest({
-    url: `http://localhost${path}`,
-    method,
-    headers: {
-      "content-type": "application/json",
-      ...(token ? { authorization: `Bearer ${token}` } : {}),
-    },
-    body: body === undefined ? undefined : { string: JSON.stringify(body) },
-  });
+import { buildServer } from "../../src/http/server";
+import type { Runtime } from "../../src/http/runtime";
 
 const credentials = (email: string) => ({
   email,
@@ -46,110 +15,110 @@ const credentials = (email: string) => ({
 });
 
 describe("authenticated HTTP routes", () => {
-  beforeEach(() => {
+  let app: FastifyInstance;
+
+  beforeEach(async () => {
     const repository = new InMemoryRepository();
-    setRuntimeForTests({
+    const runtime: Runtime = {
       mode: "demo",
       aiProvider: "demo",
       dataProvider: "memory",
-      service: new FutureMintService(
-        repository,
-        new DemoAiProvider(),
-        demoCatalog,
-      ),
+      service: new FutureMintService(repository, new DemoAiProvider(), demoCatalog),
       authService: new AuthService(repository),
-    });
+      healthCheck: async () => undefined,
+      close: async () => undefined,
+    };
+    app = await buildServer({ runtime, logger: false });
   });
 
-  it("registers an account and reads it back through a Bearer token", async () => {
-    const registered = await registerHandler(
-      request("/api/auth/register", "POST", credentials("student@example.com")),
-      context(),
-    );
-    const token = (registered.jsonBody as { data: { token: string } }).data.token;
+  afterEach(async () => app.close());
 
-    const me = await meHandler(request("/api/auth/me", "GET", undefined, token), context());
+  const register = async (email: string) =>
+    app.inject({
+      method: "POST",
+      url: "/api/auth/register",
+      payload: credentials(email),
+    });
 
-    expect(registered.status).toBe(201);
-    expect(me.status).toBe(200);
-    expect(me.jsonBody).toMatchObject({
+  it("registers an account and reads it through a Bearer token", async () => {
+    const registered = await register("student@example.com");
+    const token = registered.json().data.token as string;
+    const me = await app.inject({
+      method: "GET",
+      url: "/api/auth/me",
+      headers: { authorization: `Bearer ${token}` },
+    });
+
+    expect(registered.statusCode).toBe(201);
+    expect(me.statusCode).toBe(200);
+    expect(me.json()).toMatchObject({
       data: { email: "student@example.com", profileComplete: false },
     });
-    expect(JSON.stringify(registered.jsonBody)).not.toContain("passwordHash");
+    expect(registered.body).not.toContain("passwordHash");
   });
 
   it("rejects a protected route without a Bearer token", async () => {
-    const response = await listMoneyEventsHandler(
-      request("/api/money-events"),
-      context(),
-    );
+    const response = await app.inject({
+      method: "GET",
+      url: "/api/money-events",
+    });
 
-    expect(response.status).toBe(401);
-    expect(response.jsonBody).toMatchObject({ code: "unauthorized" });
+    expect(response.statusCode).toBe(401);
+    expect(response.json()).toMatchObject({ code: "unauthorized" });
   });
 
   it("does not expose account A events to account B", async () => {
-    const registeredA = await registerHandler(
-      request("/api/auth/register", "POST", credentials("a@example.com")),
-      context(),
-    );
-    const registeredB = await registerHandler(
-      request("/api/auth/register", "POST", credentials("b@example.com")),
-      context(),
-    );
-    const tokenA = (registeredA.jsonBody as { data: { token: string } }).data.token;
-    const tokenB = (registeredB.jsonBody as { data: { token: string } }).data.token;
+    const registeredA = await register("a@example.com");
+    const registeredB = await register("b@example.com");
+    const tokenA = registeredA.json().data.token as string;
+    const tokenB = registeredB.json().data.token as string;
 
-    const created = await createMoneyEventHandler(
-      request(
-        "/api/money-events",
-        "POST",
-        {
-          type: "expense",
-          amountMinor: 75,
-          currency: "TWD",
-          category: "food",
-          occurredAt: "2026-07-14T12:00:00+08:00",
-          confirmed: true,
-          idempotencyKey: "account-a-drink",
-        },
-        tokenA,
-      ),
-      context(),
-    );
-    const listedByB = await listMoneyEventsHandler(
-      request("/api/money-events", "GET", undefined, tokenB),
-      context(),
-    );
+    const created = await app.inject({
+      method: "POST",
+      url: "/api/money-events",
+      headers: { authorization: `Bearer ${tokenA}` },
+      payload: {
+        type: "expense",
+        amountMinor: 75,
+        currency: "TWD",
+        category: "food",
+        occurredAt: "2026-07-14T12:00:00+08:00",
+        confirmed: true,
+        idempotencyKey: "account-a-drink",
+      },
+    });
+    const listedByB = await app.inject({
+      method: "GET",
+      url: "/api/money-events",
+      headers: { authorization: `Bearer ${tokenB}` },
+    });
 
-    expect(created.status).toBe(201);
-    expect(listedByB.status).toBe(200);
-    expect(listedByB.jsonBody).toMatchObject({ data: [] });
+    expect(created.statusCode).toBe(201);
+    expect(listedByB.statusCode).toBe(200);
+    expect(listedByB.json()).toMatchObject({ data: [] });
   });
 
   it("returns the same generic error for invalid login credentials", async () => {
-    await registerHandler(
-      request("/api/auth/register", "POST", credentials("student@example.com")),
-      context(),
-    );
-    const unknown = await loginHandler(
-      request("/api/auth/login", "POST", credentials("missing@example.com")),
-      context(),
-    );
-    const wrong = await loginHandler(
-      request(
-        "/api/auth/login",
-        "POST",
-        { email: "student@example.com", password: "not-the-password2026" },
-      ),
-      context(),
-    );
+    await register("student@example.com");
+    const unknown = await app.inject({
+      method: "POST",
+      url: "/api/auth/login",
+      payload: credentials("missing@example.com"),
+    });
+    const wrong = await app.inject({
+      method: "POST",
+      url: "/api/auth/login",
+      payload: {
+        email: "student@example.com",
+        password: "not-the-password2026",
+      },
+    });
 
-    expect(unknown.jsonBody).toMatchObject({
+    expect(unknown.json()).toMatchObject({
       code: "invalid_credentials",
       message: "電子郵件或密碼不正確。",
     });
-    expect(wrong.jsonBody).toMatchObject({
+    expect(wrong.json()).toMatchObject({
       code: "invalid_credentials",
       message: "電子郵件或密碼不正確。",
     });

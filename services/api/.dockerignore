@@ -1,0 +1,15 @@
+.env
+.env.*
+!.env.example
+.git
+.github
+.vscode
+Dockerfile*
+README.md
+coverage
+dist
+node_modules
+reports
+test
+local.settings.json
+*.log

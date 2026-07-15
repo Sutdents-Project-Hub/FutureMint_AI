@@ -1,93 +1,97 @@
 # 系統架構
 
-## 執行模式
+## 目前架構
 
-FutureMint AI 有兩條清楚分離的使用路徑：
-
-1. **登入帳號**：Flutter 以 email/password 向 Functions 註冊或登入，之後以 Bearer token 呼叫 API。Functions 依設定使用 Azure OpenAI／Demo AI 與 Cosmos／Memory。
-2. **訪客模式**：Flutter 使用僅記憶體的合成 repository；資料在離開、重新整理或切換帳號後清除，不會送往後端或寫入 SharedPreferences。
-
-登入 API 失敗或沒有網路時不會自動產生保存結果，也不會切到訪客資料。畫面只顯示可重試錯誤，使用者可自行選擇訪客模式。
+FutureMint AI 採三個 Coolify Resource，前端與 API 分離部署，PostgreSQL 僅存在於 Coolify private network。主辦方 Azure 環境關閉後，runtime 不再依賴 Azure Functions、Cosmos DB、Azure OpenAI 或 Static Web Apps。
 
 ```mermaid
 flowchart LR
-    U["青少年使用者"] --> C["Flutter Client"]
-    C -->|"email/password"| F["Azure Functions v4"]
-    C -->|"guest, memory only"| G["Guest Repository"]
-    C -->|"Bearer token"| F
-    F --> AU["AuthService: scrypt + opaque session"]
-    F --> S["FutureMint Application Service"]
-    S --> D["Deterministic Domain"]
-    S --> A["AI Provider Port"]
-    S --> R["Repository Port"]
-    A --> O["Azure OpenAI Adapter"]
-    A --> DA["Demo AI Adapter"]
-    R --> X["Cosmos Adapter"]
-    R --> M["Memory Adapter"]
+    U["Flutter Web／Android／iOS"] -->|"HTTPS JSON + Bearer token"| A["Fastify API :3000"]
+    A --> D["Application + deterministic domain"]
+    D --> Q["量界智算 adapter"]
+    D --> M["PostgreSQL repository"]
+    Q -->|"OpenAI-compatible HTTPS"| L["liangjiewis.com"]
+    M -->|"private DATABASE_URL"| P["PostgreSQL 17"]
+    U -->|"未登入訪客"| G["Client memory repository"]
 ```
 
-## Flutter Client
+### Coolify Resources
 
-- `auth/`：API auth gateway、public account model、只保存 token 的 session store。
-- `data/`：12 秒 timeout 的 authenticated API repository，以及訪客記憶體 repository。
-- `state/`：`SessionController` 管理登入、首次設定、訪客與登出；`AppController` 管理已載入使用者資料、capture、lesson、FutureSeed 與主題。
-- `features/`：auth、onboarding、dashboard、capture、records、subscriptions、learning、future-seed、settings。
-- `app/`：go_router deep links 與響應式 shell。
-- `design/`：亮／暗 semantic tokens、48dp controls 與 Material 3 theme。
+| Resource | 責任 | 網路 |
+|---|---|---|
+| Flutter Web Application | 編譯 release bundle，Nginx 提供 SPA 與 deep-link fallback | 公開 HTTPS |
+| Fastify API Application | Authentication、契約驗證、AI 協調、確定性計算、資料 ownership | 公開 HTTPS；可連 private database |
+| PostgreSQL 17 Database | Accounts、sessions、profiles、events、lessons、migration history | 不公開；只允許 Coolify internal network |
 
-主要內容 routes 為 `/`、`/records`、`/capture`、`/learning`、`/future-seed`；`/subscriptions` 由首頁機會卡進入。手機使用五個 NavigationBar destinations，720px 起改用 NavigationRail，1100px 起首頁採雙欄。
+量界智算不是第四個 Coolify Resource，而是 API 使用的外部 AI provider。前端只知道 API URL。
 
-## Functions API
+## Component boundaries
 
-- `auth/`：email/password 驗證、opaque session、帳號公開資料轉換。
-- `contracts/`：Account、Session、MoneyEvent、Profile、Draft、Lesson、Subscription、FutureSeed 與 Zod schemas。
-- `domain/`：預算、訂閱方案與普通年金 FutureSeed 純函式。
-- `application/`：parse／confirm／list／dashboard／compare／lesson／preview use cases。
-- `adapters/`：Azure OpenAI、Cosmos DB、deterministic demo、in-memory repositories。
-- `http/`：runtime provider selection、Bearer authentication、CORS 與安全 response mapping。
-- `functions/`：Functions v4 routes；除 health、register、login 外均需 authentication。
+### Flutter Client
 
-Runtime 要求明確提供 `AI_PROVIDER=azure|demo` 與 `DATA_PROVIDER=cosmos|memory`，不合法時啟動失敗。
+- `lib/core/`：models、API client、session 與 repository 介面。
+- `lib/features/`：Authentication、Home、Capture、Events、Subscriptions、Learning、FutureSeed。
+- `lib/design/`：Design System tokens 與 components。
+- 瀏覽器 bundle 只含公開的 `API_BASE_URL`，不含 AI／database secret。
+- 登入模式呼叫 API；訪客模式只用當次記憶體，沒有背景同步或偽造 API 成功。
 
-## 帳號與 ownership 資料流
+### Fastify API
 
-1. Client 送出 email/password；後端驗證密碼規則、使用 `scrypt` 和隨機 salt 保存帳號。
-2. 後端建立 32-byte opaque token，僅保存 SHA-256 hash、到期時間與撤銷狀態。
-3. Client 將 token 放入 `Authorization: Bearer`。所有保護端點先驗證 session，再從帳號 ID 執行讀寫。
-4. 新帳號先填預算／目標；成功保存 profile 後，後端標記 `profileComplete=true`。
-5. API 無法連線或 token 過期時，Client 顯示錯誤並回登入；不改用固定資料或假裝已保存。
+- `contracts/`：Zod input／output schema、錯誤與資料模型。
+- `auth/`：email/password prototype、session 發行／驗證／撤銷。
+- `application/`：use cases 與 repository/provider ports。
+- `domain/`：預算、訂閱與 FutureSeed 的確定性計算。
+- `adapters/`：量界 AI、deterministic demo、PostgreSQL、in-memory。
+- `http/`：routes、CORS、rate limit、安全 headers、錯誤 envelope。
+- `migrations/`：版本化 PostgreSQL schema。
 
-## Quick Capture 資料流
+Runtime 要求明確設定 `AI_PROVIDER=demo|liangjie` 與 `DATA_PROVIDER=memory|postgres`。不合法或缺少必要秘密時啟動失敗，不會靜默切換 provider。Production 固定使用 `liangjie + postgres`；`demo + memory` 僅供離線展示與自動化測試。
 
-1. Client 送出短文字、`zh-TW` locale 與參考時間；原文不先保存。
-2. Functions 驗證 Bearer session、長度、格式與 allowed fields。
-3. AI provider 回傳最多五筆候選 draft；Azure provider 使用 structured JSON output，Demo provider 使用可重現規則。
-4. Functions 再以 schema／範圍驗證，標示 `azure-ai` 或 `deterministic-demo`。
-5. Client 顯示可修改草稿；解析不更新 dashboard。
-6. 使用者按確認後，Client 帶 idempotency key 送出 `confirmed: true` event。
-7. Repository 依已驗證帳號 partition 與 idempotency boundary 保存，dashboard 再由已確認事件重算。
+## 主要資料流程
 
-## AI 與確定性程式邊界
+### Register／login
 
-| AI 可協助 | 程式必須負責 |
-|---|---|
-| 口語事件解析、受控分類 | 整數 TWD 金額、預算與分帳 |
-| 以最小摘要生成可理解微課 | FutureSeed 公式與年度點 |
-| 解釋既有方案的取捨 | 方案價格、資格條件、排序 |
-| 調整非責備式表達 | schema、authentication、ownership、idempotency、資料寫入 |
+1. Client 送出 email/password。
+2. API 以 Zod 驗證，password 用 scrypt 與隨機 salt hash。
+3. PostgreSQL 保存 account；session 只保存 token hash，明文 token 只回傳一次給 Client。
+4. 後續 API 從 Bearer session 推導 account，不接受前端指定 user ID。
+5. Logout 將 session 設為 revoked；session 七天到期。
 
-AI 回覆是不可信任輸入，不能直接決定保存、付款、投資或權限。
+### Quick Capture
+
+1. Client 送出原始文字、locale 與 reference time。
+2. API 驗證 session、長度、格式與 allowed fields。
+3. Provider 最多回傳五筆草稿：量界回覆先抽取 JSON，再經 Zod 與語意規則驗證；Demo provider 使用可重現規則。
+4. 回覆來源標示 `liangjie-ai` 或 `deterministic-demo`。
+5. 解析不寫資料庫；使用者修正並確認後才 POST MoneyEvent。
+6. PostgreSQL 以 `(user_id, idempotency_key)` unique constraint 避免重複寫入。
+
+### Dashboard／Lessons／FutureSeed
+
+- Dashboard 與訂閱比較只使用登入帳號自己的事件。
+- 微課可由 provider 產生，但 options、來源與未驗證數量文案仍需 schema／語意檢查。
+- 金額、日期、預算、分帳、訂閱差額與複利都由 TypeScript deterministic domain 計算，不信任模型算術。
+
+## HTTP 與信任邊界
+
+- API base path：`/api`；body 上限 32 KiB。
+- CORS 只允許 `ALLOWED_ORIGINS` 的完整 origin，不允許 `*`。
+- 全域 rate limit 為單 instance 每分鐘 120 requests；auth routes 每分鐘 10 requests。
+- API behind Coolify proxy 時信任 proxy，production client IP／HTTPS 由 Coolify reverse proxy 提供。
+- 所有動態回應設 `Cache-Control: no-store`，並送出 nosniff、frame deny、referrer 與 CSP headers。
+- AI output、database errors 與使用者輸入都不直接回傳 stack、SQL、prompt、key 或 SDK response。
 
 ## 失敗與降級
 
-| 情境 | Server | Client |
+| 失敗 | 使用者行為 | 系統行為 |
 |---|---|---|
-| 無／無效／過期 token | 401 `unauthorized` | 清除本機 token 並回登入 |
-| validation | 統一 400／422 `ApiProblem` | 保留輸入並顯示可修正訊息 |
-| AI timeout／429 | 8 秒單次、12 秒總預算、最多一次重試 | 顯示重試；不自動假成功 |
-| AI schema invalid | 一次受控驗證後安全失敗 | 可保留輸入或改手動草稿 |
-| Cosmos unavailable | 不回保存成功 | 保留未送出草稿與 idempotency key |
-| 重送確認 | 回原事件 | 不建立重複項目 |
-| 完全離線 | 不呼叫 API | 可選訪客模式，但資料不保存 |
+| 量界 timeout／429／invalid JSON | 顯示可重試安全錯誤 | 不保存、不自動切 Demo、不洩漏 provider body |
+| PostgreSQL unavailable | 顯示服務暫時無法使用 | health 回 503，不宣稱保存成功 |
+| 重複 submit | 回同一事件 | PostgreSQL unique idempotency key 保護 |
+| Session 過期／撤銷 | 回登入頁 | API 回 401 |
+| Web deep link refresh | 畫面正常載入 | Nginx fallback 到 `index.html` |
+| 正式網路中斷 | 可明確切訪客模式 | 訪客資料只在記憶體，不同步到帳號 |
 
-目前 Azure adapters 已實作並以 mock 測試；真實 Azure 資源尚未建立或連線驗證。
+## 部署狀態
+
+Dockerfiles、Nginx、migration、health check 與本機容器流程已實作。尚未建立 Coolify resources、private GitHub integration、production domains、TLS、正式 PostgreSQL backup 或量界真實連線；不得描述成已上線。詳見 [部署說明](deployment.md)與[測試證據](testing-and-evidence.md)。

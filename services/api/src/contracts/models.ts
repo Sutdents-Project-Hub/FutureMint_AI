@@ -171,7 +171,7 @@ export interface CaptureDraft {
   confidence: number;
   missingFields: string[];
   needsConfirmation: true;
-  source: "azure-ai" | "deterministic-demo";
+  source: "liangjie-ai" | "deterministic-demo";
 }
 
 export interface CaptureParseResult {
@@ -191,7 +191,7 @@ export interface Lesson {
   action: string;
   disclaimer: string;
   sourceEventIds: string[];
-  source: "azure-ai" | "deterministic-demo";
+  source: "liangjie-ai" | "deterministic-demo";
   selectedOption?: string;
   completedAt?: string;
   createdAt: string;

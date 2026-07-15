@@ -2,48 +2,58 @@
 
 ## 資料原則
 
-- 決賽以合成資料與測試帳號展示；不蒐集姓名、學校、卡號、銀行帳戶或真實學生財務明細。
-- 自然語言原文只存在於 parse request 生命週期，不寫入 MoneyEvent、Cosmos document、SharedPreferences 或監測 log。
-- Client 不直接存取 Cosmos DB；登入帳號所有讀寫都經 Functions 的 Bearer token 驗證。
-- 訪客模式只使用當次 App 記憶體；離開、重新整理或切換帳號後清除，不寫入瀏覽器、本機儲存或後端。
-- Azure OpenAI 只收到單次輸入、locale、參考時間與受控分類；lesson 只使用最小事件摘要。
+- 正式帳號資料保存於 Coolify PostgreSQL 17；Client 不直接連資料庫。
+- 自然語言原文只存在於單次 parse request 生命週期，不寫入 PostgreSQL、MoneyEvent、SharedPreferences 或一般 log。
+- API 從 Bearer session 推導 `user_id`；所有 profile、event、lesson query 都以該帳號篩選。
+- 訪客模式只存在 Flutter process memory，重新整理、關閉或切換帳號後消失。
+- 只使用合成競賽資料；未取得同意與去識別前，不輸入真實未成年人財務資料。
 
-## 已實作資料模型
+## PostgreSQL schema
 
-| 資料 | 關鍵欄位 | 儲存位置 |
+Schema 由 `services/api/migrations/001_initial.sql` 管理：
+
+| Table | 內容 | 重要約束 |
 |---|---|---|
-| Account | `id`、正規化 email、scrypt password hash／salt、`profileComplete`、createdAt | `accounts` container 或 memory repository |
-| Session | token SHA-256 hash、`userId`、createdAt、expiresAt、revokedAt | `sessions` container 或 memory repository |
-| Profile | `userId`、月／週預算、目標、已存、日期、語氣 | `profiles` container 或訪客記憶體 |
-| MoneyEvent | type、正整數 `amountMinor`、category、merchant、occurredAt、recurrence、split、idempotency | `moneyEvents` container 或訪客記憶體 |
-| CaptureDraft | 候選欄位、confidence、missingFields、source | 僅 Client 記憶體／request response，不是正式 event |
-| Learning | lesson、來源 event IDs、selected option、completedAt | `learning` container 或訪客記憶體 |
-| Subscription catalog | 合成價格、週期、資格、sourceType、asOf | 版本化程式 fixture，不需要 container |
-| FutureSeed preview | 本金、假設成長、期末值、年度點 | 即時計算，不持久化 |
+| `accounts` | Email、scrypt password hash/salt、profile 完成狀態 | email／user_id unique |
+| `sessions` | Token hash、建立／到期／撤銷時間 | token hash unique，account cascade delete |
+| `profiles` | 月／週預算、目標、偏好語氣 | 一個 user 一筆；金額與 tone checks |
+| `money_events` | 收入、支出、訂閱、日期、recurrence、split | `(user_id, idempotency_key)` unique |
+| `lessons` | 個人化課程、options、action、完成狀態、來源 | user FK；source 只允許量界或 demo |
+| `schema_migrations` | 已套用 migration name 與 checksum | migration runner 管理 |
 
-Cosmos adapter 固定 database 名稱由設定注入，不會自動建資源。正式資料 containers 為 `accounts`、`sessions`、`profiles`、`moneyEvents`、`learning`，partition key 為 `/userId`。帳號與 session document 均以帳號 ID 作為 `userId`；session 先用 token hash 查找，再驗證未撤銷與到期時間。
+金額以 TWD 最小單位整數保存，不使用浮點數。Recurrence、split、lesson options 與 source IDs 使用 JSONB，但讀寫仍經 Zod 型別驗證。
 
-## 帳號、session 與 ownership
+## Migration
 
-1. 使用者註冊時，後端將 email 正規化、以 `scrypt` 搭配隨機 salt 保存密碼雜湊。
-2. 後端產生 opaque token，只保存 SHA-256 hash；Client 僅保存 token，以 `/api/auth/me` 恢復登入。
-3. 每個保護路由從 `Authorization: Bearer` 推導帳號 ID，從不採信 body 或 query 的 `userId`。
-4. 註冊帳號第一次寫入 profile 後，`profileComplete` 才標為完成；新帳號不會讀到任何固定 seed。
-5. 登出撤銷 server session 並清除本機 token。訪客退出只丟棄記憶體 repository。
+`npm run migrate` 會：
 
-## 寫入一致性
+1. 連到 `DATABASE_URL`。
+2. 取得 PostgreSQL advisory lock，避免多個新 container 同時部署互撞。
+3. 建立 `schema_migrations`。
+4. 依檔名執行尚未套用的 SQL，每個檔案使用 transaction。
+5. 記錄檔名與 checksum；既有 migration 被改動時拒絕啟動。
 
-1. Parse 只產生未保存草稿。
-2. 使用者修改與確認。
-3. Client 送出 `confirmed: true` 與 idempotency key。
-4. Functions 忽略不屬於契約的 AI 欄位並重新驗證金額、列舉、日期與範圍。
-5. Repository 以已驗證帳號 partition 與 idempotency document key 防止重複。
-6. Dashboard 每次由已確認事件重算，不保存容易失去同步的 AI 算術結果。
+API Docker image 在 `DATA_PROVIDER=postgres` 時會於 Fastify 啟動前自動執行 migration。Migration 失敗時 container 退出，由 Coolify 保留先前可用 deployment；不要直接修改已上 production 的 migration，應新增下一號 SQL。
 
-## FutureSeed
+## Connection
 
-採每月月底投入普通年金：`FV = P × (((1 + r / 12)^n - 1) / (r / 12))`；`r = 0` 時使用 `P × n`。金額四捨五入為整數 TWD，並分開回傳本金與假設成長。這是教育試算，不保存、不保證報酬。
+Production 的 `DATABASE_URL` 使用 Coolify PostgreSQL Resource 提供的 internal URL，且 `DATABASE_SSL=false`。Database port 不對 Internet 公開。若未來改用外部 TLS database，才設 `DATABASE_SSL=true` 並確認供應商 CA／連線要求。
 
-## 尚待部署與產品決策
+Pool 目前上限 10 connections，connection／idle timeout 由 repository 設定。單一 competition API instance 足夠；增加 replicas 前需重新計算 PostgreSQL connection budget 與 rate limit 策略。
 
-真實 Cosmos 建立前仍須確認容量模式、區域、備份／還原、保留期限、刪除流程、RBAC 與費用。此競賽 MVP 尚未提供 email 驗證、忘記密碼、帳號刪除、資料匯出、家長共管、年齡同意或 production retention。使用真實未成年人的資料前，必須先完成這些產品與法遵決策。
+## 合成 seed
+
+`ALLOW_DEMO_SEED=true npm run seed:postgres-demo` 只建立無法登入的 synthetic account、profile 與四筆固定事件。Seed 使用 idempotency keys，可重複執行；預設安全開關未開時拒絕寫入。Production demo 是否需要 seed 由團隊人工決定，不應放入每次自動部署。
+
+## 備份、還原與保留
+
+部署前必須在 Coolify 為 PostgreSQL 設定 scheduled backup 到團隊控制的 S3-compatible storage，並完成至少一次實際 restore rehearsal。只有看到 backup job 成功不等於可還原。
+
+尚待決定：
+
+- 備份頻率、保留天數與異地儲存。
+- 帳號刪除、資料匯出與 session 清理排程。
+- Competition environment 結束後的整庫刪除日期。
+- 真實未成年人資料的同意、年齡、家長、存取與 incident response 流程。
+
+目前 MVP 沒有帳號刪除 UI、忘記密碼、email 驗證、自動 session cleanup 或 production retention；不可用於正式金融或未成年人服務。

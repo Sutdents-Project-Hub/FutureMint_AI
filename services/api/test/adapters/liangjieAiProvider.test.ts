@@ -1,6 +1,6 @@
 import { describe, expect, it, vi } from "vitest";
 
-import { AzureOpenAiProvider } from "../../src/adapters/azureOpenAiProvider";
+import { LiangjieAiProvider } from "../../src/adapters/liangjieAiProvider";
 import { DomainError } from "../../src/contracts/errors";
 
 const validCapture = JSON.stringify({
@@ -21,12 +21,12 @@ const completion = (content: string) => ({
   choices: [{ message: { content } }],
 });
 
-describe("AzureOpenAiProvider", () => {
+describe("LiangjieAiProvider", () => {
   it("validates structured capture output and marks its source", async () => {
     const create = vi.fn().mockResolvedValue(completion(validCapture));
-    const provider = new AzureOpenAiProvider({
+    const provider = new LiangjieAiProvider({
       client: { chat: { completions: { create } } },
-      deployment: "test-deployment",
+      model: "gemini-2.5-flash",
     });
 
     const result = await provider.parseCapture({
@@ -38,16 +38,40 @@ describe("AzureOpenAiProvider", () => {
     expect(result.drafts[0]).toMatchObject({
       type: "expense",
       amountMinor: 75,
-      source: "azure-ai",
+      source: "liangjie-ai",
       needsConfirmation: true,
     });
     expect(create).toHaveBeenCalledWith(
       expect.objectContaining({
-        model: "test-deployment",
-        response_format: expect.objectContaining({ type: "json_schema" }),
+        model: "gemini-2.5-flash",
+        messages: expect.any(Array),
       }),
       expect.any(Object),
     );
+    expect(create.mock.calls[0][0]).not.toHaveProperty("response_format");
+  });
+
+  it("accepts JSON wrapped in a markdown fence before validating it", async () => {
+    const provider = new LiangjieAiProvider({
+      client: {
+        chat: {
+          completions: {
+            create: vi
+              .fn()
+              .mockResolvedValue(completion(`\`\`\`json\n${validCapture}\n\`\`\``)),
+          },
+        },
+      },
+      model: "gemini-2.5-flash",
+    });
+
+    await expect(
+      provider.parseCapture({
+        text: "珍奶 75",
+        locale: "zh-TW",
+        referenceTime: "2026-07-13T12:00:00+08:00",
+      }),
+    ).resolves.toMatchObject({ drafts: [{ amountMinor: 75 }] });
   });
 
   it("normalizes nullable fields required by strict structured output", async () => {
@@ -72,9 +96,9 @@ describe("AzureOpenAiProvider", () => {
         }),
       ),
     );
-    const provider = new AzureOpenAiProvider({
+    const provider = new LiangjieAiProvider({
       client: { chat: { completions: { create } } },
-      deployment: "test-deployment",
+      model: "gemini-2.5-flash",
     });
 
     const result = await provider.parseCapture({
@@ -89,7 +113,7 @@ describe("AzureOpenAiProvider", () => {
   });
 
   it("rejects malformed model output as a retryable sanitized domain error", async () => {
-    const provider = new AzureOpenAiProvider({
+    const provider = new LiangjieAiProvider({
       client: {
         chat: {
           completions: {
@@ -99,7 +123,7 @@ describe("AzureOpenAiProvider", () => {
           },
         },
       },
-      deployment: "test-deployment",
+      model: "gemini-2.5-flash",
     });
 
     await expect(
@@ -133,7 +157,7 @@ describe("AzureOpenAiProvider", () => {
       clarificationQuestion: null,
       rejectedReason: null,
     });
-    const provider = new AzureOpenAiProvider({
+    const provider = new LiangjieAiProvider({
       client: {
         chat: {
           completions: {
@@ -141,7 +165,7 @@ describe("AzureOpenAiProvider", () => {
           },
         },
       },
-      deployment: "test-deployment",
+      model: "gemini-2.5-flash",
     });
 
     await expect(
@@ -163,9 +187,9 @@ describe("AzureOpenAiProvider", () => {
       .mockRejectedValueOnce(rateLimit)
       .mockResolvedValueOnce(completion(validCapture));
     const logged: unknown[] = [];
-    const provider = new AzureOpenAiProvider({
+    const provider = new LiangjieAiProvider({
       client: { chat: { completions: { create } } },
-      deployment: "test-deployment",
+      model: "gemini-2.5-flash",
       sleep: async () => undefined,
       logger: (event) => logged.push(event),
     });
@@ -189,9 +213,9 @@ describe("AzureOpenAiProvider", () => {
           );
         }),
     );
-    const provider = new AzureOpenAiProvider({
+    const provider = new LiangjieAiProvider({
       client: { chat: { completions: { create } } },
-      deployment: "test-deployment",
+      model: "gemini-2.5-flash",
       perCallTimeoutMs: 5,
       totalBudgetMs: 20,
     });
@@ -219,9 +243,9 @@ describe("AzureOpenAiProvider", () => {
         }),
       ),
     );
-    const provider = new AzureOpenAiProvider({
+    const provider = new LiangjieAiProvider({
       client: { chat: { completions: { create } } },
-      deployment: "test-deployment",
+      model: "gemini-2.5-flash",
     });
 
     const lesson = await provider.generateLesson({
@@ -251,7 +275,7 @@ describe("AzureOpenAiProvider", () => {
       ],
     });
 
-    expect(lesson.source).toBe("azure-ai");
+    expect(lesson.source).toBe("liangjie-ai");
     expect(lesson.sourceEventIds).toEqual(["event-1"]);
     expect(JSON.stringify(create.mock.calls[0])).not.toContain("userId");
     expect(JSON.stringify(create.mock.calls[0])).not.toContain("amountMinor");
@@ -271,9 +295,9 @@ describe("AzureOpenAiProvider", () => {
         }),
       ),
     );
-    const provider = new AzureOpenAiProvider({
+    const provider = new LiangjieAiProvider({
       client: { chat: { completions: { create } } },
-      deployment: "test-deployment",
+      model: "gemini-2.5-flash",
     });
 
     await expect(

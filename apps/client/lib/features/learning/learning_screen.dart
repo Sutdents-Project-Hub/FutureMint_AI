@@ -121,7 +121,7 @@ class _LessonContent extends StatelessWidget {
                         Chip(
                           avatar: const Icon(Icons.school_outlined, size: 16),
                           label: Text(
-                            lesson.source == CaptureSource.azureAi
+                            lesson.source == CaptureSource.liangjieAi
                                 ? 'AI 個人化內容'
                                 : '離線示範內容',
                           ),

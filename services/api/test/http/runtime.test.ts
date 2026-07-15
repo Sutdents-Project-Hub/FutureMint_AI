@@ -16,13 +16,13 @@ describe("parseRuntimeConfig", () => {
     });
   });
 
-  it("selects Azure mode when either cloud adapter is configured", () => {
+  it("selects hosted mode when either hosted adapter is configured", () => {
     expect(
       parseRuntimeConfig({
-        AI_PROVIDER: "azure",
-        DATA_PROVIDER: "cosmos",
+        AI_PROVIDER: "liangjie",
+        DATA_PROVIDER: "postgres",
       }).mode,
-    ).toBe("azure");
+    ).toBe("hosted");
   });
 
   it("rejects missing provider choices instead of guessing", () => {

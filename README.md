@@ -1,122 +1,116 @@
 # FutureMint AI
 
-> 第六屆中學生黑客松決賽原型｜Flutter + Microsoft Azure｜產品系統已可於本機完整展示，Azure 尚未部署
+> 第六屆中學生黑客松決賽原型｜Flutter Web + Fastify + PostgreSQL｜目標由私人 GitHub repository 自動部署到 Coolify
 
 FutureMint AI 是青少年的 AI 金錢決策教練。使用者主動輸入收入、支出或訂閱，系統先整理成可修改草稿；只有確認後才保存，並以確定性程式更新預算、訂閱比較、金融微課程與 FutureSeed 教育試算。
+
+主辦方 Azure 環境已關閉，因此目前架構已改為自己的 VPS／Coolify。前端、API 與 PostgreSQL 是三個獨立 Resource；AI 由 API 呼叫量界智算，瀏覽器不會接觸資料庫或模型金鑰。目前程式與容器設定已完成，但尚未建立 Coolify resources、DNS、正式秘密或 production deployment。
 
 ## 現在可以做什麼
 
 - 用繁體中文輸入「今天買珍奶 75」、「打工薪水 1500」或「Netflix 390 四個人分」。
-- 查看解析來源、修正金額／項目／分類，再確認保存；解析本身不會寫入帳本。
-- 查看本月可用預算、目標進度、近期事件與非責備式教練提醒。
-- 比較合成訂閱方案的每月成本、節省差額與資格提醒。
-- 完成依合成紀錄挑選的金融微課，留下下一個可行動選擇。
+- 查看量界智算或 deterministic demo 的解析來源，修正金額／項目／分類後再確認保存。
+- 用電子郵件與密碼註冊、登入、登出，並完成首次預算與目標設定。
+- 每個帳號只能讀寫自己的 PostgreSQL profile、事件與課程資料；重啟 API 後資料仍保留。
+- 查看本月可用預算、目標進度、近期事件、訂閱比較與個人化金融微課程。
 - 以每月投入、期間及公開假設年化率預覽本金、假設成長與年度數值。
-- 以電子郵件與密碼建立帳號、登入及完成首次預算／目標設定；每個帳號只能讀寫自己的資料。
-- 以訪客模式先體驗，但資料只留在當次 App 記憶體，離開或重新整理後即清除。
-- 呼叫 Azure Functions API；斷網或服務失敗時會明示錯誤，不會自動改用或偽造資料。
+- 以訪客模式體驗；訪客資料只留在 App 記憶體，重新整理後清除。
 
 決賽只使用合成資料與測試帳號，不串接支付、銀行、電子發票、證券交易或真實未成年人金融服務。
 
-## 專案資訊
+## 三個 Coolify Resources
 
-- Repository：`FutureMint_AI`
-- Project slug：`futuremint-ai`
-- Stage：`competition`
-- Product type：`hybrid`
-- Bootstrap mode：`executable`
-- Executable components：`apps/client`、`services/api`
-- Supporting asset：`design-system`（設計規範，沒有 runtime 或部署生命週期）
-- Deployment：Microsoft Azure（已規劃，尚未部署）
-- Collaboration：學生團隊／Pull Request 工作流
-
-完整分類、限制、假設與未決事項見 [學生專案 Profile](docs/project-profile.md)。
-
-## 系統架構與狀態
-
-| 元件 | 路徑 | 實作 | 本機狀態 | 雲端狀態 |
-|---|---|---|---|---|
-| Flutter Client | `apps/client/` | Material 3、Provider、go_router、HTTP、SharedPreferences | Web build 與自動化測試通過 | Static Web Apps 尚未部署 |
-| Functions API | `services/api/` | Functions v4、TypeScript、Zod、Vitest | 全部端點、domain 與 adapters 可建置／測試 | Functions 尚未部署 |
-| AI providers | `services/api/src/adapters/` | Azure OpenAI structured output + deterministic demo | mock 與離線 provider 已驗證 | 未驗證即時 Azure 連線 |
-| Data providers | `services/api/src/adapters/` | Cosmos DB + in-memory repository | mock／memory 已驗證 | Cosmos 資源尚未建立 |
-| Design System | `design-system/` | 色彩、字體、響應式、元件與可及性規範 | 文件已建立，由人工檢查 | 非部署元件 |
-| Evidence | `services/api/reports/` | 30 筆合成繁中解析評估 | 30/30 完整通過 | 不代表 Azure AI 成效 |
+| Resource | 專案路徑／映像 | 對外 port | 健康檢查 | 秘密 |
+|---|---|---:|---|---|
+| `futuremint-web` Application | `apps/client/Dockerfile` | 3000 | `/` | 無；只有 build-time `API_BASE_URL` |
+| `futuremint-api` Application | `services/api/Dockerfile` | 3000 | `/api/health` | `DATABASE_URL`、`LIANGJIE_API_KEY` |
+| `futuremint-postgres` Database | Coolify PostgreSQL 17 Resource | 不公開 | Coolify 管理 | 使用 Coolify 產生的 credentials |
 
 ```mermaid
 flowchart LR
-    U["青少年使用者"] --> C["Flutter Client"]
-    C -->|"Email/password + Bearer HTTPS/JSON"| F["Azure Functions API"]
-    C -->|"訪客模式（僅記憶體）"| L["Guest Repository"]
-    F --> D["確定性 Domain Services"]
-    D --> A["Azure OpenAI 或 Demo AI"]
-    D --> R["Cosmos DB 或 Memory Repository"]
+    G["Private GitHub repository"] -->|"push main / webhook"| W["Coolify: Flutter Web"]
+    G -->|"push main / webhook"| A["Coolify: Fastify API"]
+    U["使用者瀏覽器"] -->|"HTTPS"| W
+    W -->|"HTTPS /api"| A
+    A -->|"Coolify private network"| P["Coolify: PostgreSQL 17"]
+    A -->|"HTTPS, server-side only"| L["量界智算"]
 ```
 
-金額、預算、訂閱成本與 FutureSeed 都由確定性程式計算；模型輸出永遠視為待驗證資料。詳細邊界見 [系統架構](docs/architecture.md)。
+Coolify 從 GitHub 讀取程式碼，不會讀取開發者電腦。PostgreSQL 不開公網 port；前端的 `API_BASE_URL` 是公開網址，不是秘密。詳細欄位與部署順序見 [Coolify 部署說明](docs/deployment.md)。
 
 ## 專案結構
 
 ```text
 FutureMint_AI/
-├── apps/client/                  # Flutter Android／iOS／Web
-├── services/api/                 # Azure Functions TypeScript API
-│   ├── src/contracts/            # 共享資料契約與 Zod 驗證
+├── apps/client/                  # Flutter Android／iOS／Web；Nginx Web image
+├── services/api/                 # Fastify TypeScript API；PostgreSQL migrations
+│   ├── migrations/              # 啟動前自動執行的版本化 SQL
+│   ├── src/contracts/            # API 契約與 Zod 驗證
 │   ├── src/domain/               # 確定性財務計算
 │   ├── src/application/          # Use cases 與 ports
-│   ├── src/adapters/             # Azure／Demo／Cosmos／Memory adapters
-│   └── src/functions/            # HTTP Functions v4 routes
-├── design-system/futuremint-ai/  # 經 UI/UX skill 整理的設計規範
+│   ├── src/adapters/             # 量界／Demo／PostgreSQL／Memory adapters
+│   └── src/http/                 # Fastify routes、CORS、rate limit、錯誤處理
+├── design-system/futuremint-ai/  # 設計規範，非部署元件
 ├── docs/                         # 產品、架構、競賽、測試與部署文件
 └── AGENTS.md                     # 開發、資料與 Git 安全規則
 ```
 
-## 快速啟動
+## 本機快速啟動
 
-### 1. 本機 Functions
+前置需求：Node.js 22.x、npm、Flutter 3.41.x／Dart 3.11.x；要測持久化需 PostgreSQL 17。
 
-前置需求為 Node.js 22.x 與 Azure Functions Core Tools 4.x：
+### 無外部服務的 Demo API
 
 ```bash
 cd services/api
 npm ci
-npm run build
-npm start
+AI_PROVIDER=demo \
+DATA_PROVIDER=memory \
+ALLOWED_ORIGINS=http://localhost:4173 \
+npm run dev
 ```
 
-本機實際 provider 設定放在已忽略的 `services/api/local.settings.json`。最簡單的無雲端組合是：
+API 預設監聽 `http://localhost:3000`，健康檢查是 `http://localhost:3000/api/health`。
 
-```json
-{
-  "IsEncrypted": false,
-  "Values": {
-    "FUNCTIONS_WORKER_RUNTIME": "node",
-    "AI_PROVIDER": "demo",
-    "DATA_PROVIDER": "memory",
-    "ALLOWED_ORIGINS": "http://localhost:4173"
-  }
-}
+### PostgreSQL 與量界模式
+
+將 `services/api/.env.example` 複製為已忽略的 `.env`，填入本機 PostgreSQL 連線與量界智算金鑰後：
+
+```bash
+cd services/api
+npm run migrate
+npm run dev
 ```
 
-HTTP-only demo routes 在未設定 Storage 時仍可本機執行；若要讓 Functions Host 的 storage health probe 也正常，請另啟動 Azurite 並設定 `AzureWebJobsStorage=UseDevelopmentStorage=true`。不得把真實 storage connection string 寫入 repository。
+`AI_PROVIDER=liangjie` 才需要量界設定；`AI_PROVIDER=demo` 可在沒有模型金鑰時驗證完整帳號與資料流程。真實 `.env` 不得提交。
 
-### 2. 啟動 Flutter Client
-
-前置需求為 Flutter 3.41.x／Dart 3.11.x 與 Chrome。讓 Client 連到 Functions（URL 需指向 `/api/`）：
+### Flutter Web
 
 ```bash
 cd apps/client
 flutter pub get
 flutter run -d chrome \
   --web-port=4173 \
-  --dart-define=API_BASE_URL=http://localhost:7071/api/
+  --dart-define=API_BASE_URL=http://localhost:3000/api/
 ```
 
-Functions 只會對 `ALLOWED_ORIGINS` 內的完整 origin 回傳 CORS headers，因此 Web 的 port 必須與設定一致；多個 origin 以逗號分隔，不使用任意 `*`。沒有網路時可使用訪客模式查看暫存功能，但不會保存或偽造 API 成功。
+API 的 `ALLOWED_ORIGINS` 必須包含完整前端 origin，例如 `http://localhost:4173`；多個 origin 用逗號分隔，不使用任意 `*`。
 
-## 品質與證據
+## Docker 建置
 
-Functions：
+```bash
+docker build -t futuremint-api services/api
+
+docker build \
+  --build-arg API_BASE_URL=https://api.example.com/api/ \
+  -t futuremint-web apps/client
+```
+
+API image 在 `DATA_PROVIDER=postgres` 時會於每次啟動先執行 idempotent migration，再啟動 Fastify。Coolify 的正式設定、private GitHub App、domains、環境變數、備份與 rollback 步驟見 [部署說明](docs/deployment.md)。
+
+## 品質指令
+
+API：
 
 ```bash
 cd services/api
@@ -136,52 +130,62 @@ flutter pub get
 dart format --output=none --set-exit-if-changed lib test integration_test
 flutter analyze
 flutter test
-flutter build web
+flutter build web --release \
+  --dart-define=API_BASE_URL=https://api.example.com/api/
 ```
 
-已實際驗證的最新結果與尚未驗證項目見 [測試與證據](docs/testing-and-evidence.md)。固定展示流程見 [Demo 腳本](docs/demo-script.md)。
+已實際執行的結果與未驗證項目記錄在 [測試與證據](docs/testing-and-evidence.md)。
 
-## 公開設定與秘密
+## 環境變數與秘密
 
-Flutter 只有一個 Dart define，且不是秘密：
+前端只有公開的 build argument：
 
-- `API_BASE_URL`：Functions `/api/` base URL
+- `API_BASE_URL`：必須是以 `/api/` 結尾的 API HTTPS base URL。改值後必須重新 build 前端。
 
-Functions 的變數名稱索引在 `services/api/.env.example`。真實 key、token、connection string、production `.env`、`local.settings.json`、真實學生資料與商業／法務文件不得提交。能取得 RBAC 時，Azure OpenAI 與 Cosmos 優先使用 Managed Identity。
+API 變數名稱索引在 `services/api/.env.example`。Coolify production 至少需要：
 
-## 部署狀態
+- `NODE_ENV=production`
+- `HOST=0.0.0.0`
+- `PORT=3000`
+- `AI_PROVIDER=liangjie`
+- `DATA_PROVIDER=postgres`
+- `DATABASE_URL=<Coolify internal PostgreSQL URL>`
+- `DATABASE_SSL=false`
+- `LIANGJIE_BASE_URL=https://liangjiewis.com/v1`
+- `LIANGJIE_MODEL=<已由帳號確認可用的模型>`
+- `LIANGJIE_API_KEY=<secret>`
+- `ALLOWED_ORIGINS=https://<frontend-domain>`
 
-沒有建立、修改或部署任何 Azure 資源，也沒有可宣稱的 production URL。目標架構是 Azure Static Web Apps、Functions、Cosmos DB、Azure OpenAI／Foundry 與 Application Insights；部署前仍須確認主辦方 RBAC、quota、區域、CORS、費用與回滾。詳見 [部署說明](docs/deployment.md)。
+不得提交真實 API key、password、connection string、production `.env`、個資、合約或商業文件。量界與資料庫秘密只放 API Resource 的 runtime environment，不可放前端或 Docker build arguments。
+
+## 部署與 Git 狀態
+
+- 目標：private GitHub repository 的 `main` 經 Coolify GitHub App／webhook 自動部署。
+- 目前 workspace 尚未設定 Git remote，也沒有執行 commit、push、Coolify resource 建立、DNS 或正式部署。
+- Coolify 正式 domain、VPS 容量、PostgreSQL 備份目的地、量界帳號模型與額度仍需在平台內人工設定及驗證。
+- 部署不需要 Azure VM、Azure Functions、Cosmos DB 或 Azure OpenAI。
 
 ## 文件索引
 
-- [學生專案 Profile](docs/project-profile.md)
-- [專案範圍與驗收](docs/project-overview.md)
-- [產品規格與決賽策略](docs/product-spec.md)
+- [Coolify 部署說明](docs/deployment.md)
+- [Hosting Resources](docs/hosting-resources.md)
 - [系統架構](docs/architecture.md)
-- [Azure 資源規劃](docs/azure-resources.md)
 - [資料與儲存](docs/data-and-storage.md)
 - [外部整合與 AI](docs/integrations.md)
 - [安全、身份與隱私](docs/security-and-privacy.md)
 - [測試與證據](docs/testing-and-evidence.md)
 - [Demo 腳本](docs/demo-script.md)
 - [競賽與展示準備](docs/competition.md)
-- [部署說明](docs/deployment.md)
+- [專案範圍與驗收](docs/project-overview.md)
+- [學生專案 Profile](docs/project-profile.md)
 - [Flutter Client](apps/client/README.md)
-- [Functions API](services/api/README.md)
+- [Fastify API](services/api/README.md)
 - [Design System](design-system/README.md)
 - [團隊開發規則](AGENTS.md)
 
-## Git 與授權
-
-- Repository：`FutureMint_AI`；目前 branch：`main`。
-- 初始化固定 commit：`feb7938 chore(init): 初始化學生專案結構`。
-- 目前沒有設定 remote；後續產品與文件變更尚未 commit、push、建立 PR 或部署。
-- 進行任何版本控制提交前，必須依 [AGENTS.md](AGENTS.md) 檢查 staged、unstaged 與 untracked 內容，排除 secrets、個資、合約與商業文件。
-
 ## 維護與交接
 
-- 功能、資料契約、品質指令或驗證結果改變時，同步更新根 README、元件 README 與 [測試與證據](docs/testing-and-evidence.md)。
-- 視覺 token、響應式規則或可及性要求改變時，同步更新 [Design System](design-system/README.md) 與 Flutter `lib/design/`。
-- Azure provider、資料庫、環境變數或部署狀態改變時，同步更新整合、資料、安全與部署文件。
+- 功能、資料契約、品質指令或驗證結果改變時，同步更新根 README、元件 README 與測試文件。
+- AI provider、資料庫、環境變數或部署狀態改變時，同步更新整合、資料、安全與部署文件。
+- 所有 commit／push 都必須先依 [AGENTS.md](AGENTS.md) 掃描 staged、unstaged、untracked 與 diff；本次遷移未執行版本控制或外部發布。
 - LICENSE 尚未選定；需先確認團隊作者、學校、競賽、套件、模型、資料與素材授權。

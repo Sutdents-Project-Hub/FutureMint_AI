@@ -3,16 +3,18 @@ import { FutureMintService as Service } from "../application/futureMintService";
 import { demoCatalog } from "../adapters/demoCatalog";
 import { DemoAiProvider } from "../adapters/demoAiProvider";
 import { InMemoryRepository } from "../adapters/inMemoryRepository";
-import { createAzureOpenAiProviderFromEnvironment } from "../adapters/azureOpenAiProvider";
-import { createCosmosRepositoryFromEnvironment } from "../adapters/cosmosRepository";
+import { createLiangjieAiProviderFromEnvironment } from "../adapters/liangjieAiProvider";
+import { createPostgresRepositoryFromEnvironment } from "../adapters/postgresRepository";
 import { AuthService } from "../auth/authService";
 
 export interface Runtime {
-  mode: "demo" | "azure";
-  aiProvider: "demo" | "azure";
-  dataProvider: "memory" | "cosmos";
+  mode: "demo" | "hosted";
+  aiProvider: "demo" | "liangjie";
+  dataProvider: "memory" | "postgres";
   service: FutureMintService;
   authService: AuthService;
+  healthCheck: () => Promise<void>;
+  close: () => Promise<void>;
 }
 
 let runtime: Runtime | undefined;
@@ -30,38 +32,47 @@ const requiredChoice = <T extends string>(
 
 export const parseRuntimeConfig = (
   environment: Record<string, string | undefined>,
-): Omit<Runtime, "service" | "authService"> => {
+): Pick<Runtime, "mode" | "aiProvider" | "dataProvider"> => {
   const aiProvider = requiredChoice("AI_PROVIDER", environment.AI_PROVIDER, [
     "demo",
-    "azure",
+    "liangjie",
   ] as const);
   const dataProvider = requiredChoice(
     "DATA_PROVIDER",
     environment.DATA_PROVIDER,
-    ["memory", "cosmos"] as const,
+    ["memory", "postgres"] as const,
   );
   return {
     mode:
-      aiProvider === "azure" || dataProvider === "cosmos" ? "azure" : "demo",
+      aiProvider === "liangjie" || dataProvider === "postgres"
+        ? "hosted"
+        : "demo",
     aiProvider,
     dataProvider,
   };
 };
 
-const createRuntime = (): Runtime => {
+export const createRuntime = (): Runtime => {
   const config = parseRuntimeConfig(process.env);
-  const repository =
-    config.dataProvider === "cosmos"
-      ? createCosmosRepositoryFromEnvironment()
-      : new InMemoryRepository();
+  const postgresRepository =
+    config.dataProvider === "postgres"
+      ? createPostgresRepositoryFromEnvironment()
+      : undefined;
+  const repository = postgresRepository ?? new InMemoryRepository();
   const aiProvider =
-    config.aiProvider === "azure"
-      ? createAzureOpenAiProviderFromEnvironment()
+    config.aiProvider === "liangjie"
+      ? createLiangjieAiProviderFromEnvironment()
       : new DemoAiProvider();
   return {
     ...config,
     service: new Service(repository, aiProvider, demoCatalog),
     authService: new AuthService(repository),
+    healthCheck: postgresRepository
+      ? () => postgresRepository.ping()
+      : async () => undefined,
+    close: postgresRepository
+      ? () => postgresRepository.close()
+      : async () => undefined,
   };
 };
 
