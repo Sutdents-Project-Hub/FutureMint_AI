@@ -5,6 +5,7 @@ import { DemoAiProvider } from "../adapters/demoAiProvider";
 import { InMemoryRepository } from "../adapters/inMemoryRepository";
 import { createLiangjieAiProviderFromEnvironment } from "../adapters/liangjieAiProvider";
 import { createPostgresRepositoryFromEnvironment } from "../adapters/postgresRepository";
+import { TwseMarketDataProvider } from "../adapters/twseMarketDataProvider";
 import { AuthService } from "../auth/authService";
 
 export interface Runtime {
@@ -63,9 +64,15 @@ export const createRuntime = (): Runtime => {
     config.aiProvider === "liangjie"
       ? createLiangjieAiProviderFromEnvironment()
       : new DemoAiProvider();
+  const marketDataProvider = new TwseMarketDataProvider();
   return {
     ...config,
-    service: new Service(repository, aiProvider, demoCatalog),
+    service: new Service(
+      repository,
+      aiProvider,
+      demoCatalog,
+      marketDataProvider,
+    ),
     authService: new AuthService(repository),
     healthCheck: postgresRepository
       ? () => postgresRepository.ping()

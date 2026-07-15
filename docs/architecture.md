@@ -9,8 +9,10 @@ flowchart LR
     U["Flutter Web／Android／iOS"] -->|"HTTPS JSON + Bearer token"| A["Fastify API :3000"]
     A --> D["Application + deterministic domain"]
     D --> Q["量界智算 adapter"]
+    D --> T["TWSE market adapter"]
     D --> M["PostgreSQL repository"]
     Q -->|"OpenAI-compatible HTTPS"| L["liangjiewis.com"]
+    T -->|"official daily snapshot HTTPS"| X["openapi.twse.com.tw"]
     M -->|"private DATABASE_URL"| P["PostgreSQL 17"]
     U -->|"未登入訪客"| G["Client memory repository"]
 ```
@@ -30,7 +32,7 @@ flowchart LR
 ### Flutter Client
 
 - `lib/core/`：models、API client、session 與 repository 介面。
-- `lib/features/`：Authentication、Home、Capture、Events、Subscriptions、Learning、FutureSeed。
+- `lib/features/`：Authentication、Home、Capture、Records Analysis、Notifications、Subscriptions、Learning、FutureSeed、Settings Support。
 - `lib/design/`：Design System tokens 與 components。
 - 瀏覽器 bundle 只含公開的 `API_BASE_URL`，不含 AI／database secret。
 - 登入模式呼叫 API；訪客模式只用當次記憶體，沒有背景同步或偽造 API 成功。
@@ -40,8 +42,8 @@ flowchart LR
 - `contracts/`：Zod input／output schema、錯誤與資料模型。
 - `auth/`：email/password prototype、session 發行／驗證／撤銷。
 - `application/`：use cases 與 repository/provider ports。
-- `domain/`：預算、訂閱與 FutureSeed 的確定性計算。
-- `adapters/`：量界 AI、deterministic demo、PostgreSQL、in-memory。
+- `domain/`：預算、訂閱、六個月收支分析、提醒、FutureSeed 三情境，以及虛擬持倉／配置／事件牌組的確定性計算。
+- `adapters/`：量界 AI、TWSE 每日成交資料、deterministic demo、PostgreSQL、in-memory。
 - `http/`：routes、CORS、rate limit、安全 headers、錯誤 envelope。
 - `migrations/`：版本化 PostgreSQL schema。
 
@@ -61,22 +63,31 @@ Runtime 要求明確設定 `AI_PROVIDER=demo|liangjie` 與 `DATA_PROVIDER=memory
 
 1. Client 送出原始文字、locale 與 reference time。
 2. API 驗證 session、長度、格式與 allowed fields。
-3. Provider 最多回傳五筆草稿：量界回覆先抽取 JSON，再經 Zod 與語意規則驗證；Demo provider 使用可重現規則。
+3. Provider 最多回傳五筆草稿與可修改的需要／想要建議：量界回覆先抽取 JSON，再經 Zod 與語意規則驗證；Demo provider 使用可重現規則。
 4. 回覆來源標示 `liangjie-ai` 或 `deterministic-demo`。
 5. 解析不寫資料庫；使用者修正並確認後才 POST MoneyEvent。
 6. PostgreSQL 以 `(user_id, idempotency_key)` unique constraint 避免重複寫入。
 
-### Dashboard／Lessons／FutureSeed
+### Dashboard／Insights／Lessons／FutureSeed
 
-- Dashboard 與訂閱比較只使用登入帳號自己的事件。
-- 微課可由 provider 產生，但 options、來源與未驗證數量文案仍需 schema／語意檢查。
-- 金額、日期、預算、分帳、訂閱差額與複利都由 TypeScript deterministic domain 計算，不信任模型算術。
+- Dashboard、收支分析、通知與訂閱比較只使用登入帳號自己的事件。
+- 微課與學習規劃可由 provider 產生，但 options、modules、來源與限制仍需 schema／語意檢查。
+- 三條 FutureSeed 曲線使用版本化合成年度報酬序列；金額、日期、預算、分帳、訂閱差額、複利與最大回落都由 TypeScript deterministic domain 計算，不信任模型算術。
+- AI 陪讀員只解釋曲線現象，不選標的、不下單，也不改寫試算數值。
+
+### 投資練習場
+
+1. Client 從 API 取得五個內建教學標的的 TWSE 每日成交快照；API 驗證上游 schema 並快取 15 分鐘。
+2. 登入使用者送出標的、買賣方向、數量與 idempotency key。API 從 session 推導帳號，不接受前端指定 user ID 或價格。
+3. Domain 依伺服器行情檢查現金／持有量，再保存虛擬訂單；持倉、平均成本、配置與報酬每次由訂單重建。
+4. 市場事件骰子由版本化牌組與帳號／日期／次數產生可重現結果，只用於學習提問。
+5. 不建立券商連線，不模擬真實撮合、手續費、稅、配息或公司行動；畫面始終標示延遲與教育用途。
 
 ## HTTP 與信任邊界
 
 - API base path：`/api`；body 上限 32 KiB。
 - CORS 只允許 `ALLOWED_ORIGINS` 的完整 origin，不允許 `*`。
-- 全域 rate limit 為單 instance 每分鐘 120 requests；auth routes 每分鐘 10 requests。
+- 全域 rate limit 為單 instance 每分鐘 120 requests；auth routes 每分鐘 10 requests；AI routes 每分鐘 20 requests。
 - API behind Coolify proxy 時信任 proxy，production client IP／HTTPS 由 Coolify reverse proxy 提供。
 - 所有動態回應設 `Cache-Control: no-store`，並送出 nosniff、frame deny、referrer 與 CSP headers。
 - AI output、database errors 與使用者輸入都不直接回傳 stack、SQL、prompt、key 或 SDK response。
@@ -91,6 +102,7 @@ Runtime 要求明確設定 `AI_PROVIDER=demo|liangjie` 與 `DATA_PROVIDER=memory
 | Session 過期／撤銷 | 回登入頁 | API 回 401 |
 | Web deep link refresh | 畫面正常載入 | Nginx fallback 到 `index.html` |
 | 正式網路中斷 | 可明確切訪客模式 | 訪客資料只在記憶體，不同步到帳號 |
+| TWSE unavailable／schema mismatch | 顯示降級資料與日期 | 回明確標示的教育快照，不冒充即時行情 |
 
 ## 部署狀態
 

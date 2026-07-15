@@ -62,4 +62,24 @@ describe("AuthService", () => {
       code: "invalid_credentials",
     });
   });
+
+  it("allows only one account when identical registrations race", async () => {
+    const service = createService();
+    const attempts = await Promise.allSettled([
+      service.register({
+        email: "student@example.com",
+        password: "futuremint2026",
+      }),
+      service.register({
+        email: "student@example.com",
+        password: "futuremint2026",
+      }),
+    ]);
+
+    expect(attempts.filter((attempt) => attempt.status === "fulfilled")).toHaveLength(1);
+    const rejected = attempts.find(
+      (attempt): attempt is PromiseRejectedResult => attempt.status === "rejected",
+    );
+    expect(rejected?.reason).toMatchObject({ code: "account_unavailable", status: 409 });
+  });
 });

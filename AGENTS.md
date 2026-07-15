@@ -7,6 +7,9 @@
 - 目前階段：第六屆中學生黑客松決賽原型。主辦方 Azure 環境已關閉；目前目標是由私人 GitHub repository 自動部署到團隊 VPS 的 Coolify，尚未部署。
 - Git repository 名稱：`FutureMint_AI`。全新專案的初始 branch 為 `main`。
 - Project slug：`futuremint-ai`。
+- 本機 Docker Compose project：`futuremint_ai`；主要 `compose.yaml` 必須明確設定頂層 `name: futuremint_ai`。
+- Coolify project：`futuremint-ai`；Coolify services：`futuremint-ai-web`、`futuremint-ai-api`、`futuremint-ai-postgres`。
+- Compose services 使用 `web`、`api`、`postgres`，不設定 `container_name`；容器名稱由 Compose project 與 service role 產生。
 - 產品型態：`hybrid`。
 - Bootstrap 模式：`executable`；Flutter 與 Fastify API 均需以 manifest、lockfile、Dockerfile 與實際品質指令維持此狀態。
 

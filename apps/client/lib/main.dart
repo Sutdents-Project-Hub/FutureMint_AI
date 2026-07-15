@@ -22,7 +22,7 @@ Future<void> main() async {
     store: store,
     authenticatedRepository: (token) =>
         ApiRepository(baseUri: apiUri, accessToken: token),
-    guestRepository: GuestRepository.create,
+    guestRepository: () => GuestRepository.create(marketBaseUri: apiUri),
   );
   runApp(FutureMintApp(session: session));
   unawaited(session.start());

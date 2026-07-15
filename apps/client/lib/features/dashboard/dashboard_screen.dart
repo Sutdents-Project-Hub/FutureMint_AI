@@ -134,8 +134,12 @@ class _DashboardContent extends StatelessWidget {
             children: [
               PageHeading(
                 kicker: '今天的金錢節奏',
-                title: '嗨，今天也一起顧好每一塊錢',
-                description: '先看清楚，再做適合自己的選擇。',
+                title: profile.accountRole == AccountRole.parent
+                    ? '陪孩子看懂選擇，不替他做決定'
+                    : '嗨，今天也一起顧好每一塊錢',
+                description: profile.accountRole == AccountRole.parent
+                    ? '家長模式調整說明角度，不會讀取另一個帳號的交易。'
+                    : '先看清楚，再做適合自己的選擇。',
                 accent: FutureMintTokens.teal,
                 trailing: FilledButton.icon(
                   onPressed: () => context.go('/capture'),
@@ -144,11 +148,63 @@ class _DashboardContent extends StatelessWidget {
                 ),
               ),
               const SizedBox(height: FutureMintTokens.space6),
+              if (controller.insights?.notices.isNotEmpty ?? false) ...[
+                _NoticeStrip(notices: controller.insights!.notices),
+                const SizedBox(height: FutureMintTokens.space5),
+              ],
               content,
             ],
           ),
         );
       },
+    );
+  }
+}
+
+class _NoticeStrip extends StatelessWidget {
+  const _NoticeStrip({required this.notices});
+
+  final List<InsightNotice> notices;
+
+  @override
+  Widget build(BuildContext context) {
+    final first = notices.first;
+    return Material(
+      color: _softSurface(context, FutureMintTokens.sunSoft),
+      borderRadius: BorderRadius.circular(FutureMintTokens.radiusMedium),
+      child: InkWell(
+        borderRadius: BorderRadius.circular(FutureMintTokens.radiusMedium),
+        onTap: () => context.go('/notifications'),
+        child: Padding(
+          padding: const EdgeInsets.all(FutureMintTokens.space4),
+          child: Row(
+            children: [
+              Badge(
+                label: Text('${notices.length}'),
+                child: const Icon(Icons.notifications_active_outlined),
+              ),
+              const SizedBox(width: FutureMintTokens.space3),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      first.title,
+                      style: const TextStyle(fontWeight: FontWeight.w700),
+                    ),
+                    Text(
+                      first.message,
+                      maxLines: 2,
+                      overflow: TextOverflow.ellipsis,
+                    ),
+                  ],
+                ),
+              ),
+              const Icon(Icons.chevron_right_rounded),
+            ],
+          ),
+        ),
+      ),
     );
   }
 }

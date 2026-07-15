@@ -25,6 +25,9 @@ void main() {
     expect(find.text('確認草稿'), findsOneWidget);
     expect(find.byKey(const Key('capture-draft-focus')), findsOneWidget);
     expect(find.textContaining('離線規則'), findsOneWidget);
+    expect(find.text('AI 需要／想要建議'), findsOneWidget);
+    expect(find.text('需要'), findsOneWidget);
+    expect(find.text('想要'), findsOneWidget);
     expect(find.bySemanticsLabel('AI 已整理草稿，尚未保存'), findsOneWidget);
     expect(controller.events.length, initialCount);
 
@@ -32,6 +35,14 @@ void main() {
     await tester.tap(find.text('確認並記下'));
     await tester.pumpAndSettle();
     expect(controller.events.length, initialCount + 1);
+    expect(controller.lastSavedEvent?.spendingIntent, SpendingIntent.want);
+    expect(
+      tester
+          .widget<TextField>(find.byKey(const Key('capture-input')))
+          .controller
+          ?.text,
+      isEmpty,
+    );
   });
 
   testWidgets('capture remains usable on a narrow phone', (tester) async {

@@ -11,13 +11,13 @@ abstract final class FutureMintTheme {
     final scheme = ColorScheme.fromSeed(
       seedColor: FutureMintTokens.mint,
       brightness: brightness,
-      primary: dark ? const Color(0xFF72DCD4) : FutureMintTokens.ink,
+      primary: dark ? const Color(0xFFB8AEFF) : FutureMintTokens.ink,
       onPrimary: dark ? FutureMintTokens.ink : Colors.white,
       primaryContainer: dark
-          ? const Color(0xFF174F4D)
+          ? const Color(0xFF393368)
           : FutureMintTokens.mintSoft,
-      onPrimaryContainer: dark ? const Color(0xFFF4FFFD) : FutureMintTokens.ink,
-      secondary: dark ? const Color(0xFF9DDDD6) : FutureMintTokens.teal,
+      onPrimaryContainer: dark ? const Color(0xFFFBF9FF) : FutureMintTokens.ink,
+      secondary: dark ? const Color(0xFFC3BCFF) : FutureMintTokens.teal,
       onSecondary: dark ? FutureMintTokens.ink : Colors.white,
       secondaryContainer: dark
           ? const Color(0xFF64302C)
@@ -27,9 +27,9 @@ abstract final class FutureMintTheme {
           : FutureMintTokens.ink,
       surface: dark ? FutureMintTokens.darkSurface : FutureMintTokens.paper,
       onSurface: dark ? const Color(0xFFFFF8EE) : FutureMintTokens.ink,
-      outline: dark ? const Color(0xFF94A7A1) : FutureMintTokens.outline,
+      outline: dark ? const Color(0xFFAAA8C0) : FutureMintTokens.outline,
       outlineVariant: dark
-          ? const Color(0xFF3D4B47)
+          ? const Color(0xFF464459)
           : FutureMintTokens.hairline,
       error: dark ? const Color(0xFFFFB4AB) : FutureMintTokens.danger,
     );

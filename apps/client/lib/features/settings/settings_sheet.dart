@@ -6,6 +6,7 @@ import '../../design/soft_components.dart';
 import '../../design/tokens.dart';
 import '../../shared/date_text.dart';
 import '../../state/app_controller.dart';
+import 'help_sheets.dart';
 
 Future<void> showSettingsSheet(BuildContext context) =>
     showModalBottomSheet<void>(
@@ -38,6 +39,8 @@ class _SettingsSheet extends StatelessWidget {
     );
     var goalDate =
         current?.goalDate ?? DateTime.now().add(const Duration(days: 90));
+    var accountRole = current?.accountRole ?? AccountRole.child;
+    var saving = false;
     await showDialog<void>(
       context: context,
       builder: (dialogContext) => StatefulBuilder(
@@ -49,6 +52,25 @@ class _SettingsSheet extends StatelessWidget {
               child: Column(
                 mainAxisSize: MainAxisSize.min,
                 children: [
+                  SegmentedButton<AccountRole>(
+                    showSelectedIcon: false,
+                    segments: const [
+                      ButtonSegment(
+                        value: AccountRole.child,
+                        icon: Icon(Icons.face_outlined),
+                        label: Text('孩子'),
+                      ),
+                      ButtonSegment(
+                        value: AccountRole.parent,
+                        icon: Icon(Icons.family_restroom_outlined),
+                        label: Text('家長'),
+                      ),
+                    ],
+                    selected: {accountRole},
+                    onSelectionChanged: (value) =>
+                        setDialogState(() => accountRole = value.first),
+                  ),
+                  const SizedBox(height: 12),
                   TextField(
                     controller: budget,
                     keyboardType: TextInputType.number,
@@ -94,7 +116,7 @@ class _SettingsSheet extends StatelessWidget {
                         firstDate: firstDate,
                         lastDate: lastDate,
                       );
-                      if (selected != null) {
+                      if (selected != null && dialogContext.mounted) {
                         setDialogState(() => goalDate = selected);
                       }
                     },
@@ -109,39 +131,46 @@ class _SettingsSheet extends StatelessWidget {
               child: const Text('取消'),
             ),
             FilledButton(
-              onPressed: () async {
-                final monthly = int.tryParse(budget.text.trim());
-                final target = int.tryParse(goalTarget.text.trim());
-                final savedAmount = int.tryParse(goalSaved.text.trim());
-                if (monthly == null ||
-                    monthly <= 0 ||
-                    target == null ||
-                    target <= 0 ||
-                    savedAmount == null ||
-                    savedAmount < 0 ||
-                    goalName.text.trim().isEmpty) {
-                  ScaffoldMessenger.of(context).showSnackBar(
-                    const SnackBar(content: Text('請填入有效的預算與目標資料。')),
-                  );
-                  return;
-                }
-                final didSave = await controller.updateProfile(
-                  UserProfile(
-                    userId: current?.userId ?? 'guest-user',
-                    monthlyBudgetMinor: monthly,
-                    weeklyBudgetMinor: current?.weeklyBudgetMinor,
-                    goalName: goalName.text.trim(),
-                    goalTargetMinor: target,
-                    goalSavedMinor: savedAmount,
-                    goalDate: goalDate,
-                    preferredTone: current?.preferredTone ?? 'supportive',
-                  ),
-                );
-                if (didSave && dialogContext.mounted) {
-                  Navigator.pop(dialogContext);
-                }
-              },
-              child: const Text('儲存設定'),
+              onPressed: saving || controller.busy
+                  ? null
+                  : () async {
+                      final monthly = int.tryParse(budget.text.trim());
+                      final target = int.tryParse(goalTarget.text.trim());
+                      final savedAmount = int.tryParse(goalSaved.text.trim());
+                      if (monthly == null ||
+                          monthly <= 0 ||
+                          target == null ||
+                          target <= 0 ||
+                          savedAmount == null ||
+                          savedAmount < 0 ||
+                          goalName.text.trim().isEmpty) {
+                        ScaffoldMessenger.of(context).showSnackBar(
+                          const SnackBar(content: Text('請填入有效的預算與目標資料。')),
+                        );
+                        return;
+                      }
+                      setDialogState(() => saving = true);
+                      final didSave = await controller.updateProfile(
+                        UserProfile(
+                          userId: current?.userId ?? 'guest-user',
+                          accountRole: accountRole,
+                          monthlyBudgetMinor: monthly,
+                          weeklyBudgetMinor: current?.weeklyBudgetMinor,
+                          goalName: goalName.text.trim(),
+                          goalTargetMinor: target,
+                          goalSavedMinor: savedAmount,
+                          goalDate: goalDate,
+                          preferredTone: current?.preferredTone ?? 'supportive',
+                        ),
+                      );
+                      if (!dialogContext.mounted) return;
+                      if (didSave) {
+                        Navigator.pop(dialogContext);
+                      } else {
+                        setDialogState(() => saving = false);
+                      }
+                    },
+              child: Text(saving ? '正在儲存…' : '儲存設定'),
             ),
           ],
         ),
@@ -213,6 +242,18 @@ class _SettingsSheet extends StatelessWidget {
                         label: Text(
                           controller.profile == null ? '建立預算與目標' : '編輯預算與目標',
                         ),
+                      ),
+                      const SizedBox(height: FutureMintTokens.space3),
+                      OutlinedButton.icon(
+                        onPressed: () => showAppWalkthrough(context),
+                        icon: const Icon(Icons.route_outlined),
+                        label: const Text('使用步驟介紹'),
+                      ),
+                      const SizedBox(height: FutureMintTokens.space3),
+                      OutlinedButton.icon(
+                        onPressed: () => showSupportBot(context),
+                        icon: const Icon(Icons.support_agent_rounded),
+                        label: const Text('機器人服務諮詢'),
                       ),
                       const SizedBox(height: FutureMintTokens.space3),
                       OutlinedButton.icon(

@@ -48,4 +48,28 @@ describe("DemoAiProvider competition cases", () => {
     expect(result.drafts).toEqual([]);
     expect(result.rejectedReason).toContain("不像");
   });
+
+  it("adds an editable intent suggestion to spending drafts", async () => {
+    const result = await provider.parseCapture({
+      text: "買遊戲點數 450",
+      locale: "zh-TW",
+      referenceTime,
+    });
+
+    expect(result.drafts[0]).toMatchObject({
+      spendingIntent: "want",
+      intentReason: expect.stringContaining("不代表"),
+    });
+  });
+
+  it("keeps a compound explanation when a scenario is selected", async () => {
+    const reply = await provider.coach({
+      topic: "compound",
+      question: "複利怎麼發生？",
+      scenarioId: "balanced",
+    });
+
+    expect(reply.answer).toContain("複利");
+    expect(reply.answer).not.toContain("出現下跌");
+  });
 });

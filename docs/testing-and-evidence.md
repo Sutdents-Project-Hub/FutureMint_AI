@@ -6,27 +6,31 @@
 
 | 元件 | 指令／操作 | 結果 |
 |---|---|---|
-| Fastify API | `npm test` | 11 個 test files、59 tests 通過 |
+| Fastify API | `npm test` | 15 個 test files、82 tests 通過 |
 | Fastify API | `npm run typecheck` | 通過 |
 | Fastify API | `npm run build` | 通過 |
 | Dependencies | `npm audit --omit=dev` | 0 vulnerabilities |
 | Capture evaluation | `npm run evaluate:captures` | 30/30 cases、30/30 schema、225/225 field checks |
-| PostgreSQL migration | PostgreSQL 17 clean test DB 執行兩次 `npm run migrate` | 第一次套用 `001_initial.sql`，第二次 applied 0；migration checksum 長度 64 |
+| PostgreSQL migration | PostgreSQL 17 clean test DB／Compose 執行 migration | 套用 `001_initial.sql`、`002_roles_and_intents.sql`、`003_investment_lab.sql`；角色／意圖欄位與兩個虛擬投資 tables 存在 |
 | PostgreSQL seed guard | 未設 `ALLOW_DEMO_SEED=true` 執行 seed | 在建立 repository／寫入前拒絕，exit code 1 |
 | PostgreSQL synthetic seed | 設安全開關後執行兩次 | 無法登入的 synthetic account／profile／4 events；idempotent，event count 仍為 4 |
 | API Docker build | `docker build -t futuremint-api:codex services/api` | 通過；Node.js 22 multi-stage image |
 | API Docker demo | `AI_PROVIDER=demo`、`DATA_PROVIDER=memory` | Container health 200；沒有要求 `DATABASE_URL` 或執行 migration |
 | API Docker + PostgreSQL | `DATA_PROVIDER=postgres` 指向 PostgreSQL 17 | 啟動 migration applied 0、health 200，回報 hosted／postgres |
 | Persistence E2E | Container register → profile → event → stop／new container → login → list | 通過；重啟後讀回 1 event |
-| Flutter format | `dart format --output=none --set-exit-if-changed lib test integration_test` | 46 files，0 changed |
+| Investment persistence E2E | Container register → profile → virtual buy → restart API → login → investment lab | 通過；重啟後讀回 1 order、2 股與正確剩餘現金 |
+| TWSE market adapter | 實際呼叫 `/v1/exchangeReport/STOCK_DAY_ALL` 與 `/api/market/quotes` | 取得 5 個內建教學標的、資料日 2026-07-14、`isFallback=false`；另有 timeout／fallback unit test |
+| Docker Compose | `docker compose config`、`docker compose up -d --build --wait` | `futuremint_ai` 單一專案群組內 Web／API／PostgreSQL 三服務 healthy；Web 200、API health 200 |
+| Flutter format | `dart format --output=none --set-exit-if-changed lib test integration_test` | 52 files，0 changed |
 | Flutter analyze | `flutter analyze` | 0 issues |
-| Flutter tests | `flutter test` | 58 tests 通過 |
+| Flutter tests | `flutter test` | 69 tests 通過 |
 | Flutter Web | `flutter build web --release --dart-define=API_BASE_URL=...` | 通過 |
+| UX visual QA | release Web + in-app Browser（桌面與 390×844） | 訪客模式、亮／深色主題、底部導覽與記錄頁可用；頁面直接切換、無左右滑動；無 console errors |
 | Frontend Docker build | `docker build --build-arg API_BASE_URL=... -t futuremint-web:codex apps/client` | 通過；固定 Flutter 3.41.9 commit，Nginx runtime image 約 34.4 MB |
 | Frontend container | root／`/capture`、Docker health、bundle config | HTTP 200、deep-link 回同一 SPA entry、health healthy、bundle 含指定公開 API URL |
 | Web cache | 檢查 response headers | `index.html` 回 `Cache-Control: no-store` |
 | Bundle secret scan | 搜尋 release bundle | 沒有 `LIANGJIE_API_KEY`、`DATABASE_URL`、`postgresql://` 或 placeholder password |
-| Earlier browser QA | 2026-07-14 本機 Chrome | 登入入口、responsive dashboard、dark settings 與短 landscape navigation 已人工檢查 |
+| Browser QA | 2026-07-15 本機 Docker + in-app Browser | 桌面與 375×812：既有主線，以及投資練習場來源／日期、虛擬買入、持倉配置、事件骰子與 AI 陪讀；無明顯重疊或控制項溢位 |
 
 本機 Docker 是 ARM64；最終 Dockerfiles 使用 multi-architecture Debian／Node／Nginx base，Flutter SDK 依建置主機下載相符 toolchain，但仍需在實際 Coolify VPS architecture 完成一次正式 build。
 
@@ -36,20 +40,24 @@
 
 - Register／login／logout／revoked session、相同 generic invalid-credential error。
 - 帳號 ownership：帳號 B 看不到帳號 A 的事件。
-- Budget、split、subscription monthly cost、FutureSeed zero rate 與 compound calculation。
-- Parse 不保存、確認保存、idempotency、query filters、malformed JSON 與 validation envelope。
-- CORS allowed／denied preflight、安全 headers、not found、health dependency failure。
+- Budget、split、subscription monthly cost、六個月 cashflow、提醒、FutureSeed zero rate、三情境曲線與 drawdown calculation。
+- FutureSeed 1.5%／5%／8% 合成路徑的十年幾何平均校準，以及不被每月投入稀釋的報酬指數 drawdown。
+- TWSE 日資料 schema／民國日期／change percent／cache fallback／同時 cache miss 合併；虛擬現金、買入、賣出、持有量、配置、idempotency、同帳號併發下單與可重現事件牌組。
+- Parse 不保存、確認保存、idempotency、query filters、malformed JSON、request body 過大與 validation envelope。
+- CORS allowed／denied preflight／預檢快取、安全 headers、AI route rate limit、not found、health dependency failure。
+- Lessons completion body schema、同時註冊同 email 的 conflict response。
 - Runtime 設定缺失／不合法時明確失敗。
-- 量界 adapter：OpenAI-compatible request、nullable fields、type／category semantics、Markdown JSON fence、invalid JSON／schema、timeout、429 retry budget。
+- 量界 adapter：OpenAI-compatible request、nullable fields、type／category／intent semantics、Markdown JSON fence、invalid JSON／schema、timeout、429 retry budget、學習規劃與安全陪讀回覆。
 - PostgreSQL mapping、parameterized queries、event idempotency、sessions、lessons、health 與 close。
 
 ### Flutter
 
 - Model JSON 與 `liangjie-ai` source mapping。
 - Register／login envelope、Bearer header、首次設定、訪客不保存 session。
-- API timeout／problem envelope、明確 timezone、空資料不虛構 subscription。
-- Capture 三階段、多 draft、修正、單筆確認、partial refresh recovery。
-- Dashboard、phone／desktop navigation、subscription、lesson action、FutureSeed。
+- API timeout／problem envelope、明確 timezone、空資料不虛構 subscription、session 還原時的暫時網路失敗／未授權分流。
+- Capture 三階段、多 draft、修正、單筆確認、儲存後清空輸入、partial refresh recovery。
+- Dashboard、phone／desktop direct navigation、subscription、lesson action、需要／想要控制、無延遲分析圖表與三路徑 FutureSeed。
+- 投資練習場 route、盤後來源、訪客虛擬買入、超賣拒絕、事件骰子與 200% text scale。
 - 200% text scale、short landscape rail、Design System components 與 responsive bento。
 
 ## 30 筆合成解析評估
@@ -64,7 +72,7 @@ Fixture：`services/api/test/fixtures/capture-evaluation.json`；報告：
 ## 尚未驗證
 
 - 量界正式 API key、帳號可用 model、費率、quota、資料條款、真實 output quality、P95 latency 與 outage 行為。
-- GitHub private remote、GitHub App、webhook／Auto Deploy；目前 workspace 沒有 remote。
+- GitHub App、webhook／Auto Deploy；workspace 已有 remote，但本次尚未 push 或連接 Coolify。
 - 實際 Coolify VPS 的 AMD64／ARM64 image build、domains、TLS、CORS、health routing、resource limits 與 rollback。
 - Coolify PostgreSQL internal URL、production capacity、scheduled S3 backup 與隔離 restore。
 - Production log retention、磁碟告警與 server／Coolify 自身備份。

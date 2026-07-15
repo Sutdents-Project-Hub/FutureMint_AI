@@ -4,13 +4,19 @@ import { FutureMintService } from "../../src/application/futureMintService";
 import { demoCatalog } from "../../src/adapters/demoCatalog";
 import { DemoAiProvider } from "../../src/adapters/demoAiProvider";
 import { InMemoryRepository } from "../../src/adapters/inMemoryRepository";
+import { EducationalMarketDataProvider } from "../../src/adapters/twseMarketDataProvider";
 
 const createService = () => {
   const repository = new InMemoryRepository();
   const aiProvider = new DemoAiProvider();
   return {
     repository,
-    service: new FutureMintService(repository, aiProvider, demoCatalog),
+    service: new FutureMintService(
+      repository,
+      aiProvider,
+      demoCatalog,
+      new EducationalMarketDataProvider(),
+    ),
   };
 };
 
@@ -58,6 +64,19 @@ describe("FutureMintService capture lifecycle", () => {
     expect(
       events.filter((event) => event.idempotencyKey === input.idempotencyKey),
     ).toHaveLength(1);
+  });
+
+  it("sorts the event timeline consistently by newest occurrence", async () => {
+    const { service } = createService();
+
+    const events = await service.listMoneyEvents("demo-user");
+
+    expect(events.map((event) => event.merchant)).toEqual([
+      "遊戲點數",
+      "珍奶",
+      "打工收入",
+      "影音訂閱",
+    ]);
   });
 
   it("recomputes split share instead of trusting client or AI arithmetic", async () => {
@@ -115,6 +134,36 @@ describe("FutureMintService decisions", () => {
     expect(dashboard.monthlyBudgetMinor).toBe(6000);
     expect(dashboard.recentEvents.length).toBeGreaterThan(0);
     expect(dashboard.availableMinor).toBeLessThan(6000);
+  });
+
+  it("serializes concurrent virtual orders so cash cannot be overspent", async () => {
+    const { service } = createService();
+    const results = await Promise.allSettled([
+      service.placeInvestmentOrder("demo-user", {
+        symbol: "0050",
+        side: "buy",
+        quantity: 30,
+        idempotencyKey: "concurrent-buy-one",
+      }),
+      service.placeInvestmentOrder("demo-user", {
+        symbol: "0050",
+        side: "buy",
+        quantity: 30,
+        idempotencyKey: "concurrent-buy-two",
+      }),
+    ]);
+
+    expect(results.filter((result) => result.status === "fulfilled")).toHaveLength(1);
+    const rejected = results.find(
+      (result): result is PromiseRejectedResult => result.status === "rejected",
+    );
+    expect(rejected?.reason).toMatchObject({
+      code: "insufficient_virtual_cash",
+      status: 422,
+    });
+    const lab = await service.getInvestmentLab("demo-user");
+    expect(lab.cashMinor).toBeGreaterThanOrEqual(0);
+    expect(lab.orders).toHaveLength(1);
   });
 
   it("generates a bounded micro lesson from confirmed data", async () => {

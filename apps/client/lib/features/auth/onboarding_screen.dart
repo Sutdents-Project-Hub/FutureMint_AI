@@ -19,6 +19,7 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
   final _goalName = TextEditingController();
   final _goalTarget = TextEditingController();
   var _goalDate = DateTime.now().add(const Duration(days: 90));
+  var _accountRole = AccountRole.child;
 
   @override
   void dispose() {
@@ -35,6 +36,7 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
     await session.completeOnboarding(
       UserProfile(
         userId: account.id,
+        accountRole: _accountRole,
         monthlyBudgetMinor: int.parse(_monthlyBudget.text.trim()),
         goalName: _goalName.text.trim(),
         goalTargetMinor: int.parse(_goalTarget.text.trim()),
@@ -72,6 +74,29 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
                       child: Column(
                         crossAxisAlignment: CrossAxisAlignment.stretch,
                         children: [
+                          Text('這個帳號怎麼使用？', style: theme.textTheme.titleMedium),
+                          const SizedBox(height: FutureMintTokens.space2),
+                          const Text('角色只調整內容與說明角度，不會開放查看另一個帳號的明細。'),
+                          const SizedBox(height: FutureMintTokens.space3),
+                          SegmentedButton<AccountRole>(
+                            showSelectedIcon: false,
+                            segments: const [
+                              ButtonSegment(
+                                value: AccountRole.child,
+                                icon: Icon(Icons.face_outlined),
+                                label: Text('孩子使用'),
+                              ),
+                              ButtonSegment(
+                                value: AccountRole.parent,
+                                icon: Icon(Icons.family_restroom_outlined),
+                                label: Text('家長陪伴'),
+                              ),
+                            ],
+                            selected: {_accountRole},
+                            onSelectionChanged: (value) =>
+                                setState(() => _accountRole = value.first),
+                          ),
+                          const SizedBox(height: FutureMintTokens.space5),
                           TextFormField(
                             controller: _monthlyBudget,
                             keyboardType: TextInputType.number,
@@ -123,7 +148,7 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
                                   const Duration(days: 3650),
                                 ),
                               );
-                              if (selected != null) {
+                              if (selected != null && mounted) {
                                 setState(() => _goalDate = selected);
                               }
                             },

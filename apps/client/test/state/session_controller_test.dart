@@ -2,6 +2,7 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:futuremint_app/auth/auth_api.dart';
 import 'package:futuremint_app/auth/auth_models.dart';
 import 'package:futuremint_app/auth/session_store.dart';
+import 'package:futuremint_app/data/api_repository.dart';
 import 'package:futuremint_app/data/guest_repository.dart';
 import 'package:futuremint_app/state/session_controller.dart';
 
@@ -22,6 +23,7 @@ class FakeAuthGateway implements AuthGateway {
   FakeAuthGateway(this.result);
 
   AuthSession result;
+  Object? meError;
 
   @override
   Future<AuthSession> login({
@@ -30,7 +32,10 @@ class FakeAuthGateway implements AuthGateway {
   }) async => result;
 
   @override
-  Future<PublicAccount> me(String token) async => result.account;
+  Future<PublicAccount> me(String token) async {
+    if (meError != null) throw meError!;
+    return result.account;
+  }
 
   @override
   Future<void> logout(String token) async {}
@@ -85,4 +90,35 @@ void main() {
     expect(controller.status, SessionStatus.guest);
     expect(await store.readToken(), isNull);
   });
+
+  test('keeps a saved session after a retryable restoration failure', () async {
+    store.token = 'a' * 43;
+    auth.meError = const ApiException(
+      code: 'network_error',
+      message: '連不上服務，請檢查網路後再試一次。',
+      retryable: true,
+    );
+
+    await controller.start();
+
+    expect(controller.status, SessionStatus.restorationFailed);
+    expect(await store.readToken(), 'a' * 43);
+  });
+
+  test(
+    'clears a saved session only after the server rejects its token',
+    () async {
+      store.token = 'a' * 43;
+      auth.meError = const ApiException(
+        code: 'unauthorized',
+        message: '登入已過期，請重新登入。',
+        retryable: false,
+      );
+
+      await controller.start();
+
+      expect(controller.status, SessionStatus.signedOut);
+      expect(await store.readToken(), isNull);
+    },
+  );
 }

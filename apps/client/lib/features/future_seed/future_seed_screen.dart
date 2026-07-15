@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:go_router/go_router.dart';
 import 'package:provider/provider.dart';
 
 import '../../core/models.dart';
@@ -6,6 +7,7 @@ import '../../design/soft_components.dart';
 import '../../design/tokens.dart';
 import '../../shared/money_text.dart';
 import '../../state/app_controller.dart';
+import 'investment_chart.dart';
 
 class FutureSeedScreen extends StatefulWidget {
   const FutureSeedScreen({super.key});
@@ -15,14 +17,15 @@ class FutureSeedScreen extends StatefulWidget {
 }
 
 class _FutureSeedScreenState extends State<FutureSeedScreen> {
+  double initial = 4200;
   double monthly = 500;
   double years = 5;
-  double rate = 3;
+  InvestmentScenarioId selectedId = InvestmentScenarioId.balanced;
 
   @override
   Widget build(BuildContext context) {
     final controller = context.watch<AppController>();
-    final preview = controller.futureSeedPreview;
+    final simulation = controller.investmentSimulation;
     final gutter = FutureMintTokens.pageGutter(context);
     return SingleChildScrollView(
       padding: EdgeInsets.fromLTRB(
@@ -40,40 +43,94 @@ class _FutureSeedScreenState extends State<FutureSeedScreen> {
             crossAxisAlignment: CrossAxisAlignment.stretch,
             children: [
               const PageHeading(
-                kicker: 'FutureSeed 教育試算',
-                title: '讓小小的累積，長出未來',
-                description: '調整假設，看看本金和可能成長的差別。這不是報酬預測。',
+                kicker: 'FutureSeed 教育模擬',
+                title: '讓省下來的錢，遇見時間、紀律與風險',
+                description: '比較三條合成路徑的成長與下跌，再用 AI 陪讀員看懂現象。這不是報酬預測。',
                 accent: FutureMintTokens.sun,
+              ),
+              const SizedBox(height: FutureMintTokens.space5),
+              SoftCard(
+                key: const Key('investment-lab-entry'),
+                color: Theme.of(context).brightness == Brightness.dark
+                    ? FutureMintTokens.darkSurfaceRaised
+                    : FutureMintTokens.lavenderSoft,
+                child: Wrap(
+                  alignment: WrapAlignment.spaceBetween,
+                  crossAxisAlignment: WrapCrossAlignment.center,
+                  spacing: FutureMintTokens.space5,
+                  runSpacing: FutureMintTokens.space4,
+                  children: [
+                    ConstrainedBox(
+                      constraints: const BoxConstraints(maxWidth: 560),
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text(
+                            '想實際練習虛擬買賣？',
+                            style: Theme.of(context).textTheme.titleLarge,
+                          ),
+                          const SizedBox(height: FutureMintTokens.space2),
+                          const Text('進入投資練習場，使用證交所盤後行情、虛擬資金與市場事件骰子練習配置與風險。'),
+                        ],
+                      ),
+                    ),
+                    FilledButton.icon(
+                      onPressed: () =>
+                          context.go('/future-seed/investment-lab'),
+                      icon: const Icon(Icons.account_balance_wallet_outlined),
+                      label: const Text('進入投資練習場'),
+                    ),
+                  ],
+                ),
               ),
               const SizedBox(height: FutureMintTokens.space5),
               LayoutBuilder(
                 builder: (context, constraints) {
                   final wide =
-                      constraints.maxWidth >= 820 &&
+                      constraints.maxWidth >= 860 &&
                       MediaQuery.textScalerOf(context).scale(1) < 1.5;
                   final controls = _Controls(
+                    initial: initial,
                     monthly: monthly,
                     years: years,
-                    rate: rate,
-                    onMonthly: (value) => setState(() => monthly = value),
-                    onYears: (value) => setState(() => years = value),
-                    onRate: (value) => setState(() => rate = value),
-                    onPreview: controller.busy
+                    onInitial: controller.busy
                         ? null
-                        : () => controller.previewFutureSeed(
-                            monthlyContributionMinor: monthly.round(),
-                            years: years.round(),
-                            annualRatePercent: rate,
-                          ),
+                        : (value) => setState(() => initial = value),
+                    onMonthly: controller.busy
+                        ? null
+                        : (value) => setState(() => monthly = value),
+                    onYears: controller.busy
+                        ? null
+                        : (value) => setState(() => years = value),
+                    onRun: controller.busy
+                        ? null
+                        : () async {
+                            await controller.runInvestmentSimulation(
+                              initialAmountMinor: initial.round(),
+                              monthlyContributionMinor: monthly.round(),
+                              years: years.round(),
+                            );
+                          },
                   );
-                  final results = _Results(preview: preview);
+                  final results = _SimulationResults(
+                    simulation: simulation,
+                    selectedId: selectedId,
+                    coachReply: controller.coachReply,
+                    busy: controller.busy,
+                    onSelected: (value) => setState(() => selectedId = value),
+                    onAsk: (topic, question) => controller.askCoach(
+                      topic: topic,
+                      question: question,
+                      scenarioId: selectedId,
+                    ),
+                  );
                   if (wide) {
                     return Row(
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
-                        Expanded(flex: 4, child: controls),
+                        SizedBox(width: 320, child: controls),
                         const SizedBox(width: FutureMintTokens.space5),
-                        Expanded(flex: 6, child: results),
+                        Expanded(child: results),
                       ],
                     );
                   }
@@ -96,35 +153,46 @@ class _FutureSeedScreenState extends State<FutureSeedScreen> {
 
 class _Controls extends StatelessWidget {
   const _Controls({
+    required this.initial,
     required this.monthly,
     required this.years,
-    required this.rate,
+    required this.onInitial,
     required this.onMonthly,
     required this.onYears,
-    required this.onRate,
-    required this.onPreview,
+    required this.onRun,
   });
+
+  final double initial;
   final double monthly;
   final double years;
-  final double rate;
-  final ValueChanged<double> onMonthly;
-  final ValueChanged<double> onYears;
-  final ValueChanged<double> onRate;
-  final VoidCallback? onPreview;
+  final ValueChanged<double>? onInitial;
+  final ValueChanged<double>? onMonthly;
+  final ValueChanged<double>? onYears;
+  final VoidCallback? onRun;
 
   @override
   Widget build(BuildContext context) => SoftCard(
     key: const Key('future-seed-controls'),
+    borderWidth: 1,
     color: Theme.of(context).brightness == Brightness.dark
         ? FutureMintTokens.darkSurfaceRaised
         : FutureMintTokens.sunSoft,
     child: Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
-        Text('你的假設', style: Theme.of(context).textTheme.titleLarge),
-        const SizedBox(height: FutureMintTokens.space5),
+        Text('你的教育情境', style: Theme.of(context).textTheme.titleLarge),
+        const SizedBox(height: FutureMintTokens.space4),
         _SliderField(
-          label: '每月累積',
+          label: '已經省下來',
+          valueLabel: formatTwd(initial.round()),
+          value: initial,
+          min: 0,
+          max: 20000,
+          divisions: 40,
+          onChanged: onInitial,
+        ),
+        _SliderField(
+          label: '每月持續投入',
           valueLabel: formatTwd(monthly.round()),
           value: monthly,
           min: 100,
@@ -141,20 +209,16 @@ class _Controls extends StatelessWidget {
           divisions: 19,
           onChanged: onYears,
         ),
-        _SliderField(
-          label: '假設年化率',
-          valueLabel: '${rate.toStringAsFixed(1)}%',
-          value: rate,
-          min: 0,
-          max: 8,
-          divisions: 16,
-          onChanged: onRate,
+        const SizedBox(height: FutureMintTokens.space2),
+        FilledButton.icon(
+          onPressed: onRun,
+          icon: const Icon(Icons.show_chart_rounded),
+          label: const Text('開始教育試算'),
         ),
         const SizedBox(height: FutureMintTokens.space3),
-        FilledButton.icon(
-          onPressed: onPreview,
-          icon: const Icon(Icons.calculate_outlined),
-          label: const Text('開始教育試算'),
+        Text(
+          '不使用真實股票、不下單，也不預測市場。',
+          style: Theme.of(context).textTheme.bodySmall,
         ),
       ],
     ),
@@ -171,25 +235,23 @@ class _SliderField extends StatelessWidget {
     required this.divisions,
     required this.onChanged,
   });
+
   final String label;
   final String valueLabel;
   final double value;
   final double min;
   final double max;
   final int divisions;
-  final ValueChanged<double> onChanged;
+  final ValueChanged<double>? onChanged;
+
   @override
   Widget build(BuildContext context) => Padding(
     padding: const EdgeInsets.only(bottom: FutureMintTokens.space4),
     child: Column(
       children: [
-        Wrap(
-          alignment: WrapAlignment.spaceBetween,
-          crossAxisAlignment: WrapCrossAlignment.center,
-          spacing: FutureMintTokens.space3,
-          runSpacing: FutureMintTokens.space1,
+        Row(
           children: [
-            Text(label),
+            Expanded(child: Text(label)),
             Text(
               valueLabel,
               style: const TextStyle(fontWeight: FontWeight.w700),
@@ -209,20 +271,29 @@ class _SliderField extends StatelessWidget {
   );
 }
 
-class _Results extends StatelessWidget {
-  const _Results({required this.preview});
-  final FutureSeedPreview? preview;
+class _SimulationResults extends StatelessWidget {
+  const _SimulationResults({
+    required this.simulation,
+    required this.selectedId,
+    required this.coachReply,
+    required this.busy,
+    required this.onSelected,
+    required this.onAsk,
+  });
+
+  final InvestmentSimulation? simulation;
+  final InvestmentScenarioId selectedId;
+  final CoachReply? coachReply;
+  final bool busy;
+  final ValueChanged<InvestmentScenarioId> onSelected;
+  final void Function(String topic, String question) onAsk;
 
   @override
   Widget build(BuildContext context) {
-    if (preview == null) {
-      return SoftCard(
-        key: const Key('future-seed-empty-state'),
-        color: Theme.of(context).brightness == Brightness.dark
-            ? FutureMintTokens.darkSurfaceRaised
-            : FutureMintTokens.skySoft,
-        child: const Column(
-          mainAxisSize: MainAxisSize.min,
+    if (simulation == null) {
+      return const SoftCard(
+        key: Key('future-seed-empty-state'),
+        child: Column(
           children: [
             MoneyBuddy(
               size: 72,
@@ -231,11 +302,75 @@ class _Results extends StatelessWidget {
               excludeSemantics: true,
             ),
             SizedBox(height: FutureMintTokens.space4),
-            Text('調整條件，看看累積的可能樣貌。', textAlign: TextAlign.center),
+            Text('調整省下的金額與時間，開始比較三條教育路徑。', textAlign: TextAlign.center),
           ],
         ),
       );
     }
+    final selected = simulation!.scenarios.firstWhere(
+      (scenario) => scenario.id == selectedId,
+      orElse: () => simulation!.scenarios.first,
+    );
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      children: [
+        SoftCard(
+          borderWidth: 1,
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            children: [
+              Text('時間與風險曲線', style: Theme.of(context).textTheme.titleLarge),
+              const SizedBox(height: FutureMintTokens.space2),
+              const Text('點曲線或下方名稱切換情境。'),
+              const SizedBox(height: FutureMintTokens.space4),
+              SizedBox(
+                height: 280,
+                child: InvestmentScenarioChart(
+                  scenarios: simulation!.scenarios,
+                  selectedId: selected.id,
+                  onSelected: onSelected,
+                ),
+              ),
+              const SizedBox(height: FutureMintTokens.space3),
+              SegmentedButton<InvestmentScenarioId>(
+                showSelectedIcon: false,
+                segments: [
+                  for (final scenario in simulation!.scenarios)
+                    ButtonSegment(
+                      value: scenario.id,
+                      label: Text(scenario.title),
+                    ),
+                ],
+                selected: {selected.id},
+                onSelectionChanged: (value) => onSelected(value.first),
+              ),
+            ],
+          ),
+        ),
+        const SizedBox(height: FutureMintTokens.space4),
+        _ScenarioDetails(scenario: selected),
+        const SizedBox(height: FutureMintTokens.space4),
+        _AiReadingCompanion(reply: coachReply, busy: busy, onAsk: onAsk),
+        const SizedBox(height: FutureMintTokens.space3),
+        Text(
+          simulation!.disclaimer,
+          style: Theme.of(context).textTheme.bodySmall,
+        ),
+      ],
+    );
+  }
+}
+
+class _ScenarioDetails extends StatelessWidget {
+  const _ScenarioDetails({required this.scenario});
+
+  final InvestmentScenario scenario;
+
+  @override
+  Widget build(BuildContext context) {
+    final events = scenario.yearlyPoints
+        .where((point) => point.eventLabel != null)
+        .toList();
     return SoftCard(
       color: Theme.of(context).brightness == Brightness.dark
           ? FutureMintTokens.darkSurfaceRaised
@@ -243,137 +378,145 @@ class _Results extends StatelessWidget {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
-          Text('試算結果', style: Theme.of(context).textTheme.titleLarge),
-          const SizedBox(height: FutureMintTokens.space4),
           Wrap(
-            spacing: FutureMintTokens.space6,
-            runSpacing: 16,
+            alignment: WrapAlignment.spaceBetween,
+            crossAxisAlignment: WrapCrossAlignment.center,
+            spacing: FutureMintTokens.space3,
+            runSpacing: FutureMintTokens.space2,
             children: [
-              _ResultMetric(label: '投入本金', amount: preview!.principalMinor),
-              _ResultMetric(label: '假設成長', amount: preview!.growthMinor),
-              _ResultMetric(
-                label: '期末可能金額',
-                amount: preview!.endingBalanceMinor,
-                emphasized: true,
+              Text(
+                scenario.title,
+                style: Theme.of(context).textTheme.titleLarge,
+              ),
+              Chip(
+                label: Text(
+                  '${scenario.assumedAnnualRatePercent}% · ${scenario.riskLabel}',
+                ),
               ),
             ],
           ),
-          const SizedBox(height: FutureMintTokens.space5),
-          Text(
-            '每年累積',
-            style: Theme.of(
-              context,
-            ).textTheme.titleMedium?.copyWith(fontWeight: FontWeight.w700),
+          const SizedBox(height: FutureMintTokens.space2),
+          Text(scenario.description),
+          const SizedBox(height: FutureMintTokens.space4),
+          Wrap(
+            spacing: FutureMintTokens.space6,
+            runSpacing: FutureMintTokens.space3,
+            children: [
+              _Metric(label: '投入本金', value: formatTwd(scenario.principalMinor)),
+              _Metric(label: '假設成長', value: formatTwd(scenario.growthMinor)),
+              _Metric(
+                label: '期末可能金額',
+                value: formatTwd(scenario.endingBalanceMinor),
+              ),
+              _Metric(label: '最大回落', value: '${scenario.maxDrawdownPercent}%'),
+            ],
           ),
-          const SizedBox(height: FutureMintTokens.space3),
-          for (final point in preview!.yearlyPoints)
-            _YearBar(point: point, max: preview!.endingBalanceMinor),
-          const SizedBox(height: 16),
-          Text(
-            preview!.disclaimer,
-            style: Theme.of(context).textTheme.bodySmall?.copyWith(
-              color: Theme.of(context).colorScheme.onSurfaceVariant,
-            ),
-          ),
+          if (events.isNotEmpty) ...[
+            const SizedBox(height: FutureMintTokens.space4),
+            for (final point in events)
+              Padding(
+                padding: const EdgeInsets.only(bottom: FutureMintTokens.space2),
+                child: Row(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    const Icon(Icons.south_east_rounded, size: 20),
+                    const SizedBox(width: FutureMintTokens.space2),
+                    Expanded(
+                      child: Text('第 ${point.year} 年：${point.eventLabel}'),
+                    ),
+                  ],
+                ),
+              ),
+          ],
         ],
       ),
     );
   }
 }
 
-class _ResultMetric extends StatelessWidget {
-  const _ResultMetric({
-    required this.label,
-    required this.amount,
-    this.emphasized = false,
-  });
+class _Metric extends StatelessWidget {
+  const _Metric({required this.label, required this.value});
+
   final String label;
-  final int amount;
-  final bool emphasized;
+  final String value;
+
   @override
   Widget build(BuildContext context) => Column(
     crossAxisAlignment: CrossAxisAlignment.start,
     children: [
-      Text(
-        label,
-        style: TextStyle(color: Theme.of(context).colorScheme.onSurfaceVariant),
-      ),
+      Text(label, style: Theme.of(context).textTheme.bodySmall),
       const SizedBox(height: FutureMintTokens.space1),
-      MoneyText(
-        amount,
-        style:
-            (emphasized
-                    ? Theme.of(context).textTheme.headlineSmall
-                    : Theme.of(context).textTheme.titleLarge)
-                ?.copyWith(
-                  fontWeight: FontWeight.w700,
-                  color: emphasized
-                      ? Theme.of(context).colorScheme.primary
-                      : null,
-                ),
-      ),
+      Text(value, style: Theme.of(context).textTheme.titleLarge),
     ],
   );
 }
 
-class _YearBar extends StatelessWidget {
-  const _YearBar({required this.point, required this.max});
-  final FutureSeedYearPoint point;
-  final int max;
+class _AiReadingCompanion extends StatelessWidget {
+  const _AiReadingCompanion({
+    required this.reply,
+    required this.busy,
+    required this.onAsk,
+  });
+
+  final CoachReply? reply;
+  final bool busy;
+  final void Function(String topic, String question) onAsk;
+
   @override
-  Widget build(BuildContext context) => Padding(
-    padding: const EdgeInsets.symmetric(vertical: FutureMintTokens.space2),
-    child: LayoutBuilder(
-      builder: (context, constraints) {
-        final narrow =
-            constraints.maxWidth < 420 ||
-            MediaQuery.textScalerOf(context).scale(1) >= 1.5;
-        final progress = ClipRRect(
-          borderRadius: BorderRadius.circular(999),
-          child: LinearProgressIndicator(
-            value: point.balanceMinor / max,
-            minHeight: FutureMintTokens.space2,
-            color: Theme.of(context).brightness == Brightness.dark
-                ? FutureMintTokens.lavender
-                : FutureMintTokens.teal,
-            backgroundColor: Theme.of(context).brightness == Brightness.dark
-                ? FutureMintTokens.darkSurface
-                : FutureMintTokens.paper,
-          ),
-        );
-        if (narrow) {
-          return Column(
-            crossAxisAlignment: CrossAxisAlignment.stretch,
-            children: [
-              Wrap(
-                alignment: WrapAlignment.spaceBetween,
-                spacing: FutureMintTokens.space3,
-                runSpacing: FutureMintTokens.space1,
-                children: [
-                  Text('${point.year} 年'),
-                  Text(formatTwd(point.balanceMinor)),
-                ],
-              ),
-              const SizedBox(height: FutureMintTokens.space2),
-              progress,
-            ],
-          );
-        }
-        return Row(
+  Widget build(BuildContext context) => SoftCard(
+    color: Theme.of(context).brightness == Brightness.dark
+        ? FutureMintTokens.darkSurfaceRaised
+        : FutureMintTokens.lavenderSoft,
+    child: Column(
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      children: [
+        Row(
           children: [
-            SizedBox(width: 48, child: Text('${point.year} 年')),
-            Expanded(child: progress),
-            const SizedBox(width: FutureMintTokens.space3),
-            SizedBox(
-              width: 112,
+            const Icon(Icons.auto_awesome_outlined),
+            const SizedBox(width: FutureMintTokens.space2),
+            Expanded(
               child: Text(
-                formatTwd(point.balanceMinor),
-                textAlign: TextAlign.end,
+                'AI 陪讀員',
+                style: Theme.of(context).textTheme.titleLarge,
               ),
             ),
           ],
-        );
-      },
+        ),
+        const SizedBox(height: FutureMintTokens.space3),
+        Wrap(
+          spacing: FutureMintTokens.space2,
+          runSpacing: FutureMintTokens.space2,
+          children: [
+            ActionChip(
+              label: const Text('為什麼中間掉下去？'),
+              onPressed: busy ? null : () => onAsk('risk', '為什麼這條線中間掉下去了？'),
+            ),
+            ActionChip(
+              label: const Text('什麼是分散風險？'),
+              onPressed: busy ? null : () => onAsk('risk', '什麼是分散風險？'),
+            ),
+            ActionChip(
+              label: const Text('複利怎麼發生？'),
+              onPressed: busy ? null : () => onAsk('compound', '複利怎麼發生？'),
+            ),
+          ],
+        ),
+        if (busy) ...[
+          const SizedBox(height: FutureMintTokens.space3),
+          const LinearProgressIndicator(),
+        ],
+        if (reply != null) ...[
+          const SizedBox(height: FutureMintTokens.space4),
+          Text(reply!.answer),
+          const SizedBox(height: FutureMintTokens.space2),
+          Text(
+            '記住：${reply!.takeaway}',
+            style: const TextStyle(fontWeight: FontWeight.w700),
+          ),
+          const SizedBox(height: FutureMintTokens.space2),
+          Text(reply!.disclaimer, style: Theme.of(context).textTheme.bodySmall),
+        ],
+      ],
     ),
   );
 }

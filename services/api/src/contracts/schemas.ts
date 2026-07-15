@@ -1,6 +1,14 @@
 import { z } from "zod";
 
-import { billingCycles, moneyCategories, moneyEventTypes } from "./models";
+import {
+  accountRoles,
+  billingCycles,
+  investmentOrderSides,
+  investmentScenarioIds,
+  moneyCategories,
+  moneyEventTypes,
+  spendingIntents,
+} from "./models";
 
 const positiveMoney = z.number().int().positive().max(100_000_000);
 const isoDateTime = z.string().datetime({ offset: true });
@@ -35,6 +43,8 @@ export const moneyEventInputSchema = z
       })
       .optional(),
     split: splitDetailsSchema.optional(),
+    spendingIntent: z.enum(spendingIntents).optional(),
+    intentReason: z.string().trim().min(1).max(160).optional(),
     confirmed: z.literal(true),
     idempotencyKey: z.string().min(8).max(120),
   })
@@ -73,6 +83,13 @@ export const moneyEventInputSchema = z
         message: "收入事件不使用分帳。",
       });
     }
+    if (event.type === "income" && event.spendingIntent) {
+      context.addIssue({
+        code: "custom",
+        path: ["spendingIntent"],
+        message: "收入不使用需要或想要分類。",
+      });
+    }
   });
 
 export const moneyEventListQuerySchema = z
@@ -94,6 +111,7 @@ export const profileInputSchema = z.object({
   goalSavedMinor: z.number().int().min(0).max(100_000_000),
   goalDate: z.string().date(),
   preferredTone: z.enum(["supportive", "direct"]),
+  accountRole: z.enum(accountRoles).default("child"),
 });
 
 export const captureParseInputSchema = z.object({
@@ -106,6 +124,34 @@ export const futureSeedInputSchema = z.object({
   monthlyContributionMinor: positiveMoney,
   years: z.number().int().min(1).max(50),
   annualRatePercent: z.number().min(0).max(20),
+});
+
+export const investmentSimulationInputSchema = z.object({
+  initialAmountMinor: z.number().int().min(0).max(100_000_000),
+  monthlyContributionMinor: positiveMoney,
+  years: z.number().int().min(1).max(30),
+});
+
+export const coachRequestSchema = z.object({
+  topic: z.enum(["spending", "subscription", "compound", "risk", "general"]),
+  question: z.string().trim().min(1).max(300),
+  scenarioId: z.enum(investmentScenarioIds).optional(),
+  selectedYear: z.number().int().min(1).max(30).optional(),
+});
+
+export const lessonCompletionInputSchema = z.object({
+  selectedOption: z.string().trim().min(1).max(200),
+});
+
+export const investmentOrderInputSchema = z.object({
+  symbol: z.string().trim().regex(/^\d{4,6}[A-Z]?$/).max(8),
+  side: z.enum(investmentOrderSides),
+  quantity: z.number().int().min(1).max(1000),
+  idempotencyKey: z.string().min(8).max(120),
+});
+
+export const practiceDiceInputSchema = z.object({
+  rollIndex: z.number().int().min(0).max(10_000),
 });
 
 export const subscriptionCompareInputSchema = z.object({

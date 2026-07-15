@@ -7,8 +7,8 @@
 
 - Audience: students aged 15–18 managing allowance, income, subscriptions, and savings goals.
 - Character: optimistic, trustworthy, energetic, and clear; youth-friendly without looking childish.
-- Style: calm near-white canvas, flat rounded color blocks, black action anchors, pill controls, and friendly geometric companions. It combines the clean planner structure of the reference UI with its expressive habit-app color and character language; light mode is the primary competition presentation.
-- Hierarchy: mint／teal owns the brand and budget Hero; black owns the strongest action and mobile navigation. Sun, lavender, periwinkle, sky, orange, and pink identify a small number of feature moments rather than coloring every surface.
+- Style: calm lavender-tinted near-white canvas, flat rounded color blocks, deep-indigo action anchors, pill controls, and friendly geometric companions. It combines the clean planner structure of the reference UI with its expressive habit-app color and character language; light mode is the primary competition presentation.
+- Hierarchy: indigo／violet owns the brand and budget Hero; deep ink owns the strongest action and mobile navigation. Sun, lavender, periwinkle, sky, orange, and pink identify a small number of feature moments rather than coloring every surface.
 - Dials: variance 6/10, motion 2/10, density 5/10.
 - Avoid: repeated thick outlines, offset hard shadows, a card around every row, trading-terminal aesthetics, generic multi-hue gradients, glassmorphism, neon everywhere, childish fonts, shame-based warnings, decorative charts, and copied third-party illustration.
 
@@ -18,13 +18,13 @@
 
 | Token | Value | Purpose |
 |---|---|---|
-| ink | `#171B1A` | Text, strongest actions, and phone navigation |
-| background | `#F5FAF8` | Near-white canvas with a restrained teal tint |
+| ink | `#1B1B2A` | Text, strongest actions, and phone navigation |
+| background | `#F8F7FC` | Near-white canvas with a restrained lavender tint |
 | surface | `#FFFFFF` | Neutral cards, sheets, list surfaces, and fields |
-| mint | `#2AB7A9` | Budget Hero, brand mark, and confirmed emphasis |
-| mintSoft | `#D8F4ED` | Supportive and selected surfaces |
-| teal | `#087B74` | Links, progress, and restrained brand labels |
-| tealDark | `#075E59` | High-contrast teal text or progress |
+| mint | `#6D5BD0` | Flutter compatibility token for the indigo Budget Hero, brand mark, and confirmed emphasis |
+| mintSoft | `#E8E4FF` | Flutter compatibility token for indigo supportive and selected surfaces |
+| teal | `#4B3FA7` | Flutter compatibility token for violet links, progress, and restrained brand labels |
+| tealDark | `#342B7C` | Flutter compatibility token for high-contrast violet text or progress |
 | coral | `#F96F61` | Coach and interaction accents |
 | coralSoft | `#FFE0DC` | Gentle feedback surfaces |
 | sun | `#F7C94C` | Goal, active rail indicator, and spark companion |
@@ -39,8 +39,8 @@
 | orangeSoft | `#FFE4BC` | Goal and option surfaces |
 | pink | `#E879C9` | Small expressive companion or option accent |
 | pinkSoft | `#F8DDF0` | Small expressive surface |
-| hairline | `#D4E2DE` | Dividers and optional card boundaries |
-| outline | `#70817C` | Inputs and secondary controls |
+| hairline | `#DEDDEC` | Dividers and optional card boundaries |
+| outline | `#74728C` | Inputs and secondary controls |
 | success | `#117A4B` | Confirmed positive state |
 | warning | `#A85B00` | Attention with icon/text |
 | error | `#B42318` | Error with icon/text |
@@ -49,16 +49,16 @@
 
 | Token | Value | Purpose |
 |---|---|---|
-| background | `#101715` | Teal-tinted near-black canvas |
-| surface | `#18211F` | Base card and sheet surface |
-| surfaceRaised | `#222C29` | Higher grouped surface; depth comes from lightness |
-| primary | `#72DCD4` | Main actions and progress |
-| primaryContainer | `#174F4D` | Selected or supportive state |
-| secondary | `#FF8378` | Capture and coach accent |
+| background | `#14131F` | Deep-indigo near-black canvas |
+| surface | `#1C1B2A` | Base card and sheet surface |
+| surfaceRaised | `#28263A` | Higher purple-gray grouped surface; depth comes from lightness |
+| primary | `#B8AEFF` | Main actions and progress |
+| primaryContainer | `#393368` | Selected or supportive state |
+| secondary | `#C3BCFF` | Supporting violet accent |
 | secondaryContainer | `#64302C` | Feedback surface |
 | textPrimary | `#FFF8EE` | Main text |
-| outline | `#AAA0A3` | Strong component outline |
-| outlineMuted | `#564D50` | Dividers and inactive outline |
+| outline | `#AAA8C0` | Strong component outline |
+| outlineMuted | `#464459` | Dividers and inactive outline |
 | feature accents | light palette, selectively reused | Small icons and selected indicators only |
 
 Every foreground/background pair used for body text must meet WCAG 4.5:1. State meaning always includes text or an icon, never color alone.
@@ -101,14 +101,18 @@ Every foreground/background pair used for body text must meet WCAG 4.5:1. State 
 - `PageHeading`: plain color kicker, strong sentence-case title, optional supporting copy, and a trailing action that stacks below 620dp.
 - `MoneyBuddy`: Flutter-native blob, flower, or spark companion with a single-hue radial highlight, black facial features, and the semantic label `FutureMint 金錢夥伴`. It is decorative and never carries financial state.
 - Cards: each block has a clear title, one insight, and at most one primary action. Lists use one shared surface with dividers instead of a card for every row.
-- Dashboard: one teal budget Hero, one lavender coaching strip, orange goal block, sky subscription block, and a neutral recent-record surface. The bento layout appears only with enough content width.
+- Dashboard: one indigo budget Hero, one lavender coaching strip, orange goal block, sky subscription block, and a neutral recent-record surface. The bento layout appears only with enough content width.
 - Capture: the empty/input state gets the colorful Hero; once drafts exist, visual emphasis moves to the first draft and the input Hero becomes quiet.
 - Learning: use neighboring or mildly overlapping lavender／sun／periwinkle blocks at normal text scale; at high text scale they return to a normal vertical stack.
-- FutureSeed: controls own the emphasis before calculation; the empty state sizes to content rather than reserving a fixed illustration height.
+- Records: analysis comes before the bounded transaction list; use paired income／outflow bars and intent progress, with text summaries that remain understandable without color.
+- Notifications: use one icon, title, explanation, optional amount and a clear destination; a renewal notice is a review prompt, never an automatic waste verdict.
+- FutureSeed: controls own the emphasis before calculation; after calculation, three selectable line paths share one unframed chart, with metrics and AI reading companion below. Curves must remain labeled and meaningful without relying only on color.
+- Investment lab: show portfolio totals and data freshness before the order form; market examples are a compact selectable list, while holdings and orders use shared surfaces with dividers. Buy/sell is a segmented control, quantity uses stepper/input controls, allocation uses labeled bars, and the event die is a learning prompt rather than a casino visual. Always show source date, fallback state, virtual-money label, and no-advice disclaimer.
+- Roles: child／parent changes copy and education framing only; never imply cross-account visibility unless authorization and data relationships are implemented.
 - Forms: visible labels, helper text for financial assumptions, validation after submit/blur, and error text next to the field.
 - Capture flow: input → parsing → confirmation. Show provider source and never equate parsed with saved.
 - Navigation: icons and labels from Material Symbols only; active location uses text weight, icon, and a sun/lavender indicator in addition to color.
-- Charts: accessible teal/amber series, direct values, a written summary, empty/loading/error states, and reduced-motion support.
+- Charts: accessible violet/amber series, direct values, a written summary, empty/loading/error states, and reduced-motion support.
 - Authentication: sign-in／register screens use the same calm canvas, one clear primary action, visible password rules, and non-technical retry copy. Guest entry must state that data is temporary before entering the app.
 - Account state: App shell shows signed-in or guest state with text and icon. Guest state has a persistent, wrapping notice that data is not stored; logout／leave guest is available in Settings.
 - Feedback: snackbars use polite announcements. Network or authentication failure never fabricates a saved result or switches data sources silently.
@@ -118,6 +122,7 @@ Every foreground/background pair used for body text must meet WCAG 4.5:1. State 
 - Micro-interactions: 150–250ms, ease-out on entrance and faster ease-in on exit.
 - Animate opacity and transform only; no layout-shifting scale or height animation.
 - Limit each screen to one or two meaningful motions.
+- Destination changes, navigation selection, and chart data updates are immediate; they do not use horizontal route slides or delayed interpolation.
 - Respect platform reduced-motion settings and keep the interface fully usable with animation disabled.
 
 ## Required states

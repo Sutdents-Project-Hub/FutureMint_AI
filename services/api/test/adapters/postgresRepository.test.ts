@@ -79,6 +79,7 @@ describe("PostgresRepository", () => {
         goal_saved_minor: 4200,
         goal_date: "2026-10-31",
         preferred_tone: "supportive",
+        account_role: "parent",
       },
     ]);
     const repository = new PostgresRepository(client);
@@ -91,10 +92,12 @@ describe("PostgresRepository", () => {
       goalSavedMinor: 4200,
       goalDate: "2026-10-31",
       preferredTone: "supportive",
+      accountRole: "parent",
     });
 
     expect(profile.weeklyBudgetMinor).toBeUndefined();
     expect(profile.goalDate).toBe("2026-10-31");
+    expect(profile.accountRole).toBe("parent");
     expect(client.queries[0].text).toContain("ON CONFLICT (user_id)");
   });
 
@@ -112,6 +115,8 @@ describe("PostgresRepository", () => {
         occurred_at: new Date("2026-07-15T04:00:00.000Z"),
         recurrence: null,
         split: null,
+        spending_intent: "want",
+        intent_reason: "使用者確認為想要。",
         idempotency_key: "drink-20260715",
         created_at: new Date("2026-07-15T04:00:00.000Z"),
         updated_at: new Date("2026-07-15T04:00:00.000Z"),
@@ -128,15 +133,58 @@ describe("PostgresRepository", () => {
       occurredAt: "2026-07-15T12:00:00+08:00",
       confirmed: true,
       idempotencyKey: "drink-20260715",
+      spendingIntent: "want",
+      intentReason: "使用者確認為想要。",
     });
 
     expect(event).toMatchObject({
       userId: "user-1",
       amountMinor: 75,
       idempotencyKey: "drink-20260715",
+      spendingIntent: "want",
     });
     expect(client.queries[0].text).toContain(
       "ON CONFLICT (user_id, idempotency_key)",
+    );
+  });
+
+  it("includes user ownership when deriving the global event id", async () => {
+    const firstClient = new FakeSqlClient();
+    const secondClient = new FakeSqlClient();
+    const row = {
+      id: "event-id",
+      user_id: "user-1",
+      type: "expense",
+      amount_minor: 75,
+      currency: "TWD",
+      category: "food",
+      merchant: null,
+      occurred_at: new Date("2026-07-15T04:00:00.000Z"),
+      recurrence: null,
+      split: null,
+      spending_intent: null,
+      intent_reason: null,
+      idempotency_key: "shared-key",
+      created_at: new Date("2026-07-15T04:00:00.000Z"),
+      updated_at: new Date("2026-07-15T04:00:00.000Z"),
+    };
+    firstClient.enqueue([row]);
+    secondClient.enqueue([{ ...row, user_id: "user-2" }]);
+    const input = {
+      type: "expense" as const,
+      amountMinor: 75,
+      currency: "TWD" as const,
+      category: "food" as const,
+      occurredAt: "2026-07-15T12:00:00+08:00",
+      confirmed: true as const,
+      idempotencyKey: "shared-key",
+    };
+
+    await new PostgresRepository(firstClient).saveMoneyEvent("user-1", input);
+    await new PostgresRepository(secondClient).saveMoneyEvent("user-2", input);
+
+    expect(firstClient.queries[0].values?.[0]).not.toBe(
+      secondClient.queries[0].values?.[0],
     );
   });
 

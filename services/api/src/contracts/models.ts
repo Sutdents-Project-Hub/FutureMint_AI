@@ -16,6 +16,12 @@ export type MoneyCategory = (typeof moneyCategories)[number];
 export const billingCycles = ["monthly", "yearly"] as const;
 export type BillingCycle = (typeof billingCycles)[number];
 
+export const accountRoles = ["child", "parent"] as const;
+export type AccountRole = (typeof accountRoles)[number];
+
+export const spendingIntents = ["need", "want", "uncertain"] as const;
+export type SpendingIntent = (typeof spendingIntents)[number];
+
 export interface SplitDetails {
   participants: number;
   userShareMinor: number;
@@ -37,6 +43,8 @@ export interface MoneyEvent {
   occurredAt: string;
   recurrence?: Recurrence;
   split?: SplitDetails;
+  spendingIntent?: SpendingIntent;
+  intentReason?: string;
   idempotencyKey?: string;
   createdAt: string;
   updatedAt: string;
@@ -51,6 +59,7 @@ export interface UserProfile {
   goalSavedMinor: number;
   goalDate: string;
   preferredTone: "supportive" | "direct";
+  accountRole: AccountRole;
 }
 
 export interface Account {
@@ -168,6 +177,8 @@ export interface CaptureDraft {
   occurredAt: string;
   recurrence?: Recurrence;
   split?: SplitDetails;
+  spendingIntent?: SpendingIntent;
+  intentReason?: string;
   confidence: number;
   missingFields: string[];
   needsConfirmation: true;
@@ -195,4 +206,213 @@ export interface Lesson {
   selectedOption?: string;
   completedAt?: string;
   createdAt: string;
+}
+
+export interface MonthlyCashflowPoint {
+  month: string;
+  incomeMinor: number;
+  expenseMinor: number;
+  subscriptionMinor: number;
+  netMinor: number;
+}
+
+export interface InsightNotice {
+  id: string;
+  kind: "subscription" | "spending" | "saving" | "learning";
+  level: "info" | "attention" | "positive";
+  title: string;
+  message: string;
+  actionPath: string;
+  amountMinor?: number;
+}
+
+export interface FinancialInsights {
+  generatedAt: string;
+  monthlyCashflow: MonthlyCashflowPoint[];
+  needMinor: number;
+  wantMinor: number;
+  uncertainMinor: number;
+  subscriptionMinor: number;
+  summary: string;
+  notices: InsightNotice[];
+}
+
+export interface LearningPlanModule {
+  id: "need-want" | "subscription" | "compound" | "risk";
+  title: string;
+  reason: string;
+  nextAction: string;
+  status: "next" | "queued";
+}
+
+export interface LearningPlan {
+  title: string;
+  summary: string;
+  modules: LearningPlanModule[];
+  source: "liangjie-ai" | "deterministic-demo";
+  disclaimer: string;
+}
+
+export const investmentScenarioIds = [
+  "steady",
+  "balanced",
+  "high-risk",
+] as const;
+export type InvestmentScenarioId = (typeof investmentScenarioIds)[number];
+
+export interface InvestmentSimulationInput {
+  initialAmountMinor: number;
+  monthlyContributionMinor: number;
+  years: number;
+}
+
+export interface InvestmentYearPoint {
+  year: number;
+  principalMinor: number;
+  balanceMinor: number;
+  annualReturnPercent: number;
+  eventLabel?: string;
+}
+
+export interface InvestmentScenario {
+  id: InvestmentScenarioId;
+  title: string;
+  description: string;
+  assumedAnnualRatePercent: number;
+  riskLabel: string;
+  principalMinor: number;
+  growthMinor: number;
+  endingBalanceMinor: number;
+  maxDrawdownPercent: number;
+  yearlyPoints: InvestmentYearPoint[];
+}
+
+export interface InvestmentSimulation {
+  initialAmountMinor: number;
+  monthlyContributionMinor: number;
+  years: number;
+  scenarios: InvestmentScenario[];
+  assumptionVersion: string;
+  disclaimer: string;
+}
+
+export interface CoachRequest {
+  topic: "spending" | "subscription" | "compound" | "risk" | "general";
+  question: string;
+  scenarioId?: InvestmentScenarioId;
+  selectedYear?: number;
+}
+
+export interface CoachReply {
+  answer: string;
+  takeaway: string;
+  suggestions: string[];
+  source: "liangjie-ai" | "deterministic-demo";
+  disclaimer: string;
+}
+
+export const investmentOrderSides = ["buy", "sell"] as const;
+export type InvestmentOrderSide = (typeof investmentOrderSides)[number];
+
+export const marketQuoteSources = [
+  "twse-openapi",
+  "educational-snapshot",
+] as const;
+export type MarketQuoteSource = (typeof marketQuoteSources)[number];
+
+export interface MarketQuote {
+  symbol: string;
+  name: string;
+  kind: "etf" | "stock";
+  sector: string;
+  price: number;
+  change: number;
+  changePercent: number;
+  asOf: string;
+  source: MarketQuoteSource;
+}
+
+export interface MarketSnapshot {
+  quotes: MarketQuote[];
+  fetchedAt: string;
+  source: MarketQuoteSource;
+  sourceLabel: string;
+  sourceUrl: string;
+  isFallback: boolean;
+  disclaimer: string;
+}
+
+export interface VirtualInvestmentAccount {
+  userId: string;
+  startingCashMinor: number;
+  createdAt: string;
+}
+
+export interface VirtualInvestmentOrder {
+  id: string;
+  userId: string;
+  symbol: string;
+  name: string;
+  side: InvestmentOrderSide;
+  quantity: number;
+  unitPrice: number;
+  totalMinor: number;
+  quoteAsOf: string;
+  quoteSource: MarketQuoteSource;
+  idempotencyKey: string;
+  createdAt: string;
+}
+
+export interface VirtualHolding {
+  symbol: string;
+  name: string;
+  quantity: number;
+  averageCost: number;
+  currentPrice: number;
+  costMinor: number;
+  marketValueMinor: number;
+  gainLossMinor: number;
+  allocationPercent: number;
+}
+
+export interface InvestmentLab {
+  startingCashMinor: number;
+  cashMinor: number;
+  marketValueMinor: number;
+  totalAssetMinor: number;
+  gainLossMinor: number;
+  returnPercent: number;
+  diversificationScore: number;
+  learningSummary: string;
+  holdings: VirtualHolding[];
+  orders: VirtualInvestmentOrder[];
+  market: MarketSnapshot;
+  disclaimer: string;
+}
+
+export interface InvestmentOrderInput {
+  symbol: string;
+  side: InvestmentOrderSide;
+  quantity: number;
+  idempotencyKey: string;
+}
+
+export interface SaveInvestmentOrderInput extends InvestmentOrderInput {
+  name: string;
+  unitPrice: number;
+  totalMinor: number;
+  quoteAsOf: string;
+  quoteSource: MarketQuoteSource;
+}
+
+export interface PracticeDiceEvent {
+  id: string;
+  rollIndex: number;
+  title: string;
+  situation: string;
+  practicePrompt: string;
+  coachQuestion: string;
+  learningFocus: "diversification" | "discipline" | "risk" | "fees";
+  deckVersion: string;
+  disclaimer: string;
 }

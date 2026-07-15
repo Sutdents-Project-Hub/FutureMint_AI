@@ -38,6 +38,8 @@ class _DraftEditorState extends State<DraftEditor> {
   late BillingCycle billingCycle =
       widget.draft.recurrence?.billingCycle ?? BillingCycle.monthly;
   late DateTime? nextBillingAt = widget.draft.recurrence?.nextBillingAt;
+  late SpendingIntent spendingIntent =
+      widget.draft.spendingIntent ?? SpendingIntent.uncertain;
   late bool splitEnabled = widget.draft.split != null;
   late int participants = widget.draft.split?.participants ?? 2;
 
@@ -98,6 +100,7 @@ class _DraftEditorState extends State<DraftEditor> {
               )
             : null,
         clearSplit: !splitEnabled,
+        spendingIntent: spendingIntent,
       ),
     );
   }
@@ -116,7 +119,7 @@ class _DraftEditorState extends State<DraftEditor> {
       firstDate: firstDate,
       lastDate: lastDate,
     );
-    if (selected == null) return;
+    if (selected == null || !mounted) return;
     final month = selected.month.toString().padLeft(2, '0');
     final day = selected.day.toString().padLeft(2, '0');
     setState(() {
@@ -142,7 +145,7 @@ class _DraftEditorState extends State<DraftEditor> {
       firstDate: firstDate,
       lastDate: lastDate,
     );
-    if (selected == null) return;
+    if (selected == null || !mounted) return;
     final month = selected.month.toString().padLeft(2, '0');
     final day = selected.day.toString().padLeft(2, '0');
     setState(() {
@@ -200,17 +203,19 @@ class _DraftEditorState extends State<DraftEditor> {
           const SizedBox(height: FutureMintTokens.space3),
           TextField(
             controller: amountController,
+            enabled: !widget.busy,
             keyboardType: TextInputType.number,
             decoration: const InputDecoration(
               labelText: '金額（新台幣）',
               prefixText: 'NT\$ ',
               helperText: '只輸入整數，例如 75',
             ),
-            onChanged: (_) => setState(() {}),
+            onChanged: widget.busy ? null : (_) => setState(() {}),
           ),
           const SizedBox(height: 16),
           TextField(
             controller: merchantController,
+            enabled: !widget.busy,
             decoration: const InputDecoration(
               labelText: '項目名稱（可選）',
               hintText: '例如：珍奶',
@@ -227,22 +232,25 @@ class _DraftEditorState extends State<DraftEditor> {
                   child: Text(_eventTypeLabel(item)),
                 ),
             ],
-            onChanged: (value) {
-              if (value == null) return;
-              setState(() {
-                eventType = value;
-                category = switch (value) {
-                  MoneyEventType.income => MoneyCategory.income,
-                  MoneyEventType.subscription => MoneyCategory.subscription,
-                  MoneyEventType.expense =>
-                    category == MoneyCategory.income ||
-                            category == MoneyCategory.subscription
-                        ? MoneyCategory.other
-                        : category,
-                };
-                if (value == MoneyEventType.income) splitEnabled = false;
-              });
-            },
+            onChanged: widget.busy
+                ? null
+                : (value) {
+                    if (value == null) return;
+                    setState(() {
+                      eventType = value;
+                      category = switch (value) {
+                        MoneyEventType.income => MoneyCategory.income,
+                        MoneyEventType.subscription =>
+                          MoneyCategory.subscription,
+                        MoneyEventType.expense =>
+                          category == MoneyCategory.income ||
+                                  category == MoneyCategory.subscription
+                              ? MoneyCategory.other
+                              : category,
+                      };
+                      if (value == MoneyEventType.income) splitEnabled = false;
+                    });
+                  },
           ),
           const SizedBox(height: 16),
           DropdownButtonFormField<MoneyCategory>(
@@ -253,9 +261,11 @@ class _DraftEditorState extends State<DraftEditor> {
               for (final item in availableCategories)
                 DropdownMenuItem(value: item, child: Text(categoryLabel(item))),
             ],
-            onChanged: (value) {
-              if (value != null) setState(() => category = value);
-            },
+            onChanged: widget.busy
+                ? null
+                : (value) {
+                    if (value != null) setState(() => category = value);
+                  },
           ),
           const SizedBox(height: 16),
           ListTile(
@@ -284,9 +294,11 @@ class _DraftEditorState extends State<DraftEditor> {
                 ),
                 DropdownMenuItem(value: BillingCycle.yearly, child: Text('年繳')),
               ],
-              onChanged: (value) {
-                if (value != null) setState(() => billingCycle = value);
-              },
+              onChanged: widget.busy
+                  ? null
+                  : (value) {
+                      if (value != null) setState(() => billingCycle = value);
+                    },
             ),
             const SizedBox(height: 12),
             ListTile(
@@ -305,13 +317,49 @@ class _DraftEditorState extends State<DraftEditor> {
                   ? const Icon(Icons.calendar_month_outlined)
                   : IconButton(
                       tooltip: '清除下次扣款日',
-                      onPressed: () => setState(() => nextBillingAt = null),
+                      onPressed: widget.busy
+                          ? null
+                          : () => setState(() => nextBillingAt = null),
                       icon: const Icon(Icons.clear_rounded),
                     ),
               onTap: widget.busy ? null : _pickNextBillingDate,
             ),
           ],
           if (eventType != MoneyEventType.income) ...[
+            const SizedBox(height: FutureMintTokens.space5),
+            Text('AI 需要／想要建議', style: Theme.of(context).textTheme.titleMedium),
+            const SizedBox(height: FutureMintTokens.space2),
+            Text(
+              widget.draft.intentReason ?? 'AI 無法確定當時情境，最後由你決定。',
+              style: TextStyle(
+                color: Theme.of(context).colorScheme.onSurfaceVariant,
+              ),
+            ),
+            const SizedBox(height: FutureMintTokens.space3),
+            SegmentedButton<SpendingIntent>(
+              showSelectedIcon: false,
+              segments: const [
+                ButtonSegment(
+                  value: SpendingIntent.need,
+                  icon: Icon(Icons.check_circle_outline_rounded),
+                  label: Text('需要'),
+                ),
+                ButtonSegment(
+                  value: SpendingIntent.want,
+                  icon: Icon(Icons.favorite_border_rounded),
+                  label: Text('想要'),
+                ),
+                ButtonSegment(
+                  value: SpendingIntent.uncertain,
+                  icon: Icon(Icons.help_outline_rounded),
+                  label: Text('不確定'),
+                ),
+              ],
+              selected: {spendingIntent},
+              onSelectionChanged: widget.busy
+                  ? null
+                  : (value) => setState(() => spendingIntent = value.first),
+            ),
             const SizedBox(height: FutureMintTokens.space5),
             Text('分帳設定', style: Theme.of(context).textTheme.titleMedium),
             const SizedBox(height: FutureMintTokens.space2),
@@ -333,9 +381,11 @@ class _DraftEditorState extends State<DraftEditor> {
                   for (var count = 2; count <= 20; count += 1)
                     DropdownMenuItem(value: count, child: Text('$count 人')),
                 ],
-                onChanged: (value) {
-                  if (value != null) setState(() => participants = value);
-                },
+                onChanged: widget.busy
+                    ? null
+                    : (value) {
+                        if (value != null) setState(() => participants = value);
+                      },
               ),
               const SizedBox(height: 8),
               Text(

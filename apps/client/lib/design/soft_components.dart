@@ -153,7 +153,7 @@ class MoneyBuddy extends StatelessWidget {
             color: color,
             shape: shape,
             faceColor: Theme.of(context).brightness == Brightness.dark
-                ? const Color(0xFF101715)
+                ? FutureMintTokens.darkCanvas
                 : FutureMintTokens.ink,
           ),
         ),

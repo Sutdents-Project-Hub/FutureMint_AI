@@ -50,6 +50,12 @@ void main() {
     expect(find.byType(NavigationBar), findsOneWidget);
     expect(find.byType(NavigationRail), findsNothing);
     expect(find.byKey(const Key('mobile-navigation-shell')), findsOneWidget);
+    expect(
+      tester
+          .widget<NavigationBar>(find.byType(NavigationBar))
+          .animationDuration,
+      Duration.zero,
+    );
     final navigationShell = tester.widget<DecoratedBox>(
       find.byKey(const Key('mobile-navigation-shell')),
     );
