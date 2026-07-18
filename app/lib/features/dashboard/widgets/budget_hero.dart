@@ -29,21 +29,39 @@ class BudgetHero extends StatelessWidget {
       container: true,
       label:
           '本月安心可用 ${summary.availableMinor} 元，預算剩餘百分之 ${(ratio * 100).round()}',
-      child: SoftCard(
+      child: Container(
         key: const Key('dashboard-budget-hero'),
-        color: dark ? FutureMintTokens.tealDark : FutureMintTokens.mint,
-        radius: FutureMintTokens.radiusLarge,
         padding: const EdgeInsets.all(FutureMintTokens.space5),
+        decoration: BoxDecoration(
+          gradient: LinearGradient(
+            colors: dark
+                ? [Color(0xFF1C1630), Color(0xFF2B1E45)]
+                : [FutureMintTokens.mint, FutureMintTokens.teal],
+            begin: Alignment.topLeft,
+            end: Alignment.bottomRight,
+          ),
+          borderRadius: BorderRadius.circular(FutureMintTokens.radiusLarge),
+          border: Border.all(
+            color: dark ? const Color(0xFF7B6BFF).withOpacity(.22) : Colors.transparent,
+            width: 1.5,
+          ),
+          boxShadow: [
+            if (dark)
+              BoxShadow(
+                color: const Color(0xFF7B6BFF).withOpacity(.12),
+                blurRadius: 24,
+                spreadRadius: 2,
+                offset: const Offset(0, 6),
+              ),
+          ],
+        ),
         child: DefaultTextStyle.merge(
           style: TextStyle(color: foreground),
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              Wrap(
-                alignment: WrapAlignment.spaceBetween,
-                crossAxisAlignment: WrapCrossAlignment.center,
-                spacing: 12,
-                runSpacing: 8,
+              Row(
+                mainAxisAlignment: MainAxisAlignment.spaceBetween,
                 children: [
                   Row(
                     mainAxisSize: MainAxisSize.min,
@@ -61,7 +79,7 @@ class BudgetHero extends StatelessWidget {
                   ),
                   const MoneyBuddy(
                     key: Key('dashboard-mascot'),
-                    size: 64,
+                    size: 80,
                     color: FutureMintTokens.sun,
                     shape: MoneyBuddyShape.flower,
                   ),
@@ -72,17 +90,17 @@ class BudgetHero extends StatelessWidget {
                 summary.availableMinor,
                 style: Theme.of(context).textTheme.displaySmall?.copyWith(
                   color: foreground,
-                  fontSize: 42,
+                  fontSize: 48,
                 ),
               ),
-              const SizedBox(height: FutureMintTokens.space5),
+              const SizedBox(height: FutureMintTokens.space4),
               ClipRRect(
-                borderRadius: BorderRadius.circular(8),
+                borderRadius: BorderRadius.circular(12),
                 child: LinearProgressIndicator(
                   key: const Key('dashboard-budget-progress'),
-                  minHeight: 8,
+                  minHeight: 12,
                   value: ratio,
-                  color: progressColor,
+                  color: dark ? const Color(0xFF9B8CFF) : FutureMintTokens.paper,
                   backgroundColor: progressTrackColor,
                 ),
               ),
