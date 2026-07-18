@@ -66,11 +66,12 @@ flutter:
   uses-material-design: true
 
   assets:
-    - assets/images/blob_purple.png
-    - assets/images/mascot_yellow.png
-    - assets/images/mascot_orange.png
-    - assets/images/bars_purple.png
-    - assets/images/clipboard_teal.png
+    - assets/images/
+    - assets/images/blob_purple.jpg
+    - assets/images/mascot_yellow.jpg
+    - assets/images/mascot_orange.jpg
+    - assets/images/bars_purple.jpg
+    - assets/images/clipboard_teal.jpg
     - assets/images/hero_purple.png
 
 

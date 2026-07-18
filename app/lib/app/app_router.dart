@@ -67,7 +67,7 @@ GoRouter createAppRouter() => GoRouter(
               _instantPage(state, const FutureSeedScreen()),
         ),
         GoRoute(
-          path: '/future-seed/investment-lab',
+          path: '/future-seed/investment-lab',   
           pageBuilder: (_, state) =>
               _instantPage(state, const InvestmentLabScreen()),
         ),
