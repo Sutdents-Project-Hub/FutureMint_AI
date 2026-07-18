@@ -1,0 +1,38 @@
+Partial Flutter test output captured on 2026-07-19
+
+00:00 +0: loading C:/Users/ediso/OneDrive/桌面/新增資料夾/FutureMint_AI/app/test/auth/auth_api_test.dart
+00:00 +0: C:/Users/ediso/OneDrive/桌面/新增資料夾/FutureMint_AI/app/test/auth/auth_api_test.dart: register sends credentials and returns an opaque session
+00:00 +1: C:/Users/ediso/OneDrive/桌面/新增資料夾/FutureMint_AI/app/test/auth/auth_api_test.dart: session store persists only the token
+00:00 +2: C:/Users/ediso/OneDrive/桌面/新增資料夾/FutureMint_AI/app/test/core/models_test.dart: MoneyEvent round trips integer TWD values and optional split data
+00:00 +3: C:/Users/ediso/OneDrive/桌面/新增資料夾/FutureMint_AI/app/test/core/models_test.dart: CaptureDraft copyWith keeps confirmation metadata
+00:00 +4: C:/Users/ediso/OneDrive/桌面/新增資料夾/FutureMint_AI/app/test/core/models_test.dart: FutureSeedPreview preserves principal and growth separately
+00:01 +5: C:/Users/ediso/OneDrive/桌面/新增資料夾/FutureMint_AI/app/test/data/api_repository_test.dart: sends a Bearer token for every account data request
+00:01 +6: C:/Users/ediso/OneDrive/桌面/新增資料夾/FutureMint_AI/app/test/data/api_repository_test.dart: unwraps the API data envelope into a profile
+00:01 +7: C:/Users/ediso/OneDrive/桌面/新增資料夾/FutureMint_AI/app/test/data/api_repository_test.dart: keeps the API path when the configured base URL has no trailing slash
+00:01 +8: C:/Users/ediso/OneDrive/桌面/新增資料夾/FutureMint_AI/app/test/data/api_repository_test.dart: maps a retryable problem without exposing the raw body
+00:02 +9: C:/Users/ediso/OneDrive/桌面/新增資料夾/FutureMint_AI/app/test/data/api_repository_test.dart: turns a stalled request into a retryable timeout
+00:02 +10: C:/Users/ediso/OneDrive/桌面/新增資料夾/FutureMint_AI/app/test/data/api_repository_test.dart: sends capture reference time with an explicit timezone offset
+00:02 +11: C:/Users/ediso/OneDrive/桌面/新增資料夾/FutureMint_AI/app/test/data/api_repository_test.dart: builds subscription comparison from the recorded subscription
+00:02 +12: C:/Users/ediso/OneDrive/桌面/新增資料夾/FutureMint_AI/app/test/data/api_repository_test.dart: does not invent a current subscription for an empty ledger
+00:02 +13: C:/Users/ediso/OneDrive/桌面/新增資料夾/FutureMint_AI/app/test/data/api_repository_test.dart: reuses the current completed lesson without generating another
+00:02 +14: C:/Users/ediso/OneDrive/桌面/新增資料夾/FutureMint_AI/app/test/data/api_repository_test.dart: generates a lesson when no current lesson exists
+00:02 +15: C:/Users/ediso/OneDrive/桌面/新增資料夾/FutureMint_AI/app/test/data/demo_repository_test.dart: starts with a complete temporary guest profile and ledger
+00:02 +16: C:/Users/ediso/OneDrive/桌面/新增資料夾/FutureMint_AI/app/test/data/demo_repository_test.dart: parsing does not persist until a draft is confirmed
+00:02 +17: C:/Users/ediso/OneDrive/桌面/新增資料夾/FutureMint_AI/app/test/data/demo_repository_test.dart: confirmed saves are idempotent within a guest session
+00:02 +18: C:/Users/ediso/OneDrive/桌面/新增資料夾/FutureMint_AI/app/test/data/demo_repository_test.dart: negative purchase text is rejected instead of becoming an expense
+00:02 +19: C:/Users/ediso/OneDrive/桌面/新增資料夾/FutureMint_AI/app/test/data/demo_repository_test.dart: ordinary non-financial conversation is rejected
+00:02 +20: C:/Users/ediso/OneDrive/桌面/新增資料夾/FutureMint_AI/app/test/data/demo_repository_test.dart: separates multiple purchases and respects an explicitly paid price
+00:02 +21: C:/Users/ediso/OneDrive/桌面/新增資料夾/FutureMint_AI/app/test/data/demo_repository_test.dart: resolves yesterday from the provided reference time
+00:02 +22: C:/Users/ediso/OneDrive/桌面/新增資料夾/FutureMint_AI/app/test/data/demo_repository_test.dart: does not retain a selected micro-lesson action in a new guest session
+00:02 +23: C:/Users/ediso/OneDrive/桌面/新增資料夾/FutureMint_AI/app/test/data/demo_repository_test.dart: uses the recorded subscription share as the current cost
+00:02 +24: C:/Users/ediso/OneDrive/桌面/新增資料夾/FutureMint_AI/app/test/data/demo_repository_test.dart: does not present a shared plan as eligible without four members
+00:02 +25: C:/Users/ediso/OneDrive/桌面/新增資料夾/FutureMint_AI/app/test/data/demo_repository_test.dart: builds analysis from confirmed need and want classifications
+00:02 +26: C:/Users/ediso/OneDrive/桌面/新增資料夾/FutureMint_AI/app/test/data/demo_repository_test.dart: simulates three versioned paths with visible risk differences
+00:02 +27: C:/Users/ediso/OneDrive/桌面/新增資料夾/FutureMint_AI/app/test/data/demo_repository_test.dart: tailors the learning plan to a parent companion role
+00:02 +28: C:/Users/ediso/OneDrive/桌面/新增資料夾/FutureMint_AI/app/test/data/demo_repository_test.dart: uses saved money for an idempotent virtual investment practice
+00:02 +29: C:/Users/ediso/OneDrive/桌面/新增資料夾/FutureMint_AI/app/test/data/demo_repository_test.dart: rejects selling more than the virtual holding
+00:02 +30: C:/Users/ediso/OneDrive/桌面/新增資料夾/FutureMint_AI/app/test/data/demo_repository_test.dart: returns a versioned market event card
+00:02 +31: C:/Users/ediso/OneDrive/桌面/新增資料夾/FutureMint_AI/app/test/data/guest_repository_test.dart: guest data is discarded when a new guest session starts
+00:03 +32: C:/Users/ediso/OneDrive/桌面/新增資料夾/FutureMint_AI/app/test/design/soft_components_test.dart: SoftCard is flat and borderless by default
+
+(註) 以上為測試過程中捕捉到的部分輸出；如需完整原始輸出，我可以重新執行測試並把終端完整輸出寫入檔案。
