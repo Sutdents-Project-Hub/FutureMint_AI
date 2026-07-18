@@ -126,6 +126,66 @@ class PageHeading extends StatelessWidget {
   }
 }
 
+class NeonCard extends StatelessWidget {
+  const NeonCard({
+    super.key,
+    required this.child,
+    this.padding,
+    this.radius = FutureMintTokens.radiusMedium,
+    this.borderWidth = 1.0,
+    this.color,
+    this.elevated = false,
+  });
+
+  final Widget child;
+  final EdgeInsetsGeometry? padding;
+  final double radius;
+  final double borderWidth;
+  final Color? color;
+  final bool elevated;
+
+  @override
+  Widget build(BuildContext context) {
+    final dark = Theme.of(context).brightness == Brightness.dark;
+    final base = color ?? Theme.of(context).colorScheme.surface;
+    final glow = dark ? FutureMintTokens.neonGlow : FutureMintTokens.neonPurple;
+    return DecoratedBox(
+      decoration: BoxDecoration(
+        gradient: LinearGradient(
+          colors: dark
+              ? [base.withOpacity(.04), base.withOpacity(.02)]
+              : [base, base.withOpacity(.98)],
+          begin: Alignment.topLeft,
+          end: Alignment.bottomRight,
+        ),
+        borderRadius: BorderRadius.circular(radius),
+        border: Border.all(color: glow.withOpacity(.22), width: borderWidth),
+        boxShadow: elevated
+            ? [
+                BoxShadow(
+                  color: glow.withOpacity(.12),
+                  blurRadius: 18,
+                  spreadRadius: 1,
+                  offset: const Offset(0, 6),
+                ),
+              ]
+            : [
+                BoxShadow(
+                  color: glow.withOpacity(.06),
+                  blurRadius: 12,
+                  spreadRadius: 0,
+                  offset: const Offset(0, 6),
+                ),
+              ],
+      ),
+      child: Padding(
+        padding: padding ?? FutureMintTokens.cardPadding(context),
+        child: child,
+      ),
+    );
+  }
+}
+
 enum MoneyBuddyShape { blob, flower, spark }
 
 class MoneyBuddy extends StatelessWidget {

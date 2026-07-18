@@ -222,7 +222,7 @@ class _SectionCard extends StatelessWidget {
   final Color? color;
 
   @override
-  Widget build(BuildContext context) => SoftCard(
+  Widget build(BuildContext context) => NeonCard(
     color: color,
     child: Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
@@ -249,7 +249,7 @@ class _CoachInsight extends StatelessWidget {
   final DashboardSummary summary;
 
   @override
-  Widget build(BuildContext context) => SoftCard(
+  Widget build(BuildContext context) => NeonCard(
     color: _softSurface(context, FutureMintTokens.lavenderSoft),
     child: Row(
       crossAxisAlignment: CrossAxisAlignment.start,
@@ -361,7 +361,7 @@ class _SyntheticDisclosure extends StatelessWidget {
   const _SyntheticDisclosure({required this.guest});
   final bool guest;
   @override
-  Widget build(BuildContext context) => SoftCard(
+  Widget build(BuildContext context) => NeonCard(
     padding: const EdgeInsets.all(FutureMintTokens.space4),
     radius: 16,
     borderWidth: 1,
