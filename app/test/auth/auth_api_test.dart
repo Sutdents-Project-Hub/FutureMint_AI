@@ -15,7 +15,7 @@ void main() {
         expect(request.url.path, '/api/auth/register');
         expect(jsonDecode(request.body), {
           'email': 'student@example.com',
-          'password': 'futuremint202',
+          'password': 'futuremint2026',
         });
         return http.Response(
           jsonEncode({
