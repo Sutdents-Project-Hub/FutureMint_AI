@@ -7,11 +7,15 @@ import 'package:futuremint_app/design/tokens.dart';
 import 'package:futuremint_app/state/app_controller.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
-Future<AppController> createController() async {
+Future<AppController> createController({
+  AppMode mode = AppMode.guest,
+  String? accountEmail,
+}) async {
   SharedPreferences.setMockInitialValues({});
   final controller = AppController(
     repository: await GuestRepository.create(),
-    mode: AppMode.guest,
+    mode: mode,
+    accountEmail: accountEmail,
   );
   await controller.initialize();
   return controller;
@@ -70,10 +74,13 @@ void main() {
     expect(find.byType(NavigationBar), findsNothing);
   });
 
-  testWidgets('uses an explicit solid label color for the dark guest chip', (
+  testWidgets('uses explicit solid label styles for the dark account chip', (
     tester,
   ) async {
-    final controller = await createController();
+    final controller = await createController(
+      mode: AppMode.authenticated,
+      accountEmail: 'demo@example.com',
+    );
     controller.setThemeMode(ThemeMode.dark);
     tester.view.physicalSize = const Size(375, 812);
     tester.view.devicePixelRatio = 1;
@@ -83,8 +90,12 @@ void main() {
     await tester.pumpWidget(FutureMintApp(controller: controller));
     await tester.pumpAndSettle();
 
-    final label = tester.widget<Text>(find.text('訪客').first);
+    final label = tester.widget<Text>(find.text('已登入').first);
     expect(label.style?.color, FutureMintTokens.paper);
+    expect(label.style?.foreground, isNull);
+    final chip = tester.widget<Chip>(find.byType(Chip).first);
+    expect(chip.labelStyle?.color, FutureMintTokens.paper);
+    expect(chip.labelStyle?.foreground, isNull);
   });
 
   testWidgets(

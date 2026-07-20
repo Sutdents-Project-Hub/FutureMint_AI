@@ -135,8 +135,17 @@ export const investmentSimulationInputSchema = z.object({
 export const coachRequestSchema = z.object({
   topic: z.enum(["spending", "subscription", "compound", "risk", "general"]),
   question: z.string().trim().min(1).max(300),
+  style: z.enum(["brief", "example", "steps"]).default("example"),
   scenarioId: z.enum(investmentScenarioIds).optional(),
   selectedYear: z.number().int().min(1).max(30).optional(),
+});
+
+export const familyJoinInputSchema = z.object({
+  inviteCode: z
+    .string()
+    .trim()
+    .toUpperCase()
+    .regex(/^[A-Z0-9]{8}$/u, "邀請碼應為 8 碼英數字。"),
 });
 
 export const lessonCompletionInputSchema = z.object({

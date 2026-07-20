@@ -74,8 +74,14 @@ Runtime 要求明確設定 `AI_PROVIDER=demo|liangjie` 與 `DATA_PROVIDER=memory
 
 - Dashboard、收支分析、通知與訂閱比較只使用登入帳號自己的事件。
 - 微課與學習規劃可由 provider 產生，但 options、modules、來源與限制仍需 schema／語意檢查。
+- 學習頁與 FutureSeed 會將自由提問、主題與回答方式（brief／example／steps）送到同一個受限 coach contract；使用者可見 AI 文字必須通過繁體中文／常見簡體字驗證。
 - 三條 FutureSeed 曲線使用版本化合成年度報酬序列；金額、日期、預算、分帳、訂閱差額、複利與最大回落都由 TypeScript deterministic domain 計算，不信任模型算術。
 - AI 陪讀員只解釋曲線現象，不選標的、不下單，也不改寫試算數值。
+
+### 家庭關聯
+
+- `family_groups` 與 `family_members` 由 API 管理；家長以邀請碼建立關聯，孩子以邀請碼加入。
+- API 由 session 與 profile role 執行授權。家長只能讀取孩子的彙總摘要，不會讀取孩子的 events、原始輸入或訂單；孩子只能看到角色標籤。
 
 ### 投資練習場
 

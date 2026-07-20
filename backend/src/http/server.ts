@@ -278,6 +278,37 @@ export const buildServer = async (
     return success(request, reply, profile);
   });
 
+  app.get("/api/family", async (request, reply) => {
+    const account = await requireAuthenticatedUser(request, runtime);
+    return success(
+      request,
+      reply,
+      await runtime.service.getFamilyOverview(account.id),
+    );
+  });
+  app.post("/api/family/invite", async (request, reply) => {
+    const account = await requireAuthenticatedUser(request, runtime);
+    return success(
+      request,
+      reply,
+      await runtime.service.createFamilyInvite(account.id),
+      201,
+    );
+  });
+  app.post("/api/family/join", async (request, reply) => {
+    const account = await requireAuthenticatedUser(request, runtime);
+    return success(
+      request,
+      reply,
+      await runtime.service.joinFamily(account.id, request.body as never),
+    );
+  });
+  app.post("/api/family/leave", async (request, reply) => {
+    const account = await requireAuthenticatedUser(request, runtime);
+    await runtime.service.leaveFamily(account.id);
+    return success(request, reply, { left: true });
+  });
+
   app.post("/api/captures/parse", aiRateLimit, async (request, reply) => {
     const account = await requireAuthenticatedUser(request, runtime);
     return success(

@@ -40,6 +40,8 @@ class AppController extends ChangeNotifier {
   InvestmentLab? investmentLab;
   PracticeDiceEvent? practiceDiceEvent;
   CoachReply? coachReply;
+  CoachReply? learningCoachReply;
+  FamilyOverview? familyOverview;
 
   Future<bool> _perform(Future<void> Function() operation) async {
     if (busy) return false;
@@ -222,15 +224,46 @@ class AppController extends ChangeNotifier {
   Future<void> askCoach({
     required String topic,
     required String question,
+    String style = 'example',
     InvestmentScenarioId? scenarioId,
     int? selectedYear,
   }) => _run(() async {
     coachReply = await repository.askCoach(
       topic: topic,
       question: question,
+      style: style,
       scenarioId: scenarioId,
       selectedYear: selectedYear,
     );
+  });
+
+  Future<void> askLearningCoach({
+    required String topic,
+    required String question,
+    String style = 'example',
+  }) => _run(() async {
+    learningCoachReply = await repository.askCoach(
+      topic: topic,
+      question: question,
+      style: style,
+    );
+  });
+
+  Future<void> loadFamily() => _run(() async {
+    familyOverview = await repository.getFamilyOverview();
+  });
+
+  Future<void> createFamilyInvite() => _run(() async {
+    familyOverview = await repository.createFamilyInvite();
+  });
+
+  Future<void> joinFamily(String inviteCode) => _run(() async {
+    familyOverview = await repository.joinFamily(inviteCode);
+  });
+
+  Future<void> leaveFamily() => _run(() async {
+    await repository.leaveFamily();
+    familyOverview = null;
   });
 
   Future<void> loadInvestmentLab() => _run(() async {

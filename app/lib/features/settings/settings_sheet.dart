@@ -1,10 +1,12 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:provider/provider.dart';
 
 import '../../core/models.dart';
 import '../../design/soft_components.dart';
 import '../../design/tokens.dart';
 import '../../shared/date_text.dart';
+import '../../shared/money_text.dart';
 import '../../state/app_controller.dart';
 import 'help_sheets.dart';
 
@@ -40,6 +42,7 @@ class _SettingsSheet extends StatelessWidget {
     var goalDate =
         current?.goalDate ?? DateTime.now().add(const Duration(days: 90));
     var accountRole = current?.accountRole ?? AccountRole.child;
+    final familyRoleLocked = controller.familyOverview != null;
     var saving = false;
     await showDialog<void>(
       context: context,
@@ -67,9 +70,18 @@ class _SettingsSheet extends StatelessWidget {
                       ),
                     ],
                     selected: {accountRole},
-                    onSelectionChanged: (value) =>
-                        setDialogState(() => accountRole = value.first),
+                    onSelectionChanged: familyRoleLocked
+                        ? null
+                        : (value) =>
+                              setDialogState(() => accountRole = value.first),
                   ),
+                  if (familyRoleLocked) ...[
+                    const SizedBox(height: 8),
+                    const Align(
+                      alignment: Alignment.centerLeft,
+                      child: Text('家庭關聯中的角色已鎖定；請先離開家庭再更換。'),
+                    ),
+                  ],
                   const SizedBox(height: 12),
                   TextField(
                     controller: budget,
@@ -256,6 +268,10 @@ class _SettingsSheet extends StatelessWidget {
                         label: const Text('機器人服務諮詢'),
                       ),
                       const SizedBox(height: FutureMintTokens.space3),
+                      if (!guest) ...[
+                        const _FamilySection(),
+                        const SizedBox(height: FutureMintTokens.space3),
+                      ],
                       OutlinedButton.icon(
                         onPressed: controller.busy || controller.onExit == null
                             ? null
@@ -315,6 +331,239 @@ class _SettingsSheet extends StatelessWidget {
             ),
           ),
         ),
+      ),
+    );
+  }
+}
+
+class _FamilySection extends StatefulWidget {
+  const _FamilySection();
+
+  @override
+  State<_FamilySection> createState() => _FamilySectionState();
+}
+
+class _FamilySectionState extends State<_FamilySection> {
+  final _inviteController = TextEditingController();
+  String? _actionError;
+
+  @override
+  void initState() {
+    super.initState();
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (mounted) context.read<AppController>().loadFamily();
+    });
+  }
+
+  @override
+  void dispose() {
+    _inviteController.dispose();
+    super.dispose();
+  }
+
+  Future<void> _createInvite(AppController controller) async {
+    setState(() => _actionError = null);
+    await controller.createFamilyInvite();
+    if (mounted && controller.errorMessage != null) {
+      setState(() => _actionError = controller.errorMessage);
+    }
+  }
+
+  Future<void> _joinFamily(AppController controller) async {
+    final code = _inviteController.text.trim().toUpperCase();
+    if (code.length != 8) {
+      setState(() => _actionError = '請輸入 8 碼家長邀請碼。');
+      return;
+    }
+    setState(() => _actionError = null);
+    await controller.joinFamily(code);
+    if (mounted && controller.errorMessage != null) {
+      setState(() => _actionError = controller.errorMessage);
+    }
+  }
+
+  Future<void> _leaveFamily(AppController controller) async {
+    setState(() => _actionError = null);
+    await controller.leaveFamily();
+    if (mounted && controller.errorMessage != null) {
+      setState(() => _actionError = controller.errorMessage);
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final controller = context.watch<AppController>();
+    final profile = controller.profile;
+    final family = controller.familyOverview;
+    final isParent = profile?.accountRole == AccountRole.parent;
+    return SoftCard(
+      key: const Key('family-section'),
+      color: Theme.of(context).brightness == Brightness.dark
+          ? FutureMintTokens.darkSurface
+          : FutureMintTokens.lavenderSoft,
+      borderWidth: 1,
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          Row(
+            children: [
+              const Icon(Icons.family_restroom_outlined),
+              const SizedBox(width: FutureMintTokens.space2),
+              Expanded(
+                child: Text(
+                  '家庭共學關聯',
+                  style: Theme.of(context).textTheme.titleMedium,
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: FutureMintTokens.space2),
+          const Text('家長只能查看孩子的預算與趨勢摘要，不會看到孩子的交易明細。'),
+          const SizedBox(height: FutureMintTokens.space3),
+          if (family == null && isParent) ...[
+            const Text('建立邀請碼，讓孩子帳號加入這個家庭。'),
+            const SizedBox(height: FutureMintTokens.space2),
+            FilledButton.icon(
+              key: const Key('create-family-invite'),
+              onPressed: controller.busy
+                  ? null
+                  : () => _createInvite(controller),
+              icon: const Icon(Icons.vpn_key_outlined),
+              label: const Text('建立家庭邀請碼'),
+            ),
+          ] else if (family == null) ...[
+            TextField(
+              key: const Key('family-invite-code'),
+              controller: _inviteController,
+              maxLength: 8,
+              textCapitalization: TextCapitalization.characters,
+              decoration: const InputDecoration(
+                labelText: '家長邀請碼',
+                hintText: '輸入 8 碼英數字',
+                border: OutlineInputBorder(),
+              ),
+            ),
+            const SizedBox(height: FutureMintTokens.space2),
+            FilledButton.icon(
+              key: const Key('join-family'),
+              onPressed: controller.busy ? null : () => _joinFamily(controller),
+              icon: const Icon(Icons.link_outlined),
+              label: const Text('加入家庭'),
+            ),
+          ] else ...[
+            Text(
+              '已連結 ${family.members.length} 個帳號',
+              style: const TextStyle(fontWeight: FontWeight.w700),
+            ),
+            const SizedBox(height: FutureMintTokens.space2),
+            for (final member in family.members)
+              ListTile(
+                contentPadding: EdgeInsets.zero,
+                dense: true,
+                leading: Icon(
+                  member.role == AccountRole.parent
+                      ? Icons.shield_outlined
+                      : Icons.face_outlined,
+                ),
+                title: Text(member.label),
+                subtitle: Text(
+                  member.role == AccountRole.parent ? '家長權限' : '孩子權限',
+                ),
+              ),
+            if (family.inviteCode != null) ...[
+              const SizedBox(height: FutureMintTokens.space2),
+              InputDecorator(
+                decoration: const InputDecoration(
+                  labelText: '家長邀請碼',
+                  border: OutlineInputBorder(),
+                ),
+                child: Row(
+                  children: [
+                    Expanded(
+                      child: SelectableText(
+                        family.inviteCode!,
+                        style: const TextStyle(
+                          fontWeight: FontWeight.w800,
+                          letterSpacing: 2,
+                        ),
+                      ),
+                    ),
+                    IconButton(
+                      tooltip: '複製邀請碼',
+                      onPressed: () async {
+                        await Clipboard.setData(
+                          ClipboardData(text: family.inviteCode!),
+                        );
+                        if (context.mounted) {
+                          ScaffoldMessenger.of(context).showSnackBar(
+                            const SnackBar(content: Text('邀請碼已複製。')),
+                          );
+                        }
+                      },
+                      icon: const Icon(Icons.copy_outlined),
+                    ),
+                  ],
+                ),
+              ),
+            ],
+            if (family.childSummaries.isNotEmpty) ...[
+              const SizedBox(height: FutureMintTokens.space4),
+              Text('孩子的本月摘要', style: Theme.of(context).textTheme.titleSmall),
+              const SizedBox(height: FutureMintTokens.space2),
+              for (final summary in family.childSummaries)
+                Padding(
+                  padding: const EdgeInsets.only(
+                    bottom: FutureMintTokens.space2,
+                  ),
+                  child: DecoratedBox(
+                    decoration: BoxDecoration(
+                      border: Border.all(
+                        color: Theme.of(context).colorScheme.outlineVariant,
+                      ),
+                      borderRadius: BorderRadius.circular(12),
+                    ),
+                    child: Padding(
+                      padding: const EdgeInsets.all(FutureMintTokens.space3),
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.stretch,
+                        children: [
+                          Text(
+                            summary.label,
+                            style: const TextStyle(fontWeight: FontWeight.w700),
+                          ),
+                          const SizedBox(height: FutureMintTokens.space1),
+                          Text(
+                            '可用 ${formatTwd(summary.availableMinor)} · 訂閱 ${formatTwd(summary.subscriptionMinor)}',
+                          ),
+                          Text(
+                            '目標進度 ${(summary.goalProgress * 100).round()}% · ${summary.noticeCount} 個提醒',
+                          ),
+                          const SizedBox(height: FutureMintTokens.space1),
+                          Text(summary.summary),
+                        ],
+                      ),
+                    ),
+                  ),
+                ),
+            ],
+            const SizedBox(height: FutureMintTokens.space2),
+            OutlinedButton.icon(
+              key: const Key('leave-family'),
+              onPressed: controller.busy
+                  ? null
+                  : () => _leaveFamily(controller),
+              icon: const Icon(Icons.link_off_outlined),
+              label: const Text('離開家庭關聯'),
+            ),
+          ],
+          if (_actionError != null) ...[
+            const SizedBox(height: FutureMintTokens.space2),
+            Text(
+              _actionError!,
+              style: TextStyle(color: Theme.of(context).colorScheme.error),
+            ),
+          ],
+        ],
       ),
     );
   }

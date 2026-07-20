@@ -2,16 +2,16 @@
 
 ## 最新本機驗證
 
-驗證日期：2026-07-16（Asia/Taipei）。以下只記錄實際執行結果，不代表 Coolify production、量界正式帳號或真實未成年人服務驗收。
+驗證日期：2026-07-19（Asia/Taipei）。以下只記錄實際執行結果，不代表 Coolify production、量界正式帳號或真實未成年人服務驗收。
 
 | 元件 | 指令／操作 | 結果 |
 |---|---|---|
-| Fastify API | `npm test` | 15 個 test files、84 tests 通過 |
+| Fastify API | `npm test` | 15 個 test files、86 tests 通過 |
 | Fastify API | `npm run typecheck` | 通過 |
 | Fastify API | `npm run build` | 通過 |
 | Dependencies | `npm audit --omit=dev` | 0 vulnerabilities |
 | Capture evaluation | `npm run evaluate:captures` | 30/30 cases、30/30 schema、225/225 field checks |
-| PostgreSQL migration | PostgreSQL 17 clean test DB／Compose 執行 migration | 套用 `001_initial.sql`、`002_roles_and_intents.sql`、`003_investment_lab.sql`；角色／意圖欄位與兩個虛擬投資 tables 存在 |
+| PostgreSQL migration | PostgreSQL 17 Compose 執行 migration | 套用 `001_initial.sql`、`002_roles_and_intents.sql`、`003_investment_lab.sql`、`004_family_accounts.sql`；家庭 groups／members、角色／意圖欄位與兩個虛擬投資 tables 存在 |
 | PostgreSQL seed guard | 未設 `ALLOW_DEMO_SEED=true` 執行 seed | 在建立 repository／寫入前拒絕，exit code 1 |
 | PostgreSQL synthetic seed | 設安全開關後執行兩次 | 無法登入的 synthetic account／profile／4 events；idempotent，event count 仍為 4 |
 | API Docker build | `docker build -t futuremint-api:codex backend` | 通過；Node.js 22 multi-stage image |
@@ -20,11 +20,11 @@
 | Persistence E2E | Container register → profile → event → stop／new container → login → list | 通過；重啟後讀回 1 event |
 | Investment persistence E2E | Container register → profile → virtual buy → restart API → login → investment lab | 通過；重啟後讀回 1 order、2 股與正確剩餘現金 |
 | TWSE market adapter | 實際呼叫 `/v1/exchangeReport/STOCK_DAY_ALL` 與 `/api/market/quotes` | 取得 5 個內建教學標的、資料日 2026-07-14、`isFallback=false`；另有 timeout／fallback unit test |
-| Docker Compose | `docker compose config`、`docker compose up -d --build --wait` | `futuremint_ai` 單一專案群組內 Web／API／PostgreSQL 三服務 healthy；Web 200、API health 200 |
+| Docker Compose | `docker compose config`、`docker compose up -d --build --wait` | `futuremint_ai` 單一專案群組內 Web／API／PostgreSQL 三服務 healthy；Web 200、API health 200（hosted／demo／postgres） |
 | Production fail-fast | 以 production Node image 注入 `demo + memory` | container 在 listen 前退出；unit test 同時驗證 production 只接受 `liangjie + postgres`、HTTPS CORS origin 為必填且合法 |
 | Flutter format | `dart format --output=none --set-exit-if-changed lib test integration_test` | 52 files，0 changed |
 | Flutter analyze | `flutter analyze` | 0 issues |
-| Flutter tests | `flutter test` | 72 tests 通過 |
+| Flutter tests | `flutter test` | 74 tests 通過 |
 | Flutter Web | `flutter build web --release --dart-define=API_BASE_URL=...` | 通過 |
 | Android debug | `flutter build apk --debug` | 通過，產出 debug APK；尚未進行實機驗收或 signing |
 | UX visual QA | Docker Web + in-app Browser（1440×900、375×812、812×375） | 登入／訪客／dashboard 可用，底部導覽與 landscape rail 正常、沒有水平溢位與 console error；已確認新 PWA brand icon 可取得 |
@@ -50,6 +50,7 @@
 - Lessons completion body schema、同時註冊同 email 的 conflict response。
 - Runtime 設定缺失／不合法時明確失敗；production 只允許完整的 `liangjie + postgres` provider pair。
 - 量界 adapter：OpenAI-compatible request、nullable fields、type／category／intent semantics、Markdown JSON fence、invalid JSON／schema、timeout、429 retry budget、學習規劃與安全陪讀回覆。
+- AI 文字安全：英文 lesson output 會被 `ai_invalid_output` schema 拒絕；coach 支援回答方式契約；家庭 service 驗證邀請碼、家長／孩子角色與摘要權限。
 - PostgreSQL mapping、parameterized queries、event idempotency、sessions、lessons、health 與 close。
 
 ### Flutter
@@ -75,6 +76,7 @@ Fixture：`backend/test/fixtures/capture-evaluation.json`；報告：
 
 - 量界正式 API key、帳號可用 model、費率、quota、資料條款、真實 output quality、P95 latency 與 outage 行為。
 - GitHub App、webhook／Auto Deploy；workspace 已有 remote，但本次尚未 push 或連接 Coolify。
+- GitHub Actions workflow 已加入，但本次尚未在 GitHub hosted runner 實際執行；需下一次 push／Pull Request 觀察。
 - 實際 Coolify VPS 的 AMD64／ARM64 image build、domains、TLS、CORS、health routing、resource limits 與 rollback。
 - Coolify PostgreSQL internal URL、production capacity、scheduled S3 backup 與隔離 restore。
 - Production log retention、磁碟告警與 server／Coolify 自身備份。

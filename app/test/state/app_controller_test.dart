@@ -148,4 +148,21 @@ void main() {
     expect(didSave, isFalse);
     expect(failingController.errorMessage, '暫時無法儲存。');
   });
+
+  test(
+    'keeps learning coach replies separate from FutureSeed coach replies',
+    () async {
+      await controller.initialize();
+
+      await controller.askLearningCoach(
+        topic: 'spending',
+        question: '我月底常常不夠用，該先看哪裡？',
+        style: 'steps',
+      );
+
+      expect(controller.learningCoachReply?.answer, contains('先比較'));
+      expect(controller.coachReply, isNull);
+      expect(controller.errorMessage, isNull);
+    },
+  );
 }

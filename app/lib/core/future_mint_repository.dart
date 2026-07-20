@@ -31,9 +31,14 @@ abstract interface class FutureMintRepository {
   Future<CoachReply> askCoach({
     required String topic,
     required String question,
+    String style = 'example',
     InvestmentScenarioId? scenarioId,
     int? selectedYear,
   });
+  Future<FamilyOverview?> getFamilyOverview();
+  Future<FamilyOverview> createFamilyInvite();
+  Future<FamilyOverview> joinFamily(String inviteCode);
+  Future<void> leaveFamily();
   Future<MarketSnapshot> getMarketSnapshot();
   Future<InvestmentLab> getInvestmentLab();
   Future<InvestmentLab> placeInvestmentOrder({

@@ -2,6 +2,8 @@ import { randomUUID } from "node:crypto";
 
 import type {
   Account,
+  FamilyGroupRecord,
+  FamilyMemberRecord,
   Lesson,
   MoneyEvent,
   SaveInvestmentOrderInput,
@@ -102,6 +104,8 @@ export class InMemoryRepository
   private accountsByEmail = new Map<string, Account>();
   private accountsById = new Map<string, Account>();
   private sessions = new Map<string, SessionRecord>();
+  private familyGroups = new Map<string, FamilyGroupRecord>();
+  private familyMembers = new Map<string, FamilyMemberRecord>();
 
   constructor() {
     this.seed("demo-user");
@@ -232,6 +236,90 @@ export class InMemoryRepository
 
   async resetDemo(userId: string): Promise<void> {
     this.seed(userId);
+  }
+
+  async getFamilyMembership(
+    userId: string,
+  ): Promise<FamilyMemberRecord | null> {
+    const member = this.familyMembers.get(userId);
+    return member ? { ...member } : null;
+  }
+
+  async getFamilyGroup(familyId: string): Promise<FamilyGroupRecord | null> {
+    const group = this.familyGroups.get(familyId);
+    return group ? { ...group } : null;
+  }
+
+  async createFamilyGroup(
+    userId: string,
+    familyId: string,
+    inviteCode: string,
+  ): Promise<FamilyGroupRecord> {
+    if ([...this.familyGroups.values()].some((item) => item.inviteCode === inviteCode)) {
+      throw new DomainError(
+        "family_invite_unavailable",
+        "家庭邀請碼剛好重複，請再建立一次。",
+        409,
+        true,
+      );
+    }
+    const group = { familyId, inviteCode, createdBy: userId };
+    this.familyGroups.set(familyId, group);
+    this.familyMembers.set(userId, {
+      familyId,
+      userId,
+      email: this.accountsById.get(userId)?.email ?? `${userId}@demo.local`,
+      role: this.profiles.get(userId)?.accountRole ?? "parent",
+      joinedAt: new Date().toISOString(),
+    });
+    return { ...group };
+  }
+
+  async findFamilyByInviteCode(
+    inviteCode: string,
+  ): Promise<FamilyGroupRecord | null> {
+    const group = [...this.familyGroups.values()].find(
+      (item) => item.inviteCode === inviteCode,
+    );
+    return group ? { ...group } : null;
+  }
+
+  async listFamilyMembers(familyId: string): Promise<FamilyMemberRecord[]> {
+    return [...this.familyMembers.values()]
+      .filter((member) => member.familyId === familyId)
+      .sort((a, b) => a.joinedAt.localeCompare(b.joinedAt))
+      .map((member) => ({ ...member }));
+  }
+
+  async addFamilyMember(familyId: string, userId: string): Promise<void> {
+    if (this.familyMembers.has(userId)) {
+      throw new DomainError(
+        "family_already_linked",
+        "這個帳號已經加入家庭。",
+        409,
+      );
+    }
+    if (!this.familyGroups.has(familyId)) {
+      throw new DomainError("family_invite_not_found", "找不到家庭邀請碼。", 404);
+    }
+    this.familyMembers.set(userId, {
+      familyId,
+      userId,
+      email: this.accountsById.get(userId)?.email ?? `${userId}@demo.local`,
+      role: this.profiles.get(userId)?.accountRole ?? "child",
+      joinedAt: new Date().toISOString(),
+    });
+  }
+
+  async removeFamilyMember(userId: string): Promise<void> {
+    this.familyMembers.delete(userId);
+  }
+
+  async deleteFamilyGroup(familyId: string): Promise<void> {
+    this.familyGroups.delete(familyId);
+    for (const [userId, member] of this.familyMembers) {
+      if (member.familyId === familyId) this.familyMembers.delete(userId);
+    }
   }
 
   async findAccountByEmail(email: string): Promise<Account | null> {

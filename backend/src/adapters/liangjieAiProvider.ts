@@ -42,6 +42,21 @@ interface ProviderOptions {
   logger?: (event: Record<string, unknown>) => void;
 }
 
+const commonSimplifiedCharacters =
+  /[这国们为发现后过还与来对将让时风险报资产长积钱学习简体说问应该没从进选择类订阅实频]/u;
+const traditionalChineseText = (max: number) =>
+  z
+    .string()
+    .trim()
+    .min(1)
+    .max(max)
+    .refine((value) => /\p{Script=Han}/u.test(value), {
+      message: "AI 回覆必須包含繁體中文。",
+    })
+    .refine((value) => !commonSimplifiedCharacters.test(value), {
+      message: "AI 回覆不得使用常見簡體字。",
+    });
+
 const draftSchema = z
   .object({
     type: z.enum(moneyEventTypes),
@@ -74,7 +89,7 @@ const draftSchema = z
       .nullable()
       .optional(),
     spendingIntent: z.enum(spendingIntents).nullable().optional(),
-    intentReason: z.string().trim().min(1).max(160).nullable().optional(),
+    intentReason: traditionalChineseText(160).nullable().optional(),
     confidence: z.number().min(0).max(1),
     missingFields: z.array(z.string()).max(5),
   })
@@ -117,17 +132,14 @@ const draftSchema = z
 
 const captureOutputSchema = z.object({
   drafts: z.array(draftSchema).max(5),
-  clarificationQuestion: z.string().max(100).nullable().optional(),
-  rejectedReason: z.string().max(120).nullable().optional(),
+  clarificationQuestion: traditionalChineseText(100).nullable().optional(),
+  rejectedReason: traditionalChineseText(120).nullable().optional(),
 });
 
 const unverifiedQuantity =
   /[0-9０-９]|百分之|[一二三四五六七八九十百千萬兩半]+(?:元|年|個?月|週|天|日|%|％|分鐘)/u;
 const lessonText = (max: number) =>
-  z
-    .string()
-    .min(1)
-    .max(max)
+  traditionalChineseText(max)
     .refine((value) => !unverifiedQuantity.test(value), {
       message: "AI 課程不得新增未驗證的數量、金額或期限。",
     });
@@ -139,7 +151,7 @@ const lessonOutputSchema = z.object({
   question: lessonText(100),
   options: z.array(lessonText(80)).min(2).max(4),
   action: lessonText(120),
-  disclaimer: z.string().min(1).max(120),
+  disclaimer: traditionalChineseText(120),
 });
 
 const learningPlanOutputSchema = z.object({
@@ -158,16 +170,20 @@ const learningPlanOutputSchema = z.object({
     .refine((modules) => new Set(modules.map((item) => item.id)).size === 4, {
       message: "學習規劃主題不得重複。",
     }),
-  disclaimer: z.string().min(1).max(120),
+  disclaimer: traditionalChineseText(120),
 });
 
 const unsafeCoachLanguage =
   /(?:建議|推薦).{0,6}(?:買入|賣出|投資)|買進|賣出|穩賺|保證報酬|必定獲利/u;
 const coachOutputSchema = z.object({
-  answer: z.string().min(1).max(320).refine((value) => !unsafeCoachLanguage.test(value)),
-  takeaway: z.string().min(1).max(160).refine((value) => !unsafeCoachLanguage.test(value)),
-  suggestions: z.array(z.string().min(1).max(80)).min(2).max(3),
-  disclaimer: z.string().min(1).max(120),
+  answer: traditionalChineseText(320).refine(
+    (value) => !unsafeCoachLanguage.test(value),
+  ),
+  takeaway: traditionalChineseText(160).refine(
+    (value) => !unsafeCoachLanguage.test(value),
+  ),
+  suggestions: z.array(traditionalChineseText(80)).min(2).max(3),
+  disclaimer: traditionalChineseText(120),
 });
 
 const captureJsonSchema = {
@@ -537,7 +553,7 @@ export class LiangjieAiProvider implements AiProvider {
         {
           role: "system",
           content:
-            `產生非責備語氣的繁體中文青少年金融微課。不得推薦投資標的或保證報酬；不得自行新增、推算或回述任何金額、比例、期限或數量。只輸出一個 JSON object，不得加上 Markdown 或解釋。JSON Schema：${JSON.stringify(lessonJsonSchema)}`,
+            `產生非責備語氣的台灣繁體中文青少年金融微課。所有使用者可見文字都必須包含繁體中文，不得輸出英文或簡體中文（商家原名除外）。不得推薦投資標的或保證報酬；不得自行新增、推算或回述任何金額、比例、期限或數量。只輸出一個 JSON object，不得加上 Markdown 或解釋。JSON Schema：${JSON.stringify(lessonJsonSchema)}`,
         },
         {
           role: "user",
@@ -581,7 +597,7 @@ export class LiangjieAiProvider implements AiProvider {
         {
           role: "system",
           content:
-            `你是青少年金融教育規劃助手。依聚合分類調整四個固定主題的順序與理由：need-want、subscription、compound、risk。不得推薦標的、保證報酬或自行新增任何數量。每個 id 必須恰好出現一次。只輸出 JSON object。JSON Schema：${JSON.stringify(learningPlanJsonSchema)}`,
+            `你是青少年金融教育規劃助手。使用台灣繁體中文，所有使用者可見文字不得輸出英文或簡體中文。依聚合分類調整四個固定主題的順序與理由：need-want、subscription、compound、risk。不得推薦標的、保證報酬或自行新增任何數量。每個 id 必須恰好出現一次。只輸出 JSON object。JSON Schema：${JSON.stringify(learningPlanJsonSchema)}`,
         },
         {
           role: "user",
@@ -617,19 +633,25 @@ export class LiangjieAiProvider implements AiProvider {
   }
 
   async coach(request: CoachRequest): Promise<CoachReply> {
+    const styleInstruction = {
+      brief: "請用一句話先說重點，再補一個簡短提醒。",
+      example: "請用一個不含新金額的日常例子說明。",
+      steps: "請整理成三個可以自己完成的步驟。",
+    }[request.style ?? "example"];
     const response = await this.request({
       model: this.model,
       messages: [
         {
           role: "system",
           content:
-            `你是青少年金融教育陪讀員，只能解釋需要與想要、訂閱檢查、複利、波動與分散。不得推薦或評價任何投資標的，不得保證報酬，不得重算或新增金額、報酬率、期限。使用繁體中文與非責備語氣，只輸出 JSON object。JSON Schema：${JSON.stringify(coachJsonSchema)}`,
+            `你是青少年金融教育陪讀員，只能解釋需要與想要、訂閱檢查、複利、波動與分散。使用台灣繁體中文，所有使用者可見文字不得輸出英文或簡體中文。不得推薦或評價任何投資標的，不得保證報酬，不得重算或新增金額、報酬率、期限。${styleInstruction}使用非責備語氣，只輸出 JSON object。JSON Schema：${JSON.stringify(coachJsonSchema)}`,
         },
         {
           role: "user",
           content: JSON.stringify({
             topic: request.topic,
             question: request.question,
+            style: request.style ?? "example",
             scenarioId: request.scenarioId,
             selectedYear: request.selectedYear,
           }),

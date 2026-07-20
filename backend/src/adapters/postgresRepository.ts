@@ -10,6 +10,8 @@ import type {
 import { DomainError } from "../contracts/errors";
 import type {
   Account,
+  FamilyGroupRecord,
+  FamilyMemberRecord,
   Lesson,
   MoneyEvent,
   SaveInvestmentOrderInput,
@@ -112,6 +114,14 @@ interface InvestmentOrderRow extends Record<string, unknown> {
   quote_source: VirtualInvestmentOrder["quoteSource"];
   idempotency_key: string;
   created_at: Date | string;
+}
+
+interface FamilyMemberRow extends Record<string, unknown> {
+  family_id: string;
+  user_id: string;
+  email: string;
+  account_role: "child" | "parent" | null;
+  joined_at: Date | string;
 }
 
 const isoDateTime = (value: Date | string): string =>
@@ -218,6 +228,14 @@ const investmentOrderFromRow = (
   quoteSource: row.quote_source,
   idempotencyKey: row.idempotency_key,
   createdAt: isoDateTime(row.created_at),
+});
+
+const familyMemberFromRow = (row: FamilyMemberRow): FamilyMemberRecord => ({
+  familyId: row.family_id,
+  userId: row.user_id,
+  email: row.email,
+  role: row.account_role ?? "child",
+  joinedAt: isoDateTime(row.joined_at),
 });
 
 export class PostgresRepository
@@ -451,6 +469,148 @@ export class PostgresRepository
       "PostgreSQL 連線模式不支援自動重設，請使用受控合成資料程序。",
       409,
     );
+  }
+
+  async getFamilyMembership(
+    userId: string,
+  ): Promise<FamilyMemberRecord | null> {
+    const { rows } = await this.client.query<FamilyMemberRow>(
+      `SELECT fm.family_id, fm.user_id, a.email,
+        COALESCE(p.account_role, 'child') AS account_role, fm.joined_at
+      FROM family_members fm
+      JOIN accounts a ON a.user_id = fm.user_id
+      LEFT JOIN profiles p ON p.user_id = fm.user_id
+      WHERE fm.user_id = $1
+      LIMIT 1`,
+      [userId],
+    );
+    return rows[0] ? familyMemberFromRow(rows[0]) : null;
+  }
+
+  async getFamilyGroup(familyId: string): Promise<FamilyGroupRecord | null> {
+    const { rows } = await this.client.query<{
+      id: string;
+      invite_code: string;
+      created_by: string;
+    }>(
+      `SELECT id, invite_code, created_by
+      FROM family_groups
+      WHERE id = $1
+      LIMIT 1`,
+      [familyId],
+    );
+    const row = rows[0];
+    return row
+      ? {
+          familyId: row.id,
+          inviteCode: row.invite_code,
+          createdBy: row.created_by,
+        }
+      : null;
+  }
+
+  async createFamilyGroup(
+    userId: string,
+    familyId: string,
+    inviteCode: string,
+  ): Promise<FamilyGroupRecord> {
+    await this.client.query(
+      "BEGIN",
+    );
+    try {
+      await this.client.query(
+        `INSERT INTO family_groups (id, invite_code, created_by)
+        VALUES ($1, $2, $3)`,
+        [familyId, inviteCode, userId],
+      );
+      await this.client.query(
+        `INSERT INTO family_members (family_id, user_id)
+        VALUES ($1, $2)`,
+        [familyId, userId],
+      );
+      await this.client.query("COMMIT");
+      return { familyId, inviteCode, createdBy: userId };
+    } catch (error) {
+      await this.client.query("ROLLBACK");
+      if ((error as { code?: string }).code === "23505") {
+        throw new DomainError(
+          "family_invite_unavailable",
+          "家庭邀請碼剛好重複，請再建立一次。",
+          409,
+          true,
+        );
+      }
+      throw error;
+    }
+  }
+
+  async findFamilyByInviteCode(
+    inviteCode: string,
+  ): Promise<FamilyGroupRecord | null> {
+    const { rows } = await this.client.query<{
+      id: string;
+      invite_code: string;
+      created_by: string;
+    }>(
+      `SELECT id, invite_code, created_by
+      FROM family_groups
+      WHERE invite_code = $1
+      LIMIT 1`,
+      [inviteCode],
+    );
+    const row = rows[0];
+    return row
+      ? {
+          familyId: row.id,
+          inviteCode: row.invite_code,
+          createdBy: row.created_by,
+        }
+      : null;
+  }
+
+  async listFamilyMembers(familyId: string): Promise<FamilyMemberRecord[]> {
+    const { rows } = await this.client.query<FamilyMemberRow>(
+      `SELECT fm.family_id, fm.user_id, a.email,
+        COALESCE(p.account_role, 'child') AS account_role, fm.joined_at
+      FROM family_members fm
+      JOIN accounts a ON a.user_id = fm.user_id
+      LEFT JOIN profiles p ON p.user_id = fm.user_id
+      WHERE fm.family_id = $1
+      ORDER BY fm.joined_at ASC, fm.user_id ASC`,
+      [familyId],
+    );
+    return rows.map(familyMemberFromRow);
+  }
+
+  async addFamilyMember(familyId: string, userId: string): Promise<void> {
+    try {
+      await this.client.query(
+        `INSERT INTO family_members (family_id, user_id)
+        VALUES ($1, $2)`,
+        [familyId, userId],
+      );
+    } catch (error) {
+      if ((error as { code?: string }).code === "23505") {
+        throw new DomainError(
+          "family_already_linked",
+          "這個帳號已經加入家庭。",
+          409,
+        );
+      }
+      throw error;
+    }
+  }
+
+  async removeFamilyMember(userId: string): Promise<void> {
+    await this.client.query("DELETE FROM family_members WHERE user_id = $1", [
+      userId,
+    ]);
+  }
+
+  async deleteFamilyGroup(familyId: string): Promise<void> {
+    await this.client.query("DELETE FROM family_groups WHERE id = $1", [
+      familyId,
+    ]);
   }
 
   async findAccountByEmail(email: string): Promise<Account | null> {

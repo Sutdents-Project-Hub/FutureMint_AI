@@ -749,6 +749,7 @@ class GuestRepository implements FutureMintRepository {
   Future<CoachReply> askCoach({
     required String topic,
     required String question,
+    String style = 'example',
     InvestmentScenarioId? scenarioId,
     int? selectedYear,
   }) async {
@@ -767,6 +768,21 @@ class GuestRepository implements FutureMintRepository {
       disclaimer: '陪讀內容只解釋教育模擬，不提供買賣建議。',
     );
   }
+
+  @override
+  Future<FamilyOverview?> getFamilyOverview() async => null;
+
+  @override
+  Future<FamilyOverview> createFamilyInvite() async =>
+      throw const FormatException('訪客模式無法建立家庭關聯，請先登入。');
+
+  @override
+  Future<FamilyOverview> joinFamily(String inviteCode) async =>
+      throw const FormatException('訪客模式無法加入家庭，請先登入。');
+
+  @override
+  Future<void> leaveFamily() async =>
+      throw const FormatException('訪客模式沒有家庭關聯。');
 
   @override
   Future<Lesson> completeLesson(Lesson lesson, String selectedOption) async {

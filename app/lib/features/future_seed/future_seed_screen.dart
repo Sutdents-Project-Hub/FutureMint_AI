@@ -102,6 +102,13 @@ class _FutureSeedScreenState extends State<FutureSeedScreen> {
                     onYears: controller.busy
                         ? null
                         : (value) => setState(() => years = value),
+                    onPreset: controller.busy
+                        ? null
+                        : (nextInitial, nextMonthly, nextYears) => setState(() {
+                            initial = nextInitial;
+                            monthly = nextMonthly;
+                            years = nextYears;
+                          }),
                     onRun: controller.busy
                         ? null
                         : () async {
@@ -118,9 +125,10 @@ class _FutureSeedScreenState extends State<FutureSeedScreen> {
                     coachReply: controller.coachReply,
                     busy: controller.busy,
                     onSelected: (value) => setState(() => selectedId = value),
-                    onAsk: (topic, question) => controller.askCoach(
+                    onAsk: (topic, question, style) => controller.askCoach(
                       topic: topic,
                       question: question,
+                      style: style,
                       scenarioId: selectedId,
                     ),
                   );
@@ -160,6 +168,7 @@ class _Controls extends StatelessWidget {
     required this.onMonthly,
     required this.onYears,
     required this.onRun,
+    required this.onPreset,
   });
 
   final double initial;
@@ -169,6 +178,7 @@ class _Controls extends StatelessWidget {
   final ValueChanged<double>? onMonthly;
   final ValueChanged<double>? onYears;
   final VoidCallback? onRun;
+  final void Function(double initial, double monthly, double years)? onPreset;
 
   @override
   Widget build(BuildContext context) => SoftCard(
@@ -214,6 +224,29 @@ class _Controls extends StatelessWidget {
           onPressed: onRun,
           icon: const Icon(Icons.show_chart_rounded),
           label: const Text('開始教育試算'),
+        ),
+        const SizedBox(height: FutureMintTokens.space3),
+        Text('快速套用一個情境', style: Theme.of(context).textTheme.titleSmall),
+        const SizedBox(height: FutureMintTokens.space2),
+        Wrap(
+          spacing: FutureMintTokens.space2,
+          runSpacing: FutureMintTokens.space2,
+          children: [
+            ActionChip(
+              label: const Text('從零開始'),
+              onPressed: onPreset == null ? null : () => onPreset!(0, 300, 3),
+            ),
+            ActionChip(
+              label: const Text('穩定累積'),
+              onPressed: onPreset == null
+                  ? null
+                  : () => onPreset!(4200, 500, 5),
+            ),
+            ActionChip(
+              label: const Text('長期目標'),
+              onPressed: onPreset == null ? null : () => onPreset!(0, 1000, 10),
+            ),
+          ],
         ),
         const SizedBox(height: FutureMintTokens.space3),
         Text(
@@ -301,7 +334,7 @@ class _SimulationResults extends StatelessWidget {
   final CoachReply? coachReply;
   final bool busy;
   final ValueChanged<InvestmentScenarioId> onSelected;
-  final void Function(String topic, String question) onAsk;
+  final void Function(String topic, String question, String style) onAsk;
 
   @override
   Widget build(BuildContext context) {
@@ -466,7 +499,7 @@ class _Metric extends StatelessWidget {
   );
 }
 
-class _AiReadingCompanion extends StatelessWidget {
+class _AiReadingCompanion extends StatefulWidget {
   const _AiReadingCompanion({
     required this.reply,
     required this.busy,
@@ -475,7 +508,28 @@ class _AiReadingCompanion extends StatelessWidget {
 
   final CoachReply? reply;
   final bool busy;
-  final void Function(String topic, String question) onAsk;
+  final void Function(String topic, String question, String style) onAsk;
+
+  @override
+  State<_AiReadingCompanion> createState() => _AiReadingCompanionState();
+}
+
+class _AiReadingCompanionState extends State<_AiReadingCompanion> {
+  final _questionController = TextEditingController();
+  String _topic = 'risk';
+  String _style = 'example';
+
+  @override
+  void dispose() {
+    _questionController.dispose();
+    super.dispose();
+  }
+
+  void _ask() {
+    final question = _questionController.text.trim();
+    if (question.isEmpty) return;
+    widget.onAsk(_topic, question, _style);
+  }
 
   @override
   Widget build(BuildContext context) => SoftCard(
@@ -504,32 +558,126 @@ class _AiReadingCompanion extends StatelessWidget {
           children: [
             ActionChip(
               label: const Text('為什麼中間掉下去？'),
-              onPressed: busy ? null : () => onAsk('risk', '為什麼這條線中間掉下去了？'),
+              onPressed: widget.busy
+                  ? null
+                  : () {
+                      _topic = 'risk';
+                      _questionController.text = '為什麼這條線中間掉下去了？';
+                      _ask();
+                    },
             ),
             ActionChip(
               label: const Text('什麼是分散風險？'),
-              onPressed: busy ? null : () => onAsk('risk', '什麼是分散風險？'),
+              onPressed: widget.busy
+                  ? null
+                  : () {
+                      _topic = 'risk';
+                      _questionController.text = '什麼是分散風險？';
+                      _ask();
+                    },
             ),
             ActionChip(
               label: const Text('複利怎麼發生？'),
-              onPressed: busy ? null : () => onAsk('compound', '複利怎麼發生？'),
+              onPressed: widget.busy
+                  ? null
+                  : () {
+                      _topic = 'compound';
+                      _questionController.text = '複利怎麼發生？';
+                      _ask();
+                    },
             ),
           ],
         ),
-        if (busy) ...[
+        const SizedBox(height: FutureMintTokens.space3),
+        Text('也可以直接問：', style: Theme.of(context).textTheme.titleSmall),
+        const SizedBox(height: FutureMintTokens.space2),
+        Wrap(
+          spacing: FutureMintTokens.space2,
+          runSpacing: FutureMintTokens.space2,
+          children: [
+            for (final entry in const {
+              'risk': '波動與 ETF',
+              'compound': '複利與存錢',
+              'general': '我的情境',
+            }.entries)
+              ChoiceChip(
+                label: Text(entry.value),
+                selected: _topic == entry.key,
+                onSelected: (_) => setState(() => _topic = entry.key),
+              ),
+          ],
+        ),
+        const SizedBox(height: FutureMintTokens.space3),
+        TextField(
+          key: const Key('future-seed-coach-question'),
+          controller: _questionController,
+          maxLength: 300,
+          minLines: 2,
+          maxLines: 4,
+          decoration: const InputDecoration(
+            labelText: '自由輸入問題',
+            hintText: '例如：如果中間下跌，我應該觀察什麼？',
+            helperText: '內容只用於教育解釋，不會產生買賣指令。',
+            border: OutlineInputBorder(),
+          ),
+        ),
+        const SizedBox(height: FutureMintTokens.space2),
+        Wrap(
+          spacing: FutureMintTokens.space2,
+          runSpacing: FutureMintTokens.space2,
+          children: [
+            for (final entry in const {
+              'brief': '一句話重點',
+              'example': '生活例子',
+              'steps': '一步一步',
+            }.entries)
+              ChoiceChip(
+                label: Text(entry.value),
+                selected: _style == entry.key,
+                onSelected: (_) => setState(() => _style = entry.key),
+              ),
+          ],
+        ),
+        const SizedBox(height: FutureMintTokens.space3),
+        ValueListenableBuilder<TextEditingValue>(
+          valueListenable: _questionController,
+          builder: (context, value, _) => FilledButton.icon(
+            key: const Key('ask-future-seed-coach'),
+            onPressed: widget.busy || value.text.trim().isEmpty ? null : _ask,
+            icon: const Icon(Icons.auto_awesome_outlined),
+            label: const Text('請教 AI'),
+          ),
+        ),
+        if (widget.busy) ...[
           const SizedBox(height: FutureMintTokens.space3),
           const LinearProgressIndicator(),
         ],
-        if (reply != null) ...[
+        if (widget.reply != null) ...[
           const SizedBox(height: FutureMintTokens.space4),
-          Text(reply!.answer),
+          Text(widget.reply!.answer, key: const Key('future-seed-coach-reply')),
           const SizedBox(height: FutureMintTokens.space2),
           Text(
-            '記住：${reply!.takeaway}',
+            '記住：${widget.reply!.takeaway}',
             style: const TextStyle(fontWeight: FontWeight.w700),
           ),
           const SizedBox(height: FutureMintTokens.space2),
-          Text(reply!.disclaimer, style: Theme.of(context).textTheme.bodySmall),
+          Wrap(
+            spacing: FutureMintTokens.space2,
+            runSpacing: FutureMintTokens.space2,
+            children: [
+              for (final suggestion in widget.reply!.suggestions)
+                ActionChip(
+                  label: Text(suggestion),
+                  onPressed: () =>
+                      setState(() => _questionController.text = suggestion),
+                ),
+            ],
+          ),
+          const SizedBox(height: FutureMintTokens.space2),
+          Text(
+            widget.reply!.disclaimer,
+            style: Theme.of(context).textTheme.bodySmall,
+          ),
         ],
       ],
     ),

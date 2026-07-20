@@ -908,6 +908,94 @@ class CoachReply {
   );
 }
 
+class FamilyMember {
+  const FamilyMember({
+    required this.userId,
+    required this.role,
+    required this.label,
+    required this.isSelf,
+  });
+
+  final String userId;
+  final AccountRole role;
+  final String label;
+  final bool isSelf;
+
+  factory FamilyMember.fromJson(Map<String, dynamic> json) => FamilyMember(
+    userId: json['userId'] as String,
+    role: _enumByName(AccountRole.values, json['role'] as String),
+    label: json['label'] as String,
+    isSelf: json['isSelf'] as bool? ?? false,
+  );
+}
+
+class FamilyChildSummary {
+  const FamilyChildSummary({
+    required this.userId,
+    required this.label,
+    required this.monthlyBudgetMinor,
+    required this.incomeMinor,
+    required this.expenseMinor,
+    required this.subscriptionMinor,
+    required this.availableMinor,
+    required this.goalProgress,
+    required this.summary,
+    required this.noticeCount,
+  });
+
+  final String userId;
+  final String label;
+  final int monthlyBudgetMinor;
+  final int incomeMinor;
+  final int expenseMinor;
+  final int subscriptionMinor;
+  final int availableMinor;
+  final double goalProgress;
+  final String summary;
+  final int noticeCount;
+
+  factory FamilyChildSummary.fromJson(Map<String, dynamic> json) =>
+      FamilyChildSummary(
+        userId: json['userId'] as String,
+        label: json['label'] as String,
+        monthlyBudgetMinor: json['monthlyBudgetMinor'] as int,
+        incomeMinor: json['incomeMinor'] as int,
+        expenseMinor: json['expenseMinor'] as int,
+        subscriptionMinor: json['subscriptionMinor'] as int,
+        availableMinor: json['availableMinor'] as int,
+        goalProgress: (json['goalProgress'] as num).toDouble(),
+        summary: json['summary'] as String,
+        noticeCount: json['noticeCount'] as int,
+      );
+}
+
+class FamilyOverview {
+  const FamilyOverview({
+    required this.familyId,
+    required this.inviteCode,
+    required this.members,
+    required this.childSummaries,
+  });
+
+  final String familyId;
+  final String? inviteCode;
+  final List<FamilyMember> members;
+  final List<FamilyChildSummary> childSummaries;
+
+  factory FamilyOverview.fromJson(Map<String, dynamic> json) => FamilyOverview(
+    familyId: json['familyId'] as String,
+    inviteCode: json['inviteCode'] as String?,
+    members: (json['members'] as List<dynamic>)
+        .map((item) => FamilyMember.fromJson(item as Map<String, dynamic>))
+        .toList(),
+    childSummaries: (json['childSummaries'] as List<dynamic>? ?? [])
+        .map(
+          (item) => FamilyChildSummary.fromJson(item as Map<String, dynamic>),
+        )
+        .toList(),
+  );
+}
+
 class MarketQuote {
   const MarketQuote({
     required this.symbol,

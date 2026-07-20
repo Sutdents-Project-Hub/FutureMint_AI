@@ -368,6 +368,12 @@ class _ModeChip extends StatelessWidget {
           ' 目前角色：${accountRole == AccountRole.parent ? '家長陪伴' : '孩子使用'}。',
       child: Chip(
         visualDensity: VisualDensity.compact,
+        labelStyle: TextStyle(
+          color: labelColor,
+          fontSize: 13,
+          fontWeight: FontWeight.w800,
+          letterSpacing: 0,
+        ),
         backgroundColor: guest
             ? (dark
                   ? FutureMintTokens.darkSurfaceRaised
@@ -380,7 +386,12 @@ class _ModeChip extends StatelessWidget {
         ),
         label: Text(
           guest ? '訪客' : '已登入',
-          style: TextStyle(color: labelColor, fontWeight: FontWeight.w700),
+          style: TextStyle(
+            color: labelColor,
+            fontSize: 13,
+            fontWeight: FontWeight.w800,
+            letterSpacing: 0,
+          ),
         ),
       ),
     );

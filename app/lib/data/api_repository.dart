@@ -315,6 +315,7 @@ class ApiRepository implements FutureMintRepository {
   Future<CoachReply> askCoach({
     required String topic,
     required String question,
+    String style = 'example',
     InvestmentScenarioId? scenarioId,
     int? selectedYear,
   }) async => CoachReply.fromJson(
@@ -324,12 +325,38 @@ class ApiRepository implements FutureMintRepository {
           body: {
             'topic': topic,
             'question': question,
+            'style': style,
             if (scenarioId != null) 'scenarioId': scenarioToJson(scenarioId),
             'selectedYear': ?selectedYear,
           },
         )
         as Map<String, dynamic>,
   );
+
+  @override
+  Future<FamilyOverview?> getFamilyOverview() async {
+    final data = await _send('GET', 'family');
+    return data == null
+        ? null
+        : FamilyOverview.fromJson(data as Map<String, dynamic>);
+  }
+
+  @override
+  Future<FamilyOverview> createFamilyInvite() async => FamilyOverview.fromJson(
+    await _send('POST', 'family/invite') as Map<String, dynamic>,
+  );
+
+  @override
+  Future<FamilyOverview> joinFamily(String inviteCode) async =>
+      FamilyOverview.fromJson(
+        await _send('POST', 'family/join', body: {'inviteCode': inviteCode})
+            as Map<String, dynamic>,
+      );
+
+  @override
+  Future<void> leaveFamily() async {
+    await _send('POST', 'family/leave');
+  }
 
   @override
   Future<MarketSnapshot> getMarketSnapshot() async => MarketSnapshot.fromJson(

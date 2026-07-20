@@ -106,14 +106,15 @@ Every foreground/background pair used for body text must meet WCAG 4.5:1. State 
 - Cards: each block has a clear title, one insight, and at most one primary action. Lists use one shared surface with dividers instead of a card for every row.
 - Dashboard: one indigo budget Hero, lavender／indigo supportive insight blocks, a sky subscription block, and a neutral recent-record surface. The bento layout appears only with enough content width.
 - Capture: the empty/input state gets the colorful Hero; once drafts exist, visual emphasis moves to the first draft and the input Hero becomes quiet.
-- Learning: use neighboring or mildly overlapping lavender／indigo blocks at normal text scale; at high text scale they return to a normal vertical stack.
+- Learning: use neighboring or mildly overlapping lavender／indigo blocks at normal text scale; at high text scale they return to a normal vertical stack. Keep a visible free-form coach field with topic and answer-style chips; fixed micro-lesson options remain supplementary.
 - Records: analysis comes before the bounded transaction list; use paired income／outflow bars and intent progress, with text summaries that remain understandable without color.
 - Notifications: use one icon, title, explanation, optional amount and a clear destination; a renewal notice is a review prompt, never an automatic waste verdict.
-- FutureSeed: controls own the emphasis before calculation; after calculation, three selectable line paths share one unframed chart, with metrics and AI reading companion below. Curves must remain labeled and meaningful without relying only on color.
+- FutureSeed: controls own the emphasis before calculation; presets, sliders and free-form coach input let the learner shape the question. After calculation, three selectable line paths share one unframed chart, with metrics and AI reading companion below. Curves must remain labeled and meaningful without relying only on color.
 - Investment lab: show portfolio totals and data freshness before the order form; market examples are a compact selectable list, while holdings and orders use shared surfaces with dividers. Buy/sell is a segmented control, quantity uses stepper/input controls, allocation uses labeled bars, and the event die is a learning prompt rather than a casino visual. Always show source date, fallback state, virtual-money label, and no-advice disclaimer.
-- Roles: child／parent changes copy and education framing only; never imply cross-account visibility unless authorization and data relationships are implemented.
+- Roles: child／parent uses explicit API authorization and an invite-code family relationship. Parents see only summary cards; never imply transaction-level cross-account visibility. Guest mode has no family controls.
 - Forms: visible labels, helper text for financial assumptions, validation after submit/blur, and error text next to the field.
 - Capture flow: input → parsing → confirmation. Show provider source and never equate parsed with saved.
+- Capture input is text／paste only in this MVP; do not add image upload or OCR controls.
 - Navigation: icons and labels from Material Symbols only; active location uses text weight, icon, and an indigo/lavender indicator in addition to color.
 - Charts: accessible violet/amber series, direct values, a written summary, empty/loading/error states, and reduced-motion support.
 - Authentication: sign-in／register screens use the same calm canvas, one clear primary action, visible password rules, and non-technical retry copy. Guest entry must state that data is temporary before entering the app.

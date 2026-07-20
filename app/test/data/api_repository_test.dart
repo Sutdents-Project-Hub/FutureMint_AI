@@ -264,6 +264,41 @@ void main() {
     expect(await repository.compareSubscriptions(), isNull);
   });
 
+  test('sends the selected coach response style', () async {
+    final repository = ApiRepository(
+      baseUri: Uri.parse('https://example.test/api'),
+      client: MockClient((request) async {
+        expect(request.url.path, '/api/coach/chat');
+        expect(jsonDecode(request.body), {
+          'topic': 'spending',
+          'question': '我該先看哪一類支出？',
+          'style': 'steps',
+        });
+        return http.Response(
+          jsonEncode({
+            'requestId': 'request-coach-style',
+            'data': {
+              'answer': '先看最近最常出現的支出，再想想它對你的目標有沒有幫助。',
+              'takeaway': '先看模式，再選一個小改變。',
+              'suggestions': ['比較需要與想要', '觀察一週'],
+              'source': 'deterministic-demo',
+              'disclaimer': '只供教育解釋。',
+            },
+          }),
+          200,
+          headers: {'content-type': 'application/json; charset=utf-8'},
+        );
+      }),
+    );
+
+    final reply = await repository.askCoach(
+      topic: 'spending',
+      question: '我該先看哪一類支出？',
+      style: 'steps',
+    );
+    expect(reply.source.name, 'deterministicDemo');
+  });
+
   test(
     'reuses the current completed lesson without generating another',
     () async {

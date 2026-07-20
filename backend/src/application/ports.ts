@@ -3,6 +3,8 @@ import type {
   CoachReply,
   CoachRequest,
   CaptureParseResult,
+  FamilyGroupRecord,
+  FamilyMemberRecord,
   FinancialInsights,
   MarketSnapshot,
   Lesson,
@@ -78,6 +80,18 @@ export interface FutureMintRepository {
     input: SaveInvestmentOrderInput,
   ): Promise<VirtualInvestmentOrder>;
   resetDemo(userId: string): Promise<void>;
+  getFamilyMembership(userId: string): Promise<FamilyMemberRecord | null>;
+  getFamilyGroup(familyId: string): Promise<FamilyGroupRecord | null>;
+  createFamilyGroup(
+    userId: string,
+    familyId: string,
+    inviteCode: string,
+  ): Promise<FamilyGroupRecord>;
+  findFamilyByInviteCode(inviteCode: string): Promise<FamilyGroupRecord | null>;
+  listFamilyMembers(familyId: string): Promise<FamilyMemberRecord[]>;
+  addFamilyMember(familyId: string, userId: string): Promise<void>;
+  removeFamilyMember(userId: string): Promise<void>;
+  deleteFamilyGroup(familyId: string): Promise<void>;
 }
 
 export interface AuthRepository {

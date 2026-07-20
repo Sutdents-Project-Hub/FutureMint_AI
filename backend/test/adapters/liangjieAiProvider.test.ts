@@ -344,4 +344,45 @@ describe("LiangjieAiProvider", () => {
     expect(reply.source).toBe("liangjie-ai");
     expect(reply.disclaimer).toContain("不推薦");
   });
+
+  it("rejects an English user-facing lesson instead of leaking it to the app", async () => {
+    const create = vi.fn().mockResolvedValue(
+      completion(
+        JSON.stringify({
+          title: "Money choices",
+          concept: "Review your spending context before deciding.",
+          example: "Write down one choice and compare its purpose.",
+          question: "What would you check first?",
+          options: ["Usage", "Purpose"],
+          action: "Review one recent choice.",
+          disclaimer: "For education only.",
+        }),
+      ),
+    );
+    const provider = new LiangjieAiProvider({
+      client: { chat: { completions: { create } } },
+      model: "gemini-2.5-flash-lite",
+    });
+
+    await expect(
+      provider.generateLesson({
+        userId: "demo-user",
+        profile: {
+          userId: "demo-user",
+          monthlyBudgetMinor: 6000,
+          goalName: "活動基金",
+          goalTargetMinor: 12000,
+          goalSavedMinor: 4200,
+          goalDate: "2026-10-31",
+          preferredTone: "supportive",
+          accountRole: "child",
+        },
+        events: [],
+      }),
+    ).rejects.toMatchObject({
+      code: "ai_invalid_output",
+      status: 503,
+      retryable: true,
+    });
+  });
 });

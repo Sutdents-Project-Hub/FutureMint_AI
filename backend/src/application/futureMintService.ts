@@ -1,3 +1,5 @@
+import { randomBytes, randomUUID } from "node:crypto";
+
 import type {
   AiProvider,
   CaptureInput,
@@ -10,6 +12,7 @@ import type {
   DashboardSummary,
   FinancialInsights,
   FutureSeedInput,
+  FamilyOverview,
   InvestmentSimulationInput,
   InvestmentOrderInput,
   Lesson,
@@ -29,6 +32,7 @@ import {
   moneyEventListQuerySchema,
   profileInputSchema,
   practiceDiceInputSchema,
+  familyJoinInputSchema,
   subscriptionCompareInputSchema,
 } from "../contracts/schemas";
 import { calculateDashboard } from "../domain/budget";
@@ -95,6 +99,14 @@ export class FutureMintService {
     input: Omit<UserProfile, "userId">,
   ): Promise<UserProfile> {
     const parsed = profileInputSchema.parse(input);
+    const membership = await this.repository.getFamilyMembership(userId);
+    if (membership && membership.role !== parsed.accountRole) {
+      throw new DomainError(
+        "family_role_locked",
+        "加入家庭後不能直接更換家長／孩子角色；請先離開家庭再修改。",
+        409,
+      );
+    }
     return this.repository.saveProfile({ userId, ...parsed });
   }
 
@@ -272,6 +284,165 @@ export class FutureMintService {
 
   coach(input: CoachRequest) {
     return this.aiProvider.coach(coachRequestSchema.parse(input));
+  }
+
+  private familyLabel(role: "child" | "parent", index: number): string {
+    return role === "parent" ? "家長帳號" : `孩子帳號 ${index + 1}`;
+  }
+
+  async getFamilyOverview(userId: string): Promise<FamilyOverview | null> {
+    const membership = await this.repository.getFamilyMembership(userId);
+    if (!membership) return null;
+    const [group, records] = await Promise.all([
+      this.repository.getFamilyGroup(membership.familyId),
+      this.repository.listFamilyMembers(membership.familyId),
+    ]);
+    if (!group) {
+      throw new DomainError(
+        "family_not_found",
+        "家庭關聯已失效，請重新加入家庭。",
+        409,
+      );
+    }
+
+    let childIndex = 0;
+    const members = records.map((record) => {
+      const label = this.familyLabel(record.role, childIndex);
+      if (record.role === "child") childIndex += 1;
+      return {
+        userId: record.userId,
+        role: record.role,
+        label: record.userId === userId ? `${label}（你）` : label,
+        isSelf: record.userId === userId,
+      };
+    });
+    const children = records.filter(
+      (record) => record.role === "child" && record.userId !== userId,
+    );
+    const childSummaries =
+      membership.role === "parent"
+        ? await Promise.all(
+            children.map(async (child, index) => {
+              const [dashboard, insights] = await Promise.all([
+                this.getDashboard(child.userId),
+                this.getInsights(child.userId),
+              ]);
+              return {
+                userId: child.userId,
+                label: `孩子帳號 ${index + 1}`,
+                monthlyBudgetMinor: dashboard.monthlyBudgetMinor,
+                incomeMinor: dashboard.incomeMinor,
+                expenseMinor: dashboard.expenseMinor,
+                subscriptionMinor: dashboard.subscriptionMinor,
+                availableMinor: dashboard.availableMinor,
+                goalProgress: dashboard.goalProgress,
+                summary: insights.summary,
+                noticeCount: insights.notices.length,
+              };
+            }),
+          )
+        : [];
+
+    return {
+      familyId: membership.familyId,
+      ...(membership.role === "parent" ? { inviteCode: group.inviteCode } : {}),
+      members,
+      childSummaries,
+    };
+  }
+
+  async createFamilyInvite(userId: string): Promise<FamilyOverview> {
+    const profile = await this.repository.getProfile(userId);
+    if (profile.accountRole !== "parent") {
+      throw new DomainError(
+        "family_parent_required",
+        "只有家長帳號可以建立家庭邀請。",
+        403,
+      );
+    }
+    const existing = await this.repository.getFamilyMembership(userId);
+    if (!existing) {
+      const inviteCode = randomBytes(5).toString("hex").slice(0, 8).toUpperCase();
+      await this.repository.createFamilyGroup(
+        userId,
+        randomUUID(),
+        inviteCode,
+      );
+    }
+    const overview = await this.getFamilyOverview(userId);
+    if (!overview) {
+      throw new DomainError(
+        "family_not_ready",
+        "家庭邀請尚未準備完成，請稍後再試。",
+        503,
+        true,
+      );
+    }
+    return overview;
+  }
+
+  async joinFamily(
+    userId: string,
+    input: { inviteCode: string },
+  ): Promise<FamilyOverview> {
+    const parsed = familyJoinInputSchema.parse(input);
+    const profile = await this.repository.getProfile(userId);
+    if (profile.accountRole !== "child") {
+      throw new DomainError(
+        "family_child_required",
+        "只有孩子帳號可以使用家長邀請碼加入家庭。",
+        403,
+      );
+    }
+    if (await this.repository.getFamilyMembership(userId)) {
+      throw new DomainError(
+        "family_already_linked",
+        "這個孩子帳號已經加入家庭。",
+        409,
+      );
+    }
+    const group = await this.repository.findFamilyByInviteCode(
+      parsed.inviteCode,
+    );
+    if (!group) {
+      throw new DomainError("family_invite_not_found", "找不到家庭邀請碼。", 404);
+    }
+    const members = await this.repository.listFamilyMembers(group.familyId);
+    if (!members.some((member) => member.role === "parent")) {
+      throw new DomainError(
+        "family_parent_missing",
+        "這個家庭目前沒有可用的家長帳號。",
+        409,
+      );
+    }
+    await this.repository.addFamilyMember(group.familyId, userId);
+    const overview = await this.getFamilyOverview(userId);
+    if (!overview) {
+      throw new DomainError(
+        "family_not_ready",
+        "加入家庭後無法載入關聯資料，請稍後再試。",
+        503,
+        true,
+      );
+    }
+    return overview;
+  }
+
+  async leaveFamily(userId: string): Promise<void> {
+    const membership = await this.repository.getFamilyMembership(userId);
+    if (!membership) return;
+    const members = await this.repository.listFamilyMembers(membership.familyId);
+    if (membership.role === "parent" && members.length > 1) {
+      throw new DomainError(
+        "family_parent_has_children",
+        "家長帳號仍有孩子關聯，請先由孩子離開家庭或重新安排關聯。",
+        409,
+      );
+    }
+    await this.repository.removeFamilyMember(userId);
+    if (members.length <= 1) {
+      await this.repository.deleteFamilyGroup(membership.familyId);
+    }
   }
 
   getMarketSnapshot() {

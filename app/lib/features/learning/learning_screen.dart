@@ -14,6 +14,26 @@ class LearningScreen extends StatefulWidget {
 }
 
 class _LearningScreenState extends State<LearningScreen> {
+  final _questionController = TextEditingController();
+  String _topic = 'general';
+  String _style = 'example';
+
+  @override
+  void dispose() {
+    _questionController.dispose();
+    super.dispose();
+  }
+
+  Future<void> _ask(AppController controller) async {
+    final question = _questionController.text.trim();
+    if (question.isEmpty) return;
+    await controller.askLearningCoach(
+      topic: _topic,
+      question: question,
+      style: _style,
+    );
+  }
+
   @override
   void initState() {
     super.initState();
@@ -57,6 +77,17 @@ class _LearningScreenState extends State<LearningScreen> {
                 _LearningPlanCard(plan: plan),
                 const SizedBox(height: FutureMintTokens.space5),
               ],
+              _LearningCoachCard(
+                questionController: _questionController,
+                topic: _topic,
+                style: _style,
+                reply: controller.learningCoachReply,
+                busy: controller.busy,
+                onTopicChanged: (value) => setState(() => _topic = value),
+                onStyleChanged: (value) => setState(() => _style = value),
+                onAsk: () => _ask(controller),
+              ),
+              const SizedBox(height: FutureMintTokens.space5),
               if (lesson == null)
                 SoftCard(
                   color: Theme.of(context).brightness == Brightness.dark
@@ -87,6 +118,165 @@ class _LearningScreenState extends State<LearningScreen> {
       ),
     );
   }
+}
+
+class _LearningCoachCard extends StatelessWidget {
+  const _LearningCoachCard({
+    required this.questionController,
+    required this.topic,
+    required this.style,
+    required this.reply,
+    required this.busy,
+    required this.onTopicChanged,
+    required this.onStyleChanged,
+    required this.onAsk,
+  });
+
+  final TextEditingController questionController;
+  final String topic;
+  final String style;
+  final CoachReply? reply;
+  final bool busy;
+  final ValueChanged<String> onTopicChanged;
+  final ValueChanged<String> onStyleChanged;
+  final VoidCallback onAsk;
+
+  static const topics = <String, String>{
+    'general': '我最近的金錢困擾',
+    'spending': '需要與想要',
+    'subscription': '訂閱檢查',
+    'compound': '複利與存錢',
+    'risk': '波動與風險',
+  };
+
+  static const styles = <String, String>{
+    'brief': '一句話重點',
+    'example': '生活例子',
+    'steps': '一步一步',
+  };
+
+  @override
+  Widget build(BuildContext context) => SoftCard(
+    key: const Key('learning-coach-card'),
+    color: Theme.of(context).brightness == Brightness.dark
+        ? FutureMintTokens.darkSurfaceRaised
+        : FutureMintTokens.mintSoft,
+    borderWidth: 1,
+    child: Column(
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      children: [
+        Row(
+          children: [
+            const Icon(Icons.forum_outlined),
+            const SizedBox(width: FutureMintTokens.space2),
+            Expanded(
+              child: Text(
+                '問問你的理財教練',
+                style: Theme.of(context).textTheme.titleLarge,
+              ),
+            ),
+          ],
+        ),
+        const SizedBox(height: FutureMintTokens.space2),
+        const Text('不一定要選固定題目，也可以直接描述你現在遇到的情況。'),
+        const SizedBox(height: FutureMintTokens.space3),
+        Text('你想聊什麼？', style: Theme.of(context).textTheme.titleMedium),
+        const SizedBox(height: FutureMintTokens.space2),
+        Wrap(
+          spacing: FutureMintTokens.space2,
+          runSpacing: FutureMintTokens.space2,
+          children: [
+            for (final entry in topics.entries)
+              ChoiceChip(
+                label: Text(entry.value),
+                selected: topic == entry.key,
+                onSelected: (_) => onTopicChanged(entry.key),
+              ),
+          ],
+        ),
+        const SizedBox(height: FutureMintTokens.space3),
+        TextField(
+          key: const Key('learning-coach-question'),
+          controller: questionController,
+          maxLength: 300,
+          minLines: 2,
+          maxLines: 4,
+          textInputAction: TextInputAction.newline,
+          decoration: const InputDecoration(
+            labelText: '自由輸入你的問題',
+            hintText: '例如：我常常月底不夠用，該先調整哪一類？',
+            helperText: '請不要輸入姓名、帳號、卡號或其他可識別資料。',
+            border: OutlineInputBorder(),
+          ),
+        ),
+        const SizedBox(height: FutureMintTokens.space2),
+        Text('希望怎麼解釋？', style: Theme.of(context).textTheme.titleMedium),
+        const SizedBox(height: FutureMintTokens.space2),
+        Wrap(
+          spacing: FutureMintTokens.space2,
+          runSpacing: FutureMintTokens.space2,
+          children: [
+            for (final entry in styles.entries)
+              ChoiceChip(
+                label: Text(entry.value),
+                selected: style == entry.key,
+                onSelected: (_) => onStyleChanged(entry.key),
+              ),
+          ],
+        ),
+        const SizedBox(height: FutureMintTokens.space3),
+        ValueListenableBuilder<TextEditingValue>(
+          valueListenable: questionController,
+          builder: (context, value, _) => FilledButton.icon(
+            key: const Key('ask-learning-coach'),
+            onPressed: busy || value.text.trim().isEmpty ? null : onAsk,
+            icon: const Icon(Icons.auto_awesome_outlined),
+            label: const Text('請教 AI'),
+          ),
+        ),
+        if (reply != null) ...[
+          const SizedBox(height: FutureMintTokens.space4),
+          SoftCard(
+            key: const Key('learning-coach-reply'),
+            padding: const EdgeInsets.all(FutureMintTokens.space4),
+            color: Theme.of(context).brightness == Brightness.dark
+                ? const Color(0xFF393368)
+                : FutureMintTokens.lavenderSoft,
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.stretch,
+              children: [
+                Text(reply!.answer),
+                const SizedBox(height: FutureMintTokens.space3),
+                Text(
+                  '帶走一句話：${reply!.takeaway}',
+                  style: const TextStyle(fontWeight: FontWeight.w700),
+                ),
+                const SizedBox(height: FutureMintTokens.space3),
+                Wrap(
+                  spacing: FutureMintTokens.space2,
+                  runSpacing: FutureMintTokens.space2,
+                  children: [
+                    for (final suggestion in reply!.suggestions)
+                      ActionChip(
+                        label: Text(suggestion),
+                        onPressed: () {
+                          questionController.text = suggestion;
+                        },
+                      ),
+                  ],
+                ),
+                const SizedBox(height: FutureMintTokens.space3),
+                Text(
+                  reply!.disclaimer,
+                  style: Theme.of(context).textTheme.bodySmall,
+                ),
+              ],
+            ),
+          ),
+        ],
+      ],
+    ),
+  );
 }
 
 class _LearningPlanCard extends StatelessWidget {

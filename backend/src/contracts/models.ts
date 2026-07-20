@@ -19,6 +19,47 @@ export type BillingCycle = (typeof billingCycles)[number];
 export const accountRoles = ["child", "parent"] as const;
 export type AccountRole = (typeof accountRoles)[number];
 
+export interface FamilyGroupRecord {
+  familyId: string;
+  inviteCode: string;
+  createdBy: string;
+}
+
+export interface FamilyMemberRecord {
+  familyId: string;
+  userId: string;
+  email: string;
+  role: AccountRole;
+  joinedAt: string;
+}
+
+export interface FamilyMember {
+  userId: string;
+  role: AccountRole;
+  label: string;
+  isSelf: boolean;
+}
+
+export interface FamilyChildSummary {
+  userId: string;
+  label: string;
+  monthlyBudgetMinor: number;
+  incomeMinor: number;
+  expenseMinor: number;
+  subscriptionMinor: number;
+  availableMinor: number;
+  goalProgress: number;
+  summary: string;
+  noticeCount: number;
+}
+
+export interface FamilyOverview {
+  familyId: string;
+  inviteCode?: string;
+  members: FamilyMember[];
+  childSummaries: FamilyChildSummary[];
+}
+
 export const spendingIntents = ["need", "want", "uncertain"] as const;
 export type SpendingIntent = (typeof spendingIntents)[number];
 
@@ -299,6 +340,7 @@ export interface InvestmentSimulation {
 export interface CoachRequest {
   topic: "spending" | "subscription" | "compound" | "risk" | "general";
   question: string;
+  style?: "brief" | "example" | "steps";
   scenarioId?: InvestmentScenarioId;
   selectedYear?: number;
 }

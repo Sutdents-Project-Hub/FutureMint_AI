@@ -212,6 +212,53 @@ describe("FutureMintService decisions", () => {
     expect(current.selectedOption).toBe(lesson.options[0]);
   });
 
+  it("links a parent and child while sharing only child summaries", async () => {
+    const { repository, service } = createService();
+    await repository.resetDemo("parent-user");
+    await repository.resetDemo("child-user");
+    const parent = await repository.getProfile("parent-user");
+    const child = await repository.getProfile("child-user");
+    await repository.saveProfile({ ...parent, accountRole: "parent" });
+    await repository.saveProfile({ ...child, accountRole: "child" });
+
+    const invited = await service.createFamilyInvite("parent-user");
+    expect(invited.inviteCode).toMatch(/^[A-Z0-9]{8}$/u);
+    expect(invited.members).toHaveLength(1);
+
+    const childView = await service.joinFamily("child-user", {
+      inviteCode: invited.inviteCode!,
+    });
+    expect(childView.inviteCode).toBeUndefined();
+    expect(childView.childSummaries).toEqual([]);
+    expect(childView.members.map((member) => member.label)).toEqual([
+      "家長帳號",
+      "孩子帳號 1（你）",
+    ]);
+
+    const parentView = await service.getFamilyOverview("parent-user");
+    expect(parentView?.childSummaries).toMatchObject([
+      {
+        userId: "child-user",
+        label: "孩子帳號 1",
+        summary: expect.any(String),
+      },
+    ]);
+    expect(JSON.stringify(parentView)).not.toContain("@demo.local");
+    await expect(service.leaveFamily("parent-user")).rejects.toMatchObject({
+      code: "family_parent_has_children",
+      status: 409,
+    });
+    await expect(
+      service.updateProfile("child-user", {
+        ...child,
+        accountRole: "parent",
+      }),
+    ).rejects.toMatchObject({
+      code: "family_role_locked",
+      status: 409,
+    });
+  });
+
   it("treats a saved lesson as stale after a newer money event", async () => {
     const { service } = createService();
     await service.generateLesson("demo-user");
