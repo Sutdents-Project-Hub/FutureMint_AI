@@ -88,11 +88,24 @@ const main = async (): Promise<void> => {
   }
 };
 
+const summarizeMigrationError = (error: unknown): Record<string, string> => {
+  const record = error !== null && typeof error === "object"
+    ? error as { code?: unknown }
+    : undefined;
+  const message = error instanceof Error ? error.message : "Unknown migration error";
+
+  return {
+    errorType: error instanceof Error ? error.name : typeof error,
+    ...(typeof record?.code === "string" ? { code: record.code } : {}),
+    message: message
+      .replace(/\bpostgres(?:ql)?:\/\/[^\s@]+@[^\s]+/giu, "postgres://[redacted]")
+      .slice(0, 300),
+  };
+};
+
 if (require.main === module) {
   void main().catch((error: unknown) => {
-    console.error("futuremint_postgres_migrations_failed", {
-      errorType: error instanceof Error ? error.name : typeof error,
-    });
+    console.error("futuremint_postgres_migrations_failed", summarizeMigrationError(error));
     process.exitCode = 1;
   });
 }

@@ -8,7 +8,7 @@
 2. `futuremint-ai-api`：private GitHub repository 的 `/backend` Dockerfile Application。
 3. `futuremint-ai-web`：同一 repository 的 `/app` Dockerfile Application。
 
-Coolify 從 GitHub clone source，與開發者電腦無關。2026-07-20 已在團隊既有的 `Student Project / production` environment 建立以下 Resources：`futuremint-ai-postgres`（PostgreSQL 17、running、無 host port mapping）、`futuremint-ai-api`（Dockerfile、`/backend`、port 3000、`/api/health`、Auto Deploy）及 `futuremint-ai-web`（Dockerfile、`/app`、port 3000、`/`、Auto Deploy）。API 已寫入非敏感 runtime variables 與資料庫 internal URL，並完成正式 DNS／TLS domains 與 `ALLOWED_ORIGINS`；Web 的 `API_BASE_URL` 也已設定。Web／API 尚未首次部署，目前僅等待新的 `LIANGJIE_API_KEY`。本文件其餘段落是完成這些項目的實際設定清單，不代表 production 已上線。
+Coolify 從 GitHub clone source，與開發者電腦無關。2026-07-20 已在團隊既有的 `Student Project / production` environment 建立以下 Resources：`futuremint-ai-postgres`（PostgreSQL 17、running、無 host port mapping）、`futuremint-ai-api`（Dockerfile、`/backend`、port 3000、`/api/health`、Auto Deploy）及 `futuremint-ai-web`（Dockerfile、`/app`、port 3000、`/`、Auto Deploy）。API 已寫入 runtime variables、資料庫 internal URL 與量界 runtime key，並完成正式 DNS／TLS domains 與 `ALLOWED_ORIGINS`；Web 的 `API_BASE_URL` 也已設定。Web／API 尚未首次部署，等待首次 production deployment 驗證。本文件其餘段落是完成這些項目的實際設定清單，不代表 production 已上線。
 
 根目錄 `compose.yaml` 只供本機整合測試：頂層 `name: futuremint_ai` 讓 Docker Desktop 顯示 `futuremint_ai` Compose project，內含 `web`、`api`、`postgres` 三個容器。Coolify project 使用 `futuremint-ai`，production 仍應建立下列三個獨立 Resources，不使用 Compose 的本機免密碼 PostgreSQL 設定。
 
@@ -100,7 +100,7 @@ ALLOWED_ORIGINS=https://<frontend-domain>
 - API 會在 listen 前拒絕非 `liangjie + postgres` provider pair，或遺漏、帶 path／尾端 `/`、非 HTTPS 的 `ALLOWED_ORIGINS`；看到 startup failure 時先修 runtime variable，不可先略過健康檢查。
 - VPS／Coolify 必須允許 API 對 `https://openapi.twse.com.tw/` 的 outbound HTTPS；市場來源失敗時 UI 會顯示教育快照，不影響 health check。
 - Docker image 在 `DATA_PROVIDER=postgres` 時會先跑 migration；migration 失敗則 container 退出。
-- Dockerfile health check 會優先於 UI health check。只有 `/api/health` 回 200 時新 deployment 才應接流量。
+- API runtime image 已包含 `curl`，可供 Coolify UI 執行 HTTP health check；Dockerfile 也保留以 Node `fetch` 驗證 `/api/health`。只有該路徑回 200 時新 deployment 才應接流量。
 - 不設定 pre／post-deployment migration command，避免與 image entrypoint 重複執行。
 
 先 Deploy API。成功條件：
