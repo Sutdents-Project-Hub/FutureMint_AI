@@ -8,7 +8,7 @@
 - Repository name：`FutureMint_AI`
 - Project slug：`futuremint-ai`
 - Local Docker Compose project：`futuremint_ai`
-- Coolify project：`futuremint-ai`
+- Coolify project：目標命名為 `futuremint-ai`；目前實際部署於團隊既有的 `Student Project / production` environment，待團隊決定是否遷移到專屬 Coolify project。
 - Coolify services：`futuremint-ai-web`、`futuremint-ai-api`、`futuremint-ai-postgres`
 - Stage：`competition`
 - Product type：`hybrid`
