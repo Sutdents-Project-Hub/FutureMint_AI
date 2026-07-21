@@ -80,7 +80,7 @@ class _FutureMintAppState extends State<FutureMintApp> {
                 debugShowCheckedModeBanner: false,
                 theme: _light,
                 darkTheme: _dark,
-                themeMode: controller.themeMode,
+                themeMode: ThemeMode.dark,
                 routerConfig: router,
               ),
             ),

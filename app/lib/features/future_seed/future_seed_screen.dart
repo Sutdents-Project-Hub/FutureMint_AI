@@ -1,27 +1,22 @@
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 import 'package:provider/provider.dart';
-
 import '../../core/models.dart';
 import '../../design/soft_components.dart';
 import '../../design/tokens.dart';
 import '../../shared/money_text.dart';
 import '../../state/app_controller.dart';
 import 'investment_chart.dart';
-
 class FutureSeedScreen extends StatefulWidget {
   const FutureSeedScreen({super.key});
-
   @override
   State<FutureSeedScreen> createState() => _FutureSeedScreenState();
 }
-
 class _FutureSeedScreenState extends State<FutureSeedScreen> {
   double initial = 4200;
   double monthly = 500;
   double years = 5;
   InvestmentScenarioId selectedId = InvestmentScenarioId.balanced;
-
   @override
   Widget build(BuildContext context) {
     final controller = context.watch<AppController>();
@@ -39,49 +34,77 @@ class _FutureSeedScreenState extends State<FutureSeedScreen> {
           constraints: const BoxConstraints(
             maxWidth: FutureMintTokens.contentCanvas,
           ),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.stretch,
+          // Background decoration layer: stars, circles, and diamonds
+          // scattered behind the page content (target design). Column is
+          // the only non-positioned child so it determines the Stack's
+          // size; decorations are Positioned siblings, not nested in their
+          // own Stack (that causes an unbounded-height crash).
+          child: Stack(
+            clipBehavior: Clip.none,
             children: [
-              const PageHeading(
-                kicker: 'FutureSeed 教育模擬',
-                title: '讓省下來的錢，遇見時間、紀律與風險',
+              Column(
+                crossAxisAlignment: CrossAxisAlignment.stretch,
+                children: [
+                  const PageHeading(
+                    kicker: 'FutureSeed 教育模擬',
+                    title: '讓省下來的錢，遇見時間、紀律與風險',
                 description: '比較三條合成路徑的成長與下跌，再用 AI 陪讀員看懂現象。這不是報酬預測。',
                 accent: FutureMintTokens.teal,
               ),
               const SizedBox(height: FutureMintTokens.space5),
-              SoftCard(
-                key: const Key('investment-lab-entry'),
-                color: Theme.of(context).brightness == Brightness.dark
-                    ? FutureMintTokens.darkSurfaceRaised
-                    : FutureMintTokens.lavenderSoft,
-                child: Wrap(
-                  alignment: WrapAlignment.spaceBetween,
-                  crossAxisAlignment: WrapCrossAlignment.center,
-                  spacing: FutureMintTokens.space5,
-                  runSpacing: FutureMintTokens.space4,
-                  children: [
-                    ConstrainedBox(
-                      constraints: const BoxConstraints(maxWidth: 560),
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          Text(
-                            '想實際練習虛擬買賣？',
-                            style: Theme.of(context).textTheme.titleLarge,
+              // Purple mascot, large, its lower half spilling down onto
+              // the entry card's top edge (target design).
+              Stack(
+                clipBehavior: Clip.none,
+                children: [
+                  SoftCard(
+                    key: const Key('investment-lab-entry'),
+                    color: Theme.of(context).brightness == Brightness.dark
+                        ? FutureMintTokens.darkSurfaceRaised
+                        : FutureMintTokens.lavenderSoft,
+                    child: Wrap(
+                      alignment: WrapAlignment.spaceBetween,
+                      crossAxisAlignment: WrapCrossAlignment.center,
+                      spacing: FutureMintTokens.space5,
+                      runSpacing: FutureMintTokens.space4,
+                      children: [
+                        ConstrainedBox(
+                          constraints: const BoxConstraints(maxWidth: 560),
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Text(
+                                '想實際練習虛擬買賣？',
+                                style: Theme.of(context).textTheme.titleLarge,
+                              ),
+                              const SizedBox(height: FutureMintTokens.space2),
+                              const Text('進入投資練習場，使用證交所盤後行情、虛擬資金與市場事件骰子練習配置與風險。'),
+                            ],
                           ),
-                          const SizedBox(height: FutureMintTokens.space2),
-                          const Text('進入投資練習場，使用證交所盤後行情、虛擬資金與市場事件骰子練習配置與風險。'),
-                        ],
+                        ),
+                        FilledButton.icon(
+                          onPressed: () =>
+                              context.go('/future-seed/investment-lab'),
+                          icon: const Icon(
+                            Icons.account_balance_wallet_outlined,
+                          ),
+                          label: const Text('進入投資練習場'),
+                        ),
+                      ],
+                    ),
+                  ),
+                  Positioned(
+                    top: -60,
+                    right: 24,
+                    child: IgnorePointer(
+                      child: Image.asset(
+                        'assets/images/mascot_future_purple.png',
+                        width: 260,
+                        fit: BoxFit.contain,
                       ),
                     ),
-                    FilledButton.icon(
-                      onPressed: () =>
-                          context.go('/future-seed/investment-lab'),
-                      icon: const Icon(Icons.account_balance_wallet_outlined),
-                      label: const Text('進入投資練習場'),
-                    ),
-                  ],
-                ),
+                  ),
+                ],
               ),
               const SizedBox(height: FutureMintTokens.space5),
               LayoutBuilder(
@@ -143,6 +166,79 @@ class _FutureSeedScreenState extends State<FutureSeedScreen> {
                   );
                 },
               ),
+                ],
+              ),
+              Positioned(
+                left: -10,
+                top: 10,
+                child: const IgnorePointer(
+                  child: _Star(size: 26, opacity: .75),
+                ),
+              ),
+              Positioned(
+                right: 300,
+                top: 40,
+                child: const IgnorePointer(
+                  child: _Diamond(size: 22, color: Colors.cyanAccent)),
+              ),
+              Positioned(
+                right: -20,
+                top: 100,
+                child: const IgnorePointer(
+                  child: _Star(size: 20, opacity: .75),
+                ),
+              ),
+              Positioned(
+                left: 260,
+                top: 130,
+                child: const IgnorePointer(
+                  child: _Star(size: 16, opacity: .75),
+                ),
+              ),
+              Positioned(
+                right: 130,
+                top: 200,
+                child: const IgnorePointer(
+                  child: _Star(size: 18, opacity: .75),
+                ),
+              ),
+              Positioned(
+                left: -6,
+                top: 320,
+                child: const IgnorePointer(
+                  child: _Diamond(size: 20, color: Colors.deepPurpleAccent)),
+              ),
+              Positioned(
+                right: -14,
+                top: 400,
+                child: const IgnorePointer(
+                  child: _Diamond(size: 26, color: Colors.cyanAccent)),
+              ),
+              Positioned(
+                left: 90,
+                top: 470,
+                child: const IgnorePointer(
+                  child: _Circle(size: 20, color: Colors.deepPurpleAccent)),
+              ),
+              Positioned(
+                right: 60,
+                top: 560,
+                child: const IgnorePointer(
+                  child: _Star(size: 24, opacity: .75),
+                ),
+              ),
+              Positioned(
+                left: 40,
+                top: 640,
+                child: const IgnorePointer(
+                  child: _Circle(size: 16, color: Colors.cyanAccent)),
+              ),
+              Positioned(
+                right: 300,
+                top: 700,
+                child: const IgnorePointer(
+                  child: _Diamond(size: 18, color: Colors.deepPurpleAccent)),
+              ),
             ],
           ),
         ),
@@ -151,6 +247,52 @@ class _FutureSeedScreenState extends State<FutureSeedScreen> {
   }
 }
 
+class _Star extends StatelessWidget {
+  const _Star({required this.size, required this.opacity});
+  final double size;
+  final double opacity;
+
+  @override
+  Widget build(BuildContext context) => Icon(
+    Icons.auto_awesome_rounded,
+    size: size,
+    color: Colors.white.withOpacity(opacity),
+  );
+}
+
+class _Circle extends StatelessWidget {
+  const _Circle({required this.size, required this.color});
+  final double size;
+  final Color color;
+
+  @override
+  Widget build(BuildContext context) => Container(
+    width: size,
+    height: size,
+    decoration: BoxDecoration(
+      shape: BoxShape.circle,
+      border: Border.all(color: color.withOpacity(0.8), width: 3),
+    ),
+  );
+}
+
+class _Diamond extends StatelessWidget {
+  const _Diamond({required this.size, required this.color});
+  final double size;
+  final Color color;
+
+  @override
+  Widget build(BuildContext context) => Transform.rotate(
+    angle: 0.785398,
+    child: Container(
+      width: size,
+      height: size,
+      decoration: BoxDecoration(
+        border: Border.all(color: color.withOpacity(0.8), width: 3),
+      ),
+    ),
+  );
+}
 class _Controls extends StatelessWidget {
   const _Controls({
     required this.initial,
@@ -161,7 +303,6 @@ class _Controls extends StatelessWidget {
     required this.onYears,
     required this.onRun,
   });
-
   final double initial;
   final double monthly;
   final double years;
@@ -169,7 +310,6 @@ class _Controls extends StatelessWidget {
   final ValueChanged<double>? onMonthly;
   final ValueChanged<double>? onYears;
   final VoidCallback? onRun;
-
   @override
   Widget build(BuildContext context) => SoftCard(
     key: const Key('future-seed-controls'),
@@ -224,7 +364,6 @@ class _Controls extends StatelessWidget {
     ),
   );
 }
-
 class _SliderField extends StatelessWidget {
   const _SliderField({
     required this.label,
@@ -235,7 +374,6 @@ class _SliderField extends StatelessWidget {
     required this.step,
     required this.onChanged,
   });
-
   final String label;
   final String valueLabel;
   final double value;
@@ -243,9 +381,7 @@ class _SliderField extends StatelessWidget {
   final double max;
   final double step;
   final ValueChanged<double>? onChanged;
-
   double _snap(double nextValue) => (nextValue / step).round() * step;
-
   @override
   Widget build(BuildContext context) => Padding(
     padding: const EdgeInsets.only(bottom: FutureMintTokens.space4),
@@ -285,7 +421,6 @@ class _SliderField extends StatelessWidget {
     ),
   );
 }
-
 class _SimulationResults extends StatelessWidget {
   const _SimulationResults({
     required this.simulation,
@@ -295,29 +430,27 @@ class _SimulationResults extends StatelessWidget {
     required this.onSelected,
     required this.onAsk,
   });
-
   final InvestmentSimulation? simulation;
   final InvestmentScenarioId selectedId;
   final CoachReply? coachReply;
   final bool busy;
   final ValueChanged<InvestmentScenarioId> onSelected;
   final void Function(String topic, String question) onAsk;
-
   @override
   Widget build(BuildContext context) {
     if (simulation == null) {
-      return const SoftCard(
-        key: Key('future-seed-empty-state'),
+      return SoftCard(
+        key: const Key('future-seed-empty-state'),
         child: Column(
           children: [
-            MoneyBuddy(
-              size: 72,
-              color: FutureMintTokens.sky,
-              shape: MoneyBuddyShape.blob,
-              excludeSemantics: true,
+            Image.asset(
+              'assets/images/mascot_future_teal.png',
+              width: 72,
+              height: 72,
+              fit: BoxFit.contain,
             ),
-            SizedBox(height: FutureMintTokens.space4),
-            Text('調整省下的金額與時間，開始比較三條教育路徑。', textAlign: TextAlign.center),
+            const SizedBox(height: FutureMintTokens.space4),
+            const Text('調整省下的金額與時間，開始比較三條教育路徑。', textAlign: TextAlign.center),
           ],
         ),
       );
@@ -375,12 +508,9 @@ class _SimulationResults extends StatelessWidget {
     );
   }
 }
-
 class _ScenarioDetails extends StatelessWidget {
   const _ScenarioDetails({required this.scenario});
-
   final InvestmentScenario scenario;
-
   @override
   Widget build(BuildContext context) {
     final events = scenario.yearlyPoints
@@ -448,13 +578,10 @@ class _ScenarioDetails extends StatelessWidget {
     );
   }
 }
-
 class _Metric extends StatelessWidget {
   const _Metric({required this.label, required this.value});
-
   final String label;
   final String value;
-
   @override
   Widget build(BuildContext context) => Column(
     crossAxisAlignment: CrossAxisAlignment.start,
@@ -465,18 +592,15 @@ class _Metric extends StatelessWidget {
     ],
   );
 }
-
 class _AiReadingCompanion extends StatelessWidget {
   const _AiReadingCompanion({
     required this.reply,
     required this.busy,
     required this.onAsk,
   });
-
   final CoachReply? reply;
   final bool busy;
   final void Function(String topic, String question) onAsk;
-
   @override
   Widget build(BuildContext context) => SoftCard(
     color: Theme.of(context).brightness == Brightness.dark

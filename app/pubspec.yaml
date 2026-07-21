@@ -67,12 +67,6 @@ flutter:
 
   assets:
     - assets/images/
-    - assets/images/blob_purple.jpg
-    - assets/images/mascot_yellow.jpg
-    - assets/images/mascot_orange.jpg
-    - assets/images/bars_purple.jpg
-    - assets/images/clipboard_teal.jpg
-    - assets/images/hero_purple.png
 
 
   # To add assets to your application, add an assets section, like this:

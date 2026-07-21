@@ -43,9 +43,17 @@ class _LearningScreenState extends State<LearningScreen> {
           constraints: const BoxConstraints(
             maxWidth: FutureMintTokens.contentReading,
           ),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.stretch,
+          // Background shape layer: circles and diamonds scattered behind
+          // the page content (target design). Column is the only
+          // non-positioned child so it determines the Stack's size; shapes
+          // are Positioned siblings, not nested in their own Stack (that
+          // caused an unbounded-height crash before).
+          child: Stack(
+            clipBehavior: Clip.none,
             children: [
+              Column(
+                crossAxisAlignment: CrossAxisAlignment.stretch,
+                children: [
               const PageHeading(
                 kicker: '三分鐘微課',
                 title: '練一個真正用得到的金錢選擇',
@@ -54,7 +62,28 @@ class _LearningScreenState extends State<LearningScreen> {
               ),
               const SizedBox(height: FutureMintTokens.space5),
               if (plan != null) ...[
-                _LearningPlanCard(plan: plan),
+                // Purple "peeking" mascot rests on top of the plan card,
+                // spilling outside its top-right corner (target design).
+                Stack(
+                  clipBehavior: Clip.none,
+                  children: [
+                    _LearningPlanCard(plan: plan),
+                    Positioned(
+                      top: -160,
+                      right: 70,
+                      child: IgnorePointer(
+                        child: Image.asset(
+                          'assets/images/mascot_peek_purple.png',
+                          width: 336,
+                          fit: BoxFit.contain,
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
+                const SizedBox(height: FutureMintTokens.space5),
+                // Fixed-spending card.
+                const _FixedSpendingCard(),
                 const SizedBox(height: FutureMintTokens.space5),
               ],
               if (lesson == null)
@@ -83,10 +112,192 @@ class _LearningScreenState extends State<LearningScreen> {
                 _LessonContent(lesson: lesson, controller: controller),
             ],
           ),
+              Positioned(
+                left: -10,
+                top: 30,
+                child: const IgnorePointer(
+                  child: _CircleShape(size: 22, color: Colors.deepPurple),
+                ),
+              ),
+              Positioned(
+                left: 40,
+                top: 90,
+                child: const IgnorePointer(
+                  child: _DiamondShape(size: 16, color: Colors.indigoAccent),
+                ),
+              ),
+              Positioned(
+                right: 10,
+                top: 260,
+                child: const IgnorePointer(
+                  child: _DiamondShape(size: 20, color: Colors.deepPurple),
+                ),
+              ),
+              Positioned(
+                right: 60,
+                top: 420,
+                child: const IgnorePointer(
+                  child: _CircleShape(size: 18, color: Colors.indigoAccent),
+                ),
+              ),
+              Positioned(
+                left: 6,
+                top: 620,
+                child: const IgnorePointer(
+                  child: _DiamondShape(size: 22, color: Colors.deepPurple),
+                ),
+              ),
+              Positioned(
+                left: 70,
+                top: 780,
+                child: const IgnorePointer(
+                  child: _CircleShape(size: 14, color: Colors.indigoAccent),
+                ),
+              ),
+              Positioned(
+                right: 20,
+                top: 940,
+                child: const IgnorePointer(
+                  child: _DiamondShape(size: 18, color: Colors.deepPurple),
+                ),
+              ),
+            ],
+          ),
         ),
       ),
     );
   }
+}
+
+class _CircleShape extends StatelessWidget {
+  const _CircleShape({required this.size, required this.color});
+  final double size;
+  final Color color;
+
+  @override
+  Widget build(BuildContext context) => Container(
+    width: size,
+    height: size,
+    decoration: BoxDecoration(
+      shape: BoxShape.circle,
+      border: Border.all(color: color.withOpacity(0.5), width: 2),
+    ),
+  );
+}
+
+class _DiamondShape extends StatelessWidget {
+  const _DiamondShape({required this.size, required this.color});
+  final double size;
+  final Color color;
+
+  @override
+  Widget build(BuildContext context) => Transform.rotate(
+    angle: 0.785398, // 45 degrees
+    child: Container(
+      width: size,
+      height: size,
+      decoration: BoxDecoration(
+        border: Border.all(color: color.withOpacity(0.5), width: 2),
+      ),
+    ),
+  );
+}
+
+class _FixedSpendingCard extends StatelessWidget {
+  const _FixedSpendingCard();
+
+  @override
+  Widget build(BuildContext context) => SoftCard(
+    color: Theme.of(context).brightness == Brightness.dark
+        ? FutureMintTokens.darkSurfaceRaised
+        : FutureMintTokens.coralSoft,
+    borderWidth: 1,
+    child: Column(
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      children: [
+        Wrap(
+          alignment: WrapAlignment.spaceBetween,
+          crossAxisAlignment: WrapCrossAlignment.center,
+          spacing: FutureMintTokens.space3,
+          runSpacing: FutureMintTokens.space2,
+          children: [
+            Text(
+              '固定支出，也能重新分配',
+              style: Theme.of(context).textTheme.titleLarge,
+            ),
+            const Chip(
+              avatar: Icon(Icons.subscriptions_outlined, size: 16),
+              label: Text('已識別訂閱'),
+            ),
+          ],
+        ),
+        const SizedBox(height: FutureMintTokens.space4),
+        Padding(
+          padding: const EdgeInsets.only(bottom: FutureMintTokens.space3),
+          child: Row(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text(
+                '01',
+                style: Theme.of(context).textTheme.titleMedium?.copyWith(
+                  fontWeight: FontWeight.w700,
+                ),
+              ),
+              const SizedBox(width: FutureMintTokens.space3),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: const [
+                    Text(
+                      '先貞點',
+                      style: TextStyle(fontWeight: FontWeight.w700),
+                    ),
+                    Text('固定支出用同一張數字紀錄，共用點數的費用，再比較使用率再考慮續訂。'),
+                  ],
+                ),
+              ),
+            ],
+          ),
+        ),
+        Padding(
+          padding: const EdgeInsets.only(bottom: FutureMintTokens.space3),
+          child: Row(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text(
+                '02',
+                style: Theme.of(context).textTheme.titleMedium?.copyWith(
+                  fontWeight: FontWeight.w700,
+                ),
+              ),
+              const SizedBox(width: FutureMintTokens.space3),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: const [
+                    Text(
+                      '風險生活',
+                      style: TextStyle(fontWeight: FontWeight.w700),
+                    ),
+                    Text('目標從現在到 300 元，比較分攤每個費用，比對方案獲用員工，及時獲得判斷。'),
+                  ],
+                ),
+              ),
+            ],
+          ),
+        ),
+        const SizedBox(height: FutureMintTokens.space2),
+        Align(
+          alignment: Alignment.centerRight,
+          child: FilledButton.icon(
+            onPressed: () {},
+            icon: const Icon(Icons.check_rounded),
+            label: const Text('套用小改變'),
+          ),
+        ),
+      ],
+    ),
+  );
 }
 
 class _LearningPlanCard extends StatelessWidget {
@@ -214,11 +425,14 @@ class _LessonContent extends StatelessWidget {
                     ),
                   ),
                   const SizedBox(width: FutureMintTokens.space3),
-                  const MoneyBuddy(
-                    size: 68,
-                    color: FutureMintTokens.pink,
-                    shape: MoneyBuddyShape.flower,
-                    excludeSemantics: true,
+                  Transform.translate(
+                    offset: const Offset(-420, 0),
+                    child: Image.asset(
+                      'assets/images/mascot_orange.png',
+                      width: 136,
+                      height: 136,
+                      fit: BoxFit.contain,
+                    ),
                   ),
                 ],
               ),

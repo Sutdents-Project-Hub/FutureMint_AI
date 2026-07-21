@@ -64,93 +64,130 @@ class _CaptureScreenState extends State<CaptureScreen> {
                 accent: FutureMintTokens.teal,
               ),
               const SizedBox(height: FutureMintTokens.space5),
-              SoftCard(
-                key: const Key('capture-hero'),
-                color: Theme.of(context).brightness == Brightness.dark
-                    ? FutureMintTokens.darkSurfaceRaised
-                    : hasDrafts
-                    ? FutureMintTokens.paper
-                    : FutureMintTokens.mintSoft,
-                borderWidth: hasDrafts ? 1 : 0,
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.stretch,
-                  children: [
-                    Row(
-                      crossAxisAlignment: CrossAxisAlignment.start,
+              // Stack lets the glowing star mascot spill outside the card's
+              // bottom-right corner instead of being clipped by it.
+              Stack(
+                clipBehavior: Clip.none,
+                children: [
+                  SoftCard(
+                    key: const Key('capture-hero'),
+                    color: Theme.of(context).brightness == Brightness.dark
+                        ? FutureMintTokens.darkSurfaceRaised
+                        : hasDrafts
+                        ? FutureMintTokens.paper
+                        : FutureMintTokens.mintSoft,
+                    borderWidth: hasDrafts ? 1 : 0,
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.stretch,
                       children: [
-                        const MoneyBuddy(
-                          size: 56,
-                          color: FutureMintTokens.sun,
-                          shape: MoneyBuddyShape.spark,
+                        Row(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Image.asset(
+                              'assets/images/mascot_note_star.png',
+                              width: 56,
+                              height: 56,
+                              fit: BoxFit.contain,
+                            ),
+                            const SizedBox(width: FutureMintTokens.space3),
+                            Expanded(
+                              child: Text(
+                                '把日常語句交給 AI 整理，金額與內容仍由你最後確認。',
+                                style: Theme.of(context).textTheme.titleMedium,
+                              ),
+                            ),
+                          ],
                         ),
-                        const SizedBox(width: FutureMintTokens.space3),
-                        Expanded(
-                          child: Text(
-                            '把日常語句交給 AI 整理，金額與內容仍由你最後確認。',
-                            style: Theme.of(context).textTheme.titleMedium,
+                        const SizedBox(height: FutureMintTokens.space4),
+                        TextField(
+                          key: const Key('capture-input'),
+                          controller: inputController,
+                          enabled: !controller.busy,
+                          minLines: 3,
+                          maxLines: 5,
+                          maxLength: 500,
+                          textInputAction: TextInputAction.done,
+                          onSubmitted: controller.busy
+                              ? null
+                              : (_) => _parse(controller),
+                          decoration: const InputDecoration(
+                            labelText: '收入、支出或訂閱',
+                            alignLabelWithHint: true,
+                            hintText: '例如：今天買珍奶 75 元',
+                            helperText: '請勿輸入姓名、帳號、卡號或其他個人資料。',
+                            helperMaxLines: 2,
                           ),
+                        ),
+                        const SizedBox(height: FutureMintTokens.space3),
+                        Wrap(
+                          spacing: 8,
+                          runSpacing: 8,
+                          children: [
+                            for (final entry in const [
+                              ('今天買珍奶 75', FutureMintTokens.coralSoft),
+                              ('打工薪水 1500', FutureMintTokens.mintSoft),
+                              ('Netflix 390 四個人分', FutureMintTokens.lavenderSoft),
+                            ])
+                              ActionChip(
+                                backgroundColor:
+                                    Theme.of(context).brightness ==
+                                        Brightness.dark
+                                    ? FutureMintTokens.darkSurface
+                                    : entry.$2,
+                                label: Text(entry.$1),
+                                onPressed: controller.busy
+                                    ? null
+                                    : () => setState(
+                                        () => inputController.text = entry.$1,
+                                      ),
+                              ),
+                          ],
+                        ),
+                        const SizedBox(height: FutureMintTokens.space4),
+                        FilledButton.icon(
+                          onPressed: controller.busy
+                              ? null
+                              : () => _parse(controller),
+                          icon: controller.busy
+                              ? const SizedBox.square(
+                                  dimension: 18,
+                                  child: CircularProgressIndicator(
+                                    strokeWidth: 2,
+                                  ),
+                                )
+                              : const Icon(Icons.auto_fix_high_rounded),
+                          label: Text(controller.busy ? '正在整理…' : '幫我整理'),
                         ),
                       ],
                     ),
-                    const SizedBox(height: FutureMintTokens.space4),
-                    TextField(
-                      key: const Key('capture-input'),
-                      controller: inputController,
-                      enabled: !controller.busy,
-                      minLines: 3,
-                      maxLines: 5,
-                      maxLength: 500,
-                      textInputAction: TextInputAction.done,
-                      onSubmitted: controller.busy
-                          ? null
-                          : (_) => _parse(controller),
-                      decoration: const InputDecoration(
-                        labelText: '收入、支出或訂閱',
-                        alignLabelWithHint: true,
-                        hintText: '例如：今天買珍奶 75 元',
-                        helperText: '請勿輸入姓名、帳號、卡號或其他個人資料。',
-                        helperMaxLines: 2,
+                  ),
+                  // Glowing cloud mascot, anchored to the bottom-right corner
+                  // and pulled outside the card edge, enlarged 5x (target design).
+                  Positioned(
+                    right: -80,
+                    bottom: -80,
+                    child: IgnorePointer(
+                      child: Container(
+                        decoration: BoxDecoration(
+                          shape: BoxShape.circle,
+                          boxShadow: [
+                            BoxShadow(
+                              color: FutureMintTokens.sun.withOpacity(0.55),
+                              blurRadius: 48,
+                              spreadRadius: 10,
+                            ),
+                          ],
+                        ),
+                        child: Image.asset(
+                          'assets/images/mascot_note_helper.png',
+                          width: 280,
+                          height: 280,
+                          fit: BoxFit.contain,
+                        ),
                       ),
                     ),
-                    const SizedBox(height: FutureMintTokens.space3),
-                    Wrap(
-                      spacing: 8,
-                      runSpacing: 8,
-                      children: [
-                        for (final entry in const [
-                          ('今天買珍奶 75', FutureMintTokens.coralSoft),
-                          ('打工薪水 1500', FutureMintTokens.mintSoft),
-                          ('Netflix 390 四個人分', FutureMintTokens.lavenderSoft),
-                        ])
-                          ActionChip(
-                            backgroundColor:
-                                Theme.of(context).brightness == Brightness.dark
-                                ? FutureMintTokens.darkSurface
-                                : entry.$2,
-                            label: Text(entry.$1),
-                            onPressed: controller.busy
-                                ? null
-                                : () => setState(
-                                    () => inputController.text = entry.$1,
-                                  ),
-                          ),
-                      ],
-                    ),
-                    const SizedBox(height: FutureMintTokens.space4),
-                    FilledButton.icon(
-                      onPressed: controller.busy
-                          ? null
-                          : () => _parse(controller),
-                      icon: controller.busy
-                          ? const SizedBox.square(
-                              dimension: 18,
-                              child: CircularProgressIndicator(strokeWidth: 2),
-                            )
-                          : const Icon(Icons.auto_fix_high_rounded),
-                      label: Text(controller.busy ? '正在整理…' : '幫我整理'),
-                    ),
-                  ],
-                ),
+                  ),
+                ],
               ),
               if (controller.errorMessage != null) ...[
                 const SizedBox(height: FutureMintTokens.space4),
