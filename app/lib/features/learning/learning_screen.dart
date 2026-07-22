@@ -66,52 +66,60 @@ class _LearningScreenState extends State<LearningScreen> {
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.stretch,
             children: [
-              const PageHeading(
-                kicker: '三分鐘微課',
-                title: '練一個真正用得到的金錢選擇',
-                description: '內容依合成紀錄挑選，重點是看懂選擇，不是考試。',
-                accent: FutureMintTokens.lavenderInk,
-              ),
-              const SizedBox(height: FutureMintTokens.space5),
-              if (plan != null) ...[
-                _LearningPlanCard(plan: plan),
-                const SizedBox(height: FutureMintTokens.space5),
-              ],
-              _LearningCoachCard(
-                questionController: _questionController,
-                topic: _topic,
-                style: _style,
-                reply: controller.learningCoachReply,
-                busy: controller.busy,
-                onTopicChanged: (value) => setState(() => _topic = value),
-                onStyleChanged: (value) => setState(() => _style = value),
-                onAsk: () => _ask(controller),
-              ),
-              const SizedBox(height: FutureMintTokens.space5),
-              if (lesson == null)
-                SoftCard(
-                  color: Theme.of(context).brightness == Brightness.dark
-                      ? FutureMintTokens.darkSurfaceRaised
-                      : FutureMintTokens.lavenderSoft,
-                  child: controller.busy
-                      ? const Row(
-                          children: [
-                            SizedBox.square(
-                              dimension: 20,
-                              child: CircularProgressIndicator(strokeWidth: 2),
+              Column(
+                crossAxisAlignment: CrossAxisAlignment.stretch,
+                children: [
+                  const PageHeading(
+                    kicker: '三分鐘微課',
+                    title: '練一個真正用得到的金錢選擇',
+                    description: '內容依合成紀錄挑選，重點是看懂選擇，不是考試。',
+                    accent: FutureMintTokens.lavenderInk,
+                  ),
+                  const _LearningDecorationStrip(),
+                  const SizedBox(height: FutureMintTokens.space5),
+                  if (plan != null) ...[
+                    _LearningPlanCard(plan: plan),
+                    const SizedBox(height: FutureMintTokens.space5),
+                  ],
+                  _LearningCoachCard(
+                    questionController: _questionController,
+                    topic: _topic,
+                    style: _style,
+                    reply: controller.learningCoachReply,
+                    busy: controller.busy,
+                    onTopicChanged: (value) => setState(() => _topic = value),
+                    onStyleChanged: (value) => setState(() => _style = value),
+                    onAsk: () => _ask(controller),
+                  ),
+                  const SizedBox(height: FutureMintTokens.space5),
+                  if (lesson == null)
+                    SoftCard(
+                      color: Theme.of(context).brightness == Brightness.dark
+                          ? FutureMintTokens.darkSurfaceRaised
+                          : FutureMintTokens.lavenderSoft,
+                      child: controller.busy
+                          ? const Row(
+                              children: [
+                                SizedBox.square(
+                                  dimension: 20,
+                                  child: CircularProgressIndicator(
+                                    strokeWidth: 2,
+                                  ),
+                                ),
+                                SizedBox(width: FutureMintTokens.space3),
+                                Expanded(child: Text('正在準備個人化微課…')),
+                              ],
+                            )
+                          : FilledButton.tonalIcon(
+                              onPressed: controller.loadLesson,
+                              icon: const Icon(Icons.refresh_rounded),
+                              label: const Text('重新載入微課'),
                             ),
-                            SizedBox(width: FutureMintTokens.space3),
-                            Expanded(child: Text('正在準備個人化微課…')),
-                          ],
-                        )
-                      : FilledButton.tonalIcon(
-                          onPressed: controller.loadLesson,
-                          icon: const Icon(Icons.refresh_rounded),
-                          label: const Text('重新載入微課'),
-                        ),
-                )
-              else
-                _LessonContent(lesson: lesson, controller: controller),
+                    )
+                  else
+                    _LessonContent(lesson: lesson, controller: controller),
+                ],
+              ),
             ],
           ),
         ),
@@ -300,11 +308,24 @@ class _LearningPlanCard extends StatelessWidget {
           runSpacing: FutureMintTokens.space2,
           children: [
             Text(plan.title, style: Theme.of(context).textTheme.titleLarge),
-            Chip(
-              avatar: const Icon(Icons.auto_awesome_outlined, size: 16),
-              label: Text(
-                plan.source == CaptureSource.liangjieAi ? 'AI 規劃' : '離線規劃',
-              ),
+            Row(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Image.asset(
+                  'assets/images/mascot_peek_purple.png',
+                  width: 132,
+                  height: 132,
+                  fit: BoxFit.contain,
+                  excludeFromSemantics: true,
+                ),
+                const SizedBox(width: FutureMintTokens.space2),
+                Chip(
+                  avatar: const Icon(Icons.auto_awesome_outlined, size: 16),
+                  label: Text(
+                    plan.source == CaptureSource.liangjieAi ? 'AI 規劃' : '離線規劃',
+                  ),
+                ),
+              ],
             ),
           ],
         ),
@@ -364,8 +385,6 @@ class _LessonContent extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final dark = Theme.of(context).brightness == Brightness.dark;
-    final textScale = MediaQuery.textScalerOf(context).scale(1);
-    final overlap = textScale < 1.5;
     return Column(
       key: const Key('learning-color-block'),
       crossAxisAlignment: CrossAxisAlignment.stretch,
@@ -379,65 +398,75 @@ class _LessonContent extends StatelessWidget {
                   ? FutureMintTokens.darkSurfaceRaised
                   : FutureMintTokens.lavenderSoft,
               radius: FutureMintTokens.radiusLarge,
-              child: Row(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Expanded(
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
+              child: LayoutBuilder(
+                builder: (context, constraints) {
+                  final showArtwork =
+                      constraints.maxWidth >= 600 &&
+                      MediaQuery.textScalerOf(context).scale(1) < 1.3;
+                  final copy = Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        lesson.title,
+                        style: Theme.of(context).textTheme.headlineSmall
+                            ?.copyWith(fontWeight: FontWeight.w700),
+                      ),
+                      const SizedBox(height: FutureMintTokens.space3),
+                      Chip(
+                        avatar: const Icon(Icons.school_outlined, size: 16),
+                        label: Text(
+                          lesson.source == CaptureSource.liangjieAi
+                              ? 'AI 個人化內容'
+                              : '離線示範內容',
+                        ),
+                      ),
+                    ],
+                  );
+                  final artwork = Image.asset(
+                    'assets/images/mascot_orange.png',
+                    width: showArtwork ? 132 : 112,
+                    height: showArtwork ? 132 : 112,
+                    fit: BoxFit.contain,
+                    excludeFromSemantics: true,
+                  );
+                  if (!showArtwork) {
+                    return Column(
+                      crossAxisAlignment: CrossAxisAlignment.stretch,
                       children: [
-                        Text(
-                          lesson.title,
-                          style: Theme.of(context).textTheme.headlineSmall
-                              ?.copyWith(fontWeight: FontWeight.w700),
-                        ),
-                        const SizedBox(height: FutureMintTokens.space3),
-                        Chip(
-                          avatar: const Icon(Icons.school_outlined, size: 16),
-                          label: Text(
-                            lesson.source == CaptureSource.liangjieAi
-                                ? 'AI 個人化內容'
-                                : '離線示範內容',
-                          ),
-                        ),
+                        copy,
+                        const SizedBox(height: FutureMintTokens.space2),
+                        Align(alignment: Alignment.centerRight, child: artwork),
                       ],
-                    ),
-                  ),
-                  const SizedBox(width: FutureMintTokens.space3),
-                  const MoneyBuddy(
-                    size: 68,
-                    color: FutureMintTokens.pink,
-                    shape: MoneyBuddyShape.flower,
-                    excludeSemantics: true,
-                  ),
-                ],
+                    );
+                  }
+                  return Row(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Expanded(child: copy),
+                      const SizedBox(width: FutureMintTokens.space3),
+                      artwork,
+                    ],
+                  );
+                },
               ),
             ),
-            SizedBox(height: overlap ? 0 : FutureMintTokens.space3),
-            Transform.translate(
-              offset: Offset(0, overlap ? -8 : 0),
-              child: _LessonSection(
-                number: '01',
-                title: '先看懂',
-                body: lesson.concept,
-                color: FutureMintTokens.lavenderSoft,
-              ),
+            const SizedBox(height: FutureMintTokens.space3),
+            _LessonSection(
+              number: '01',
+              title: '先看懂',
+              body: lesson.concept,
+              color: FutureMintTokens.lavenderSoft,
             ),
-            SizedBox(height: overlap ? 0 : FutureMintTokens.space3),
-            Transform.translate(
-              offset: Offset(0, overlap ? -16 : 0),
-              child: _LessonSection(
-                number: '02',
-                title: '放進生活',
-                body: lesson.example,
-                color: FutureMintTokens.mintSoft,
-              ),
+            const SizedBox(height: FutureMintTokens.space3),
+            _LessonSection(
+              number: '02',
+              title: '放進生活',
+              body: lesson.example,
+              color: FutureMintTokens.mintSoft,
             ),
           ],
         ),
-        SizedBox(
-          height: overlap ? FutureMintTokens.space3 : FutureMintTokens.space5,
-        ),
+        const SizedBox(height: FutureMintTokens.space5),
         Text(lesson.question, style: Theme.of(context).textTheme.titleLarge),
         const SizedBox(height: FutureMintTokens.space3),
         for (final option in lesson.options)
@@ -498,6 +527,55 @@ class _LessonContent extends StatelessWidget {
       ],
     );
   }
+}
+
+class _LearningDecorationStrip extends StatelessWidget {
+  const _LearningDecorationStrip();
+
+  @override
+  Widget build(BuildContext context) => Align(
+    alignment: Alignment.centerRight,
+    child: Padding(
+      padding: const EdgeInsets.only(top: FutureMintTokens.space1),
+      child: Wrap(
+        spacing: FutureMintTokens.space2,
+        crossAxisAlignment: WrapCrossAlignment.center,
+        children: const [
+          _LearningCircle(size: 14, color: FutureMintTokens.lavenderInk),
+          _LearningDiamond(size: 13, color: FutureMintTokens.skyInk),
+          Icon(Icons.auto_awesome_rounded, size: 16, color: Colors.white54),
+          _LearningCircle(size: 10, color: FutureMintTokens.teal),
+        ],
+      ),
+    ),
+  );
+}
+
+class _LearningCircle extends StatelessWidget {
+  const _LearningCircle({required this.size, required this.color});
+
+  final double size;
+  final Color color;
+
+  @override
+  Widget build(BuildContext context) => Container(
+    width: size,
+    height: size,
+    decoration: BoxDecoration(color: color, shape: BoxShape.circle),
+  );
+}
+
+class _LearningDiamond extends StatelessWidget {
+  const _LearningDiamond({required this.size, required this.color});
+
+  final double size;
+  final Color color;
+
+  @override
+  Widget build(BuildContext context) => Transform.rotate(
+    angle: 0.785398,
+    child: Container(width: size, height: size, color: color),
+  );
 }
 
 class _LessonSection extends StatelessWidget {

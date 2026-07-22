@@ -15,6 +15,9 @@ abstract final class FutureMintTokens {
   static const lavender = Color(0xFFA58CE8);
   static const lavenderInk = Color(0xFF6953A7);
   static const lavenderSoft = Color(0xFFEAE4FC);
+  // Neon accents
+  static const neonPurple = Color(0xFF7B6BFF);
+  static const neonGlow = Color(0xFF9B8CFF);
   static const periwinkle = Color(0xFF8EA4E7);
   static const periwinkleSoft = Color(0xFFE4E9FB);
   static const sky = Color(0xFF80C5EC);

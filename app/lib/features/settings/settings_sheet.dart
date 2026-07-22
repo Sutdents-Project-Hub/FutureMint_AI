@@ -49,31 +49,70 @@ class _SettingsSheet extends StatelessWidget {
       builder: (dialogContext) => StatefulBuilder(
         builder: (context, setDialogState) => AlertDialog(
           title: const Text('設定預算與目標'),
-          content: SizedBox(
-            width: 480,
+          content: ConstrainedBox(
+            constraints: const BoxConstraints(maxWidth: 480),
             child: SingleChildScrollView(
               child: Column(
                 mainAxisSize: MainAxisSize.min,
                 children: [
-                  SegmentedButton<AccountRole>(
-                    showSelectedIcon: false,
-                    segments: const [
-                      ButtonSegment(
-                        value: AccountRole.child,
-                        icon: Icon(Icons.face_outlined),
-                        label: Text('孩子'),
-                      ),
-                      ButtonSegment(
-                        value: AccountRole.parent,
-                        icon: Icon(Icons.family_restroom_outlined),
-                        label: Text('家長'),
-                      ),
-                    ],
-                    selected: {accountRole},
-                    onSelectionChanged: familyRoleLocked
-                        ? null
-                        : (value) =>
-                              setDialogState(() => accountRole = value.first),
+                  LayoutBuilder(
+                    builder: (context, constraints) {
+                      final compact =
+                          constraints.maxWidth < 360 ||
+                          MediaQuery.textScalerOf(context).scale(1) >= 1.3;
+                      if (compact) {
+                        return Wrap(
+                          spacing: FutureMintTokens.space2,
+                          runSpacing: FutureMintTokens.space2,
+                          children: [
+                            ChoiceChip(
+                              avatar: const Icon(Icons.face_outlined, size: 18),
+                              label: const Text('孩子'),
+                              selected: accountRole == AccountRole.child,
+                              onSelected: familyRoleLocked
+                                  ? null
+                                  : (_) => setDialogState(
+                                      () => accountRole = AccountRole.child,
+                                    ),
+                            ),
+                            ChoiceChip(
+                              avatar: const Icon(
+                                Icons.family_restroom_outlined,
+                                size: 18,
+                              ),
+                              label: const Text('家長'),
+                              selected: accountRole == AccountRole.parent,
+                              onSelected: familyRoleLocked
+                                  ? null
+                                  : (_) => setDialogState(
+                                      () => accountRole = AccountRole.parent,
+                                    ),
+                            ),
+                          ],
+                        );
+                      }
+                      return SegmentedButton<AccountRole>(
+                        showSelectedIcon: false,
+                        segments: const [
+                          ButtonSegment(
+                            value: AccountRole.child,
+                            icon: Icon(Icons.face_outlined),
+                            label: Text('孩子'),
+                          ),
+                          ButtonSegment(
+                            value: AccountRole.parent,
+                            icon: Icon(Icons.family_restroom_outlined),
+                            label: Text('家長'),
+                          ),
+                        ],
+                        selected: {accountRole},
+                        onSelectionChanged: familyRoleLocked
+                            ? null
+                            : (value) => setDialogState(
+                                () => accountRole = value.first,
+                              ),
+                      );
+                    },
                   ),
                   if (familyRoleLocked) ...[
                     const SizedBox(height: 8),
@@ -292,28 +331,67 @@ class _SettingsSheet extends StatelessWidget {
                         style: Theme.of(context).textTheme.titleMedium,
                       ),
                       const SizedBox(height: FutureMintTokens.space3),
-                      SegmentedButton<ThemeMode>(
-                        showSelectedIcon: false,
-                        segments: const [
-                          ButtonSegment(
-                            value: ThemeMode.system,
-                            icon: Icon(Icons.brightness_auto_outlined),
-                            label: Text('系統'),
-                          ),
-                          ButtonSegment(
-                            value: ThemeMode.light,
-                            icon: Icon(Icons.light_mode_outlined),
-                            label: Text('亮色'),
-                          ),
-                          ButtonSegment(
-                            value: ThemeMode.dark,
-                            icon: Icon(Icons.dark_mode_outlined),
-                            label: Text('深色'),
-                          ),
-                        ],
-                        selected: {controller.themeMode},
-                        onSelectionChanged: (value) =>
-                            controller.setThemeMode(value.first),
+                      LayoutBuilder(
+                        builder: (context, constraints) {
+                          final compact =
+                              constraints.maxWidth < 440 ||
+                              MediaQuery.textScalerOf(context).scale(1) >= 1.3;
+                          if (compact) {
+                            return Wrap(
+                              spacing: FutureMintTokens.space2,
+                              runSpacing: FutureMintTokens.space2,
+                              children: [
+                                for (final entry in const [
+                                  (
+                                    ThemeMode.system,
+                                    '系統',
+                                    Icons.brightness_auto_outlined,
+                                  ),
+                                  (
+                                    ThemeMode.light,
+                                    '亮色',
+                                    Icons.light_mode_outlined,
+                                  ),
+                                  (
+                                    ThemeMode.dark,
+                                    '深色',
+                                    Icons.dark_mode_outlined,
+                                  ),
+                                ])
+                                  ChoiceChip(
+                                    avatar: Icon(entry.$3, size: 18),
+                                    label: Text(entry.$2),
+                                    selected: controller.themeMode == entry.$1,
+                                    onSelected: (_) =>
+                                        controller.setThemeMode(entry.$1),
+                                  ),
+                              ],
+                            );
+                          }
+                          return SegmentedButton<ThemeMode>(
+                            showSelectedIcon: false,
+                            segments: const [
+                              ButtonSegment(
+                                value: ThemeMode.system,
+                                icon: Icon(Icons.brightness_auto_outlined),
+                                label: Text('系統'),
+                              ),
+                              ButtonSegment(
+                                value: ThemeMode.light,
+                                icon: Icon(Icons.light_mode_outlined),
+                                label: Text('亮色'),
+                              ),
+                              ButtonSegment(
+                                value: ThemeMode.dark,
+                                icon: Icon(Icons.dark_mode_outlined),
+                                label: Text('深色'),
+                              ),
+                            ],
+                            selected: {controller.themeMode},
+                            onSelectionChanged: (value) =>
+                                controller.setThemeMode(value.first),
+                          );
+                        },
                       ),
                       const Divider(height: FutureMintTokens.space7),
                       Text(

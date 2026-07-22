@@ -55,6 +55,10 @@ void main() {
     expect(find.text('登入 FutureMint'), findsOneWidget);
     expect(find.text('建立帳號'), findsOneWidget);
     expect(find.text('以訪客模式繼續'), findsOneWidget);
+    expect(
+      tester.getRect(find.text('以訪客模式繼續')).bottom,
+      lessThanOrEqualTo(tester.view.physicalSize.height),
+    );
 
     await tester.tap(find.text('以訪客模式繼續'));
     await tester.pumpAndSettle();

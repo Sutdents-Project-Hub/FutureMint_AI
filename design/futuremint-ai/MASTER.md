@@ -1,16 +1,16 @@
 # FutureMint AI Design System
 
-> Source: approved competition MVP direction plus the user-provided UI reference analysis, implemented with Flutter-native shapes and no external visual assets.
+> Source: approved competition MVP direction plus the user-provided UI reference analysis. The current student UI combines Flutter-native components with local PNG demo artwork; no image or font is fetched at runtime. Artwork authorship, source, and licence still need to be recorded before public release.
 > Page overrides in `pages/<page>.md` take precedence when present.
 
 ## Direction
 
 - Audience: students aged 15–18 managing allowance, income, subscriptions, and savings goals.
 - Character: optimistic, trustworthy, energetic, and clear; youth-friendly without looking childish.
-- Style: calm lavender-tinted near-white canvas, flat rounded color blocks, deep-indigo action anchors, pill controls, and friendly geometric companions. It combines the clean planner structure of the reference UI with its expressive habit-app color and character language; light mode is the primary competition presentation.
-- Hierarchy: indigo／violet owns the brand, primary actions, selection, and budget Hero; deep ink owns text and mobile navigation. Sun and orange are reserved for warning／fallback meaning, while lavender, sky, coral, and pink identify only a small number of feature moments rather than coloring every surface.
+- Style: the current competition preview starts on a deep-indigo near-black canvas with purple glow, rounded blocks, pill controls, and friendly local mascot artwork. Flutter light mode remains supported, but is not the default presentation in this UI revision.
+- Hierarchy: indigo／violet owns the brand, primary actions, selection, and budget Hero; the light foreground owns text and mobile navigation. Sun and orange remain reserved for warning／fallback meaning, while lavender, sky, coral, and pink identify only a small number of feature moments rather than coloring every surface.
 - Dials: variance 6/10, motion 2/10, density 5/10.
-- Avoid: repeated thick outlines, offset hard shadows, a card around every row, trading-terminal aesthetics, generic multi-hue gradients, glassmorphism, neon everywhere, childish fonts, shame-based warnings, decorative charts, and copied third-party illustration.
+- Avoid: repeated thick outlines, offset hard shadows, a card around every row, trading-terminal aesthetics, generic multi-hue gradients, glassmorphism, glow on every element, childish fonts, shame-based warnings, decorative charts, and unlicensed or copied third-party illustration.
 
 ## Semantic colors
 
@@ -84,7 +84,7 @@ Every foreground/background pair used for body text must meet WCAG 4.5:1. State 
 - Phone gutters: 16dp; tablet: 24dp; desktop content max width: 1200dp.
 - Card radius: 20dp; Hero radius: 28dp; input radius: 12dp; buttons and chips: pill.
 - Card padding: 16dp on phone, 20–24dp on larger screens.
-- Most light cards are flat and borderless. Use a 1dp hairline only when a white surface must be separated from the near-white canvas; reserve a subtle soft shadow for an exceptional floating layer, never for every card. Dark mode uses progressively lighter surfaces for depth.
+- Most light cards are flat and borderless. Use a 1dp hairline only when a white surface must be separated from the near-white canvas; reserve a subtle soft shadow for an exceptional floating layer, never for every card. The current dark presentation uses progressively lighter surfaces and restrained purple glow around the Hero for depth.
 - Interactive targets are at least 48×48dp with 8dp separation.
 
 ## Responsive layout
@@ -96,15 +96,18 @@ Every foreground/background pair used for body text must meet WCAG 4.5:1. State 
 - Use `LayoutBuilder`; do not hardcode device width assumptions.
 - Lists reserve padding for persistent navigation and safe areas.
 - Support portrait, landscape, browser keyboard navigation, and text scaling to 200% without horizontal overflow.
+- Decorative PNG mascots, sparkles, and accent art must occupy reserved layout space or a true background layer. They must not use negative translation, foreground absolute positioning, or fixed page coordinates that can cover headings, money values, form fields, or actions.
+- Keep the student-supplied character art visually prominent: use a dedicated hero column, card footer, or wrapped visual band at smaller widths instead of silently shrinking or removing it. The safety requirement is preserving readable content, not making the artwork timid.
+- When a segmented choice would no longer fit at a narrow width or 130%+ text scale, replace its one-row presentation with wrapping chips or buttons while preserving the selected value and accessible label.
 
 ## Components
 
 - Buttons: one filled pill action per screen; outlined or text styles for alternatives. Loading disables repeat submission and preserves label width.
 - `SoftCard`: shared flat rounded surface. Its default is borderless and shadowless; optional hairline and soft elevation are explicit variants. Color communicates hierarchy or feature grouping, never state by itself.
 - `PageHeading`: plain color kicker, strong sentence-case title, optional supporting copy, and a trailing action that stacks below 620dp. On light surfaces, feature kickers use the matching `*Ink` token rather than a decorative light accent, preserving the required 4.5:1 text contrast.
-- `MoneyBuddy`: Flutter-native blob, flower, or spark companion with a single-hue radial highlight, black facial features, and the semantic label `FutureMint 金錢夥伴`. It is decorative and never carries financial state.
+- Mascots: `MoneyBuddy` remains available as a Flutter-native decorative companion. The current student UI also uses local PNG mascots for its demo composition; they are decorative, never carry financial state, must stay within their assigned card／artwork area, and must be excluded from semantics or given an accurate label when they become informative.
 - Cards: each block has a clear title, one insight, and at most one primary action. Lists use one shared surface with dividers instead of a card for every row.
-- Dashboard: one indigo budget Hero, lavender／indigo supportive insight blocks, a sky subscription block, and a neutral recent-record surface. The bento layout appears only with enough content width.
+- Dashboard: one indigo／purple budget Hero, lavender／indigo supportive insight blocks, a sky subscription block, and a neutral recent-record surface. The bento layout appears only with enough content width.
 - Capture: the empty/input state gets the colorful Hero; once drafts exist, visual emphasis moves to the first draft and the input Hero becomes quiet.
 - Learning: use neighboring or mildly overlapping lavender／indigo blocks at normal text scale; at high text scale they return to a normal vertical stack. Keep a visible free-form coach field with topic and answer-style chips; fixed micro-lesson options remain supplementary.
 - Records: analysis comes before the bounded transaction list; use paired income／outflow bars and intent progress, with text summaries that remain understandable without color.
@@ -117,7 +120,7 @@ Every foreground/background pair used for body text must meet WCAG 4.5:1. State 
 - Capture input is text／paste only in this MVP; do not add image upload or OCR controls.
 - Navigation: icons and labels from Material Symbols only; active location uses text weight, icon, and an indigo/lavender indicator in addition to color.
 - Charts: accessible violet/amber series, direct values, a written summary, empty/loading/error states, and reduced-motion support.
-- Authentication: sign-in／register screens use the same calm canvas, one clear primary action, visible password rules, and non-technical retry copy. Guest entry must state that data is temporary before entering the app.
+- Authentication: sign-in／register screens use the same dark presentation, one clear primary action, visible password rules, and non-technical retry copy. Guest entry must state that data is temporary before entering the app and remain reachable in a 600dp-high viewport.
 - Account state: App shell shows signed-in or guest state with text and icon. Guest state has a persistent, wrapping notice that data is not stored; logout／leave guest is available in Settings.
 - Feedback: snackbars use polite announcements. Network or authentication failure never fabricates a saved result or switches data sources silently.
 

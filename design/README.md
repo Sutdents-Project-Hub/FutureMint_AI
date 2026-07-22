@@ -10,15 +10,20 @@
 ## 與程式碼的關係
 
 - Flutter tokens 與 Material theme 位於 `app/lib/design/`。
-- `soft_components.dart` 提供共用 `SoftCard`、`PageHeading` 與 Flutter 原生幾何 `MoneyBuddy`；Web／Android 品牌圖示是本機 SVG／Android Vector Drawable，不依賴外部圖片或遠端字型。
+- `soft_components.dart` 提供共用 `SoftCard`、`PageHeading` 與 Flutter 原生幾何 `MoneyBuddy`；目前學生 UI 另使用 `app/assets/images/` 的本機 PNG 插圖。Web／Android 品牌圖示是本機 SVG／Android Vector Drawable，不依賴遠端圖片或字型。
 - 新畫面先重用既有 semantic colors、type scale、spacing 與 components，不自行新增近似 token。
 - 規範與實作改變時必須同步兩邊；不得只改文件或只改 UI，造成交接內容漂移。
 
-目前品牌方向為帶淡紫灰色調的近白畫布、扁平圓角色塊、靛紫主行動與手機導覽，以及有表情的幾何金錢夥伴。靛紫用於主動作、選取狀態與預算重點；黃色／橙色只表示警示、備援或小型夥伴，天空藍與珊瑚色只保留給資訊、資料與教練語意。一般卡片預設無框無陰影，需要區隔時才使用 1dp hairline。深色模式以深靛藍／紫灰表面與較亮層級表達深度，不直接反相亮色卡片。
+目前學生 UI 的 Demo 預設為深靛黑畫布、紫色發光重點與本機角色插圖；亮色 token 仍保留作為主題支援。紫色與綠色光效只用於 Hero 與重點行動，不延伸到所有內容卡。一般卡片以深淺表面與必要的細框區隔，不以大量陰影製造層次。
+
+`app/assets/images/` 的插圖目前只作為學生提供的本機 Demo 資產；在公開發表、上架或部署前，團隊必須補記每個插圖的作者、來源與授權，或以自有／明確可用的素材替換。未確認前不得把它們宣稱為第三方可再散布素材。
 
 ## 人工品質檢查
 
 - 375px、768px、1024px、1440px 與 landscape 不溢位。
+- 角色插圖與星點等裝飾必須放在自己的版位或內容背景層；不得以負位移、前景絕對定位或固定座標遮住文字、數值、表單與操作項。
+- 學生提供的角色插圖應保有明顯的視覺份量；窄寬時改成獨立視覺列或卡片尾端，而非因避免遮擋就縮小到失去存在感或移除。
+- 窄寬或 130% 以上字級時，多選項切換控制項應改為可換行的 chips／buttons，不能強迫所有項目維持單列。
 - 亮／暗主題 body text 對比至少 4.5:1，狀態不只靠顏色表達。
 - 互動目標至少 48×48dp，Web focus 清楚，鍵盤順序合理。
 - 200% text scale、reduced motion、loading／empty／error／網路不可用／disabled 狀態可用。

@@ -122,6 +122,33 @@ class _DashboardContent extends StatelessWidget {
                 ],
               );
 
+        final pageColumn = Column(
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: [
+            disclosure,
+            const SizedBox(height: FutureMintTokens.space5),
+            PageHeading(
+              kicker: '今天的金錢節奏',
+              title: profile.accountRole == AccountRole.parent
+                  ? '陪孩子看懂選擇，不替他做決定'
+                  : '嗨，今天也一起顧好每一塊錢',
+              description: profile.accountRole == AccountRole.parent
+                  ? '家長模式調整說明角度，不會讀取另一個帳號的交易。'
+                  : '先看清楚，再做適合自己的選擇。',
+              accent: FutureMintTokens.teal,
+              trailing: _DashboardHeaderActions(
+                onCapture: () => context.go('/capture'),
+              ),
+            ),
+            const SizedBox(height: FutureMintTokens.space6),
+            if (controller.insights?.notices.isNotEmpty ?? false) ...[
+              _NoticeStrip(notices: controller.insights!.notices),
+              const SizedBox(height: FutureMintTokens.space5),
+            ],
+            content,
+          ],
+        );
+
         return SingleChildScrollView(
           padding: EdgeInsets.fromLTRB(
             gutter,
@@ -129,36 +156,118 @@ class _DashboardContent extends StatelessWidget {
             gutter,
             FutureMintTokens.space7,
           ),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.stretch,
+          child: Stack(
+            clipBehavior: Clip.none,
             children: [
-              PageHeading(
-                kicker: '今天的金錢節奏',
-                title: profile.accountRole == AccountRole.parent
-                    ? '陪孩子看懂選擇，不替他做決定'
-                    : '嗨，今天也一起顧好每一塊錢',
-                description: profile.accountRole == AccountRole.parent
-                    ? '家長模式調整說明角度，不會讀取另一個帳號的交易。'
-                    : '先看清楚，再做適合自己的選擇。',
-                accent: FutureMintTokens.teal,
-                trailing: FilledButton.icon(
-                  onPressed: () => context.go('/capture'),
-                  icon: const Icon(Icons.add_rounded),
-                  label: const Text('記一筆'),
-                ),
+              const Positioned.fill(
+                child: IgnorePointer(child: _BackgroundSparkles()),
               ),
-              const SizedBox(height: FutureMintTokens.space6),
-              if (controller.insights?.notices.isNotEmpty ?? false) ...[
-                _NoticeStrip(notices: controller.insights!.notices),
-                const SizedBox(height: FutureMintTokens.space5),
-              ],
-              content,
+              pageColumn,
             ],
           ),
         );
       },
     );
   }
+}
+
+class _BackgroundSparkles extends StatelessWidget {
+  const _BackgroundSparkles();
+
+  static const _stars = <_StarSpec>[
+    _StarSpec(1, 97, 50, -23),
+    _StarSpec(1, 340, 50, -49),
+    _StarSpec(-1, 776, 44, -32),
+    _StarSpec(-1, 889, 26, -27),
+    _StarSpec(-1, 465, 44, -40),
+    _StarSpec(-1, 872, 50, -46),
+    _StarSpec(1, 572, 26, -18),
+    _StarSpec(1, 144, 56, -43),
+    _StarSpec(-1, 803, 56, -44),
+  ];
+
+  @override
+  Widget build(BuildContext context) => Stack(
+    clipBehavior: Clip.none,
+    children: [
+      for (final star in _stars)
+        Positioned(
+          left: star.side < 0 ? star.depth : null,
+          right: star.side > 0 ? star.depth : null,
+          top: star.top,
+          child: Icon(
+            Icons.auto_awesome_rounded,
+            size: star.size,
+            color: Colors.white24,
+          ),
+        ),
+    ],
+  );
+}
+
+class _StarSpec {
+  const _StarSpec(this.side, this.top, this.size, this.depth);
+  final int side;
+  final double top;
+  final double size;
+  final double depth;
+}
+
+class _DashboardHeaderActions extends StatelessWidget {
+  const _DashboardHeaderActions({required this.onCapture});
+
+  final VoidCallback onCapture;
+
+  @override
+  Widget build(BuildContext context) => Wrap(
+    spacing: FutureMintTokens.space3,
+    runSpacing: FutureMintTokens.space2,
+    crossAxisAlignment: WrapCrossAlignment.center,
+    children: [
+      SizedBox(
+        width: 172,
+        height: 142,
+        child: Stack(
+          children: [
+            Positioned(
+              left: 0,
+              top: 0,
+              child: Image.asset(
+                'assets/images/blob_purple.png',
+                width: 150,
+                height: 150,
+                fit: BoxFit.contain,
+                excludeFromSemantics: true,
+              ),
+            ),
+            Positioned(
+              left: 4,
+              top: 18,
+              child: Icon(
+                Icons.auto_awesome_rounded,
+                size: 30,
+                color: const Color(0xFF7CFF4D).withValues(alpha: .9),
+              ),
+            ),
+            Positioned(
+              right: 4,
+              bottom: 8,
+              child: Icon(
+                Icons.auto_awesome_rounded,
+                size: 24,
+                color: FutureMintTokens.neonPurple.withValues(alpha: .85),
+              ),
+            ),
+          ],
+        ),
+      ),
+      FilledButton.icon(
+        onPressed: onCapture,
+        icon: const Icon(Icons.add_rounded),
+        label: const Text('記一筆'),
+      ),
+    ],
+  );
 }
 
 class _NoticeStrip extends StatelessWidget {
@@ -222,7 +331,7 @@ class _SectionCard extends StatelessWidget {
   final Color? color;
 
   @override
-  Widget build(BuildContext context) => SoftCard(
+  Widget build(BuildContext context) => NeonCard(
     color: color,
     child: Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
@@ -234,7 +343,7 @@ class _SectionCard extends StatelessWidget {
           runSpacing: 4,
           children: [
             Text(title, style: Theme.of(context).textTheme.titleLarge),
-            ?action,
+            action ?? const SizedBox.shrink(),
           ],
         ),
         const SizedBox(height: FutureMintTokens.space4),
@@ -249,36 +358,67 @@ class _CoachInsight extends StatelessWidget {
   final DashboardSummary summary;
 
   @override
-  Widget build(BuildContext context) => SoftCard(
+  Widget build(BuildContext context) => NeonCard(
     color: _softSurface(context, FutureMintTokens.lavenderSoft),
-    child: Row(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        const _IconBadge(
-          icon: Icons.lightbulb_outline_rounded,
-          color: FutureMintTokens.coral,
-        ),
-        const SizedBox(width: FutureMintTokens.space4),
-        Expanded(
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
+    child: LayoutBuilder(
+      builder: (context, constraints) {
+        final compact =
+            constraints.maxWidth < 520 ||
+            MediaQuery.textScalerOf(context).scale(1) >= 1.3;
+        final copy = Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Row(
+              children: [
+                const _IconBadge(
+                  icon: Icons.lightbulb_outline_rounded,
+                  color: FutureMintTokens.coral,
+                ),
+                const SizedBox(width: FutureMintTokens.space3),
+                Expanded(
+                  child: Text(
+                    '教練提醒',
+                    style: Theme.of(context).textTheme.titleMedium?.copyWith(
+                      fontWeight: FontWeight.w700,
+                    ),
+                  ),
+                ),
+              ],
+            ),
+            const SizedBox(height: FutureMintTokens.space2),
+            Text(
+              summary.availableMinor >= 0
+                  ? '現在還有 ${formatTwd(summary.availableMinor)} 可以安排。先把想花的和需要花的分開，會更容易守住目標。'
+                  : '本月超出預算 ${formatTwd(-summary.availableMinor)}。先暫停一項可延後支出，不需要責怪自己。',
+            ),
+          ],
+        );
+        final mascot = Image.asset(
+          'assets/images/mascot_orange.png',
+          width: compact ? 112 : 136,
+          height: compact ? 112 : 136,
+          fit: BoxFit.contain,
+          excludeFromSemantics: true,
+        );
+        if (compact) {
+          return Column(
+            crossAxisAlignment: CrossAxisAlignment.stretch,
             children: [
-              Text(
-                '教練提醒',
-                style: Theme.of(
-                  context,
-                ).textTheme.titleMedium?.copyWith(fontWeight: FontWeight.w700),
-              ),
+              copy,
               const SizedBox(height: FutureMintTokens.space2),
-              Text(
-                summary.availableMinor >= 0
-                    ? '現在還有 ${formatTwd(summary.availableMinor)} 可以安排。先把想花的和需要花的分開，會更容易守住目標。'
-                    : '本月超出預算 ${formatTwd(-summary.availableMinor)}。先暫停一項可延後支出，不需要責怪自己。',
-              ),
+              Align(alignment: Alignment.centerRight, child: mascot),
             ],
-          ),
-        ),
-      ],
+          );
+        }
+        return Row(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Expanded(child: copy),
+            const SizedBox(width: FutureMintTokens.space3),
+            mascot,
+          ],
+        );
+      },
     ),
   );
 }
@@ -292,6 +432,13 @@ class _GoalCard extends StatelessWidget {
   Widget build(BuildContext context) => _SectionCard(
     title: '成長目標',
     color: _softSurface(context, FutureMintTokens.mintSoft),
+    action: Image.asset(
+      'assets/images/bars_purple.png',
+      width: 84,
+      height: 84,
+      fit: BoxFit.contain,
+      excludeFromSemantics: true,
+    ),
     child: Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
@@ -335,6 +482,13 @@ class _SubscriptionOpportunity extends StatelessWidget {
     return _SectionCard(
       title: '訂閱小檢查',
       color: _softSurface(context, FutureMintTokens.skySoft),
+      action: Image.asset(
+        'assets/images/clipboard_teal.png',
+        width: 76,
+        height: 76,
+        fit: BoxFit.contain,
+        excludeFromSemantics: true,
+      ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
@@ -361,7 +515,7 @@ class _SyntheticDisclosure extends StatelessWidget {
   const _SyntheticDisclosure({required this.guest});
   final bool guest;
   @override
-  Widget build(BuildContext context) => SoftCard(
+  Widget build(BuildContext context) => NeonCard(
     padding: const EdgeInsets.all(FutureMintTokens.space4),
     radius: 16,
     borderWidth: 1,
@@ -390,15 +544,12 @@ class _RecentEventTile extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final income = event.type == MoneyEventType.income;
+    final color = categoryColor(event.category);
     return ListTile(
       contentPadding: EdgeInsets.zero,
       leading: CircleAvatar(
-        backgroundColor: income
-            ? _softSurface(context, FutureMintTokens.mintSoft)
-            : _softSurface(context, FutureMintTokens.coralSoft),
-        child: Icon(
-          income ? Icons.south_west_rounded : Icons.north_east_rounded,
-        ),
+        backgroundColor: color.withValues(alpha: .18),
+        child: Icon(categoryIcon(event.category), color: color, size: 20),
       ),
       title: Text(event.merchant ?? categoryLabel(event.category)),
       subtitle: Text(formatTaipeiDateTime(event.occurredAt)),
@@ -445,4 +596,26 @@ String categoryLabel(MoneyCategory category) => switch (category) {
   MoneyCategory.income => '收入',
   MoneyCategory.subscription => '訂閱',
   MoneyCategory.other => '其他',
+};
+
+IconData categoryIcon(MoneyCategory category) => switch (category) {
+  MoneyCategory.food => Icons.restaurant_rounded,
+  MoneyCategory.transport => Icons.directions_car_filled_rounded,
+  MoneyCategory.entertainment => Icons.sports_esports_rounded,
+  MoneyCategory.education => Icons.school_rounded,
+  MoneyCategory.shopping => Icons.shopping_bag_rounded,
+  MoneyCategory.income => Icons.south_west_rounded,
+  MoneyCategory.subscription => Icons.subscriptions_rounded,
+  MoneyCategory.other => Icons.receipt_long_rounded,
+};
+
+Color categoryColor(MoneyCategory category) => switch (category) {
+  MoneyCategory.food => const Color(0xFFFFA36C),
+  MoneyCategory.transport => const Color(0xFF6CC2FF),
+  MoneyCategory.entertainment => const Color(0xFFB98CFF),
+  MoneyCategory.education => const Color(0xFF7CE0C6),
+  MoneyCategory.shopping => const Color(0xFFFFD36C),
+  MoneyCategory.income => const Color(0xFF7CFF4D),
+  MoneyCategory.subscription => const Color(0xFFFF8CC6),
+  MoneyCategory.other => const Color(0xFFB9C2CC),
 };

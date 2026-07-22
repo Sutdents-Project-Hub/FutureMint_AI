@@ -98,29 +98,35 @@ void main() {
     expect(chip.labelStyle?.foreground, isNull);
   });
 
-  testWidgets(
-    'uses light budget hero text and progress on the indigo surface',
-    (tester) async {
-      final controller = await createController();
-      await tester.pumpWidget(FutureMintApp(controller: controller));
-      await tester.pumpAndSettle();
+  testWidgets('keeps the neon budget hero and its progress accessible', (
+    tester,
+  ) async {
+    final controller = await createController();
+    await tester.pumpWidget(FutureMintApp(controller: controller));
+    await tester.pumpAndSettle();
 
-      final progress = tester.widget<LinearProgressIndicator>(
-        find.byKey(const Key('dashboard-budget-progress')),
-      );
-      final textStyle = tester.widget<DefaultTextStyle>(
-        find
-            .descendant(
-              of: find.byKey(const Key('dashboard-budget-hero')),
-              matching: find.byType(DefaultTextStyle),
-            )
-            .first,
-      );
-      expect(textStyle.style.color, FutureMintTokens.paper);
-      expect(progress.color, FutureMintTokens.paper);
-      expect(progress.backgroundColor, FutureMintTokens.tealDark);
-    },
-  );
+    final progress = tester.widget<SizedBox>(
+      find.byKey(const Key('dashboard-budget-progress')),
+    );
+    expect(progress.height, 14);
+    expect(
+      find.descendant(
+        of: find.byKey(const Key('dashboard-budget-progress')),
+        matching: find.byType(FractionallySizedBox),
+      ),
+      findsOneWidget,
+    );
+    final heroRect = tester.getRect(
+      find.byKey(const Key('dashboard-budget-hero')),
+    );
+    final mascotRect = tester.getRect(
+      find.byKey(const Key('dashboard-mascot')),
+    );
+    expect(mascotRect.left, greaterThanOrEqualTo(heroRect.left));
+    expect(mascotRect.right, lessThanOrEqualTo(heroRect.right));
+    expect(mascotRect.top, greaterThanOrEqualTo(heroRect.top));
+    expect(mascotRect.bottom, lessThanOrEqualTo(heroRect.bottom));
+  });
 
   testWidgets('keeps the phone dashboard usable at 200% text scale', (
     tester,
@@ -190,7 +196,7 @@ void main() {
     await tester.pumpAndSettle();
 
     expect(find.byKey(const Key('dashboard-bento-layout')), findsOneWidget);
-    expect(find.bySemanticsLabel('FutureMint 金錢夥伴'), findsOneWidget);
+    expect(find.byKey(const Key('dashboard-mascot')), findsOneWidget);
     expect(tester.takeException(), isNull);
   });
 
@@ -216,12 +222,35 @@ void main() {
     expect(tester.takeException(), isNull);
   });
 
+  testWidgets('keeps records usable on a phone at 200% text scale', (
+    tester,
+  ) async {
+    final controller = await createController();
+    tester.view.physicalSize = const Size(375, 812);
+    tester.view.devicePixelRatio = 1;
+    tester.platformDispatcher.textScaleFactorTestValue = 2;
+    addTearDown(tester.view.resetPhysicalSize);
+    addTearDown(tester.view.resetDevicePixelRatio);
+    addTearDown(tester.platformDispatcher.clearTextScaleFactorTestValue);
+
+    await tester.pumpWidget(FutureMintApp(controller: controller));
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('紀錄').last);
+    await tester.pumpAndSettle();
+
+    expect(find.byKey(const Key('records-list-surface')), findsOneWidget);
+    expect(find.byType(ChoiceChip), findsNWidgets(4));
+    expect(tester.takeException(), isNull);
+  });
+
   testWidgets('groups settings in one quiet surface', (tester) async {
     final controller = await createController();
     tester.view.physicalSize = const Size(375, 812);
     tester.view.devicePixelRatio = 1;
+    tester.platformDispatcher.textScaleFactorTestValue = 2;
     addTearDown(tester.view.resetPhysicalSize);
     addTearDown(tester.view.resetDevicePixelRatio);
+    addTearDown(tester.platformDispatcher.clearTextScaleFactorTestValue);
 
     await tester.pumpWidget(FutureMintApp(controller: controller));
     await tester.pumpAndSettle();
@@ -229,6 +258,8 @@ void main() {
     await tester.pumpAndSettle();
 
     expect(find.byKey(const Key('settings-grouped-surface')), findsOneWidget);
+    expect(find.text('系統'), findsOneWidget);
+    expect(find.byType(ChoiceChip), findsNWidgets(3));
     expect(tester.takeException(), isNull);
   });
 }

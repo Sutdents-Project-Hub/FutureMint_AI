@@ -336,29 +336,70 @@ class _DraftEditorState extends State<DraftEditor> {
               ),
             ),
             const SizedBox(height: FutureMintTokens.space3),
-            SegmentedButton<SpendingIntent>(
-              showSelectedIcon: false,
-              segments: const [
-                ButtonSegment(
-                  value: SpendingIntent.need,
-                  icon: Icon(Icons.check_circle_outline_rounded),
-                  label: Text('需要'),
-                ),
-                ButtonSegment(
-                  value: SpendingIntent.want,
-                  icon: Icon(Icons.favorite_border_rounded),
-                  label: Text('想要'),
-                ),
-                ButtonSegment(
-                  value: SpendingIntent.uncertain,
-                  icon: Icon(Icons.help_outline_rounded),
-                  label: Text('不確定'),
-                ),
-              ],
-              selected: {spendingIntent},
-              onSelectionChanged: widget.busy
-                  ? null
-                  : (value) => setState(() => spendingIntent = value.first),
+            LayoutBuilder(
+              builder: (context, constraints) {
+                final compact =
+                    constraints.maxWidth < 440 ||
+                    MediaQuery.textScalerOf(context).scale(1) >= 1.3;
+                if (compact) {
+                  return Wrap(
+                    spacing: FutureMintTokens.space2,
+                    runSpacing: FutureMintTokens.space2,
+                    children: [
+                      for (final entry in const [
+                        (
+                          SpendingIntent.need,
+                          '需要',
+                          Icons.check_circle_outline_rounded,
+                        ),
+                        (
+                          SpendingIntent.want,
+                          '想要',
+                          Icons.favorite_border_rounded,
+                        ),
+                        (
+                          SpendingIntent.uncertain,
+                          '不確定',
+                          Icons.help_outline_rounded,
+                        ),
+                      ])
+                        ChoiceChip(
+                          avatar: Icon(entry.$3, size: 18),
+                          label: Text(entry.$2),
+                          selected: spendingIntent == entry.$1,
+                          onSelected: widget.busy
+                              ? null
+                              : (_) =>
+                                    setState(() => spendingIntent = entry.$1),
+                        ),
+                    ],
+                  );
+                }
+                return SegmentedButton<SpendingIntent>(
+                  showSelectedIcon: false,
+                  segments: const [
+                    ButtonSegment(
+                      value: SpendingIntent.need,
+                      icon: Icon(Icons.check_circle_outline_rounded),
+                      label: Text('需要'),
+                    ),
+                    ButtonSegment(
+                      value: SpendingIntent.want,
+                      icon: Icon(Icons.favorite_border_rounded),
+                      label: Text('想要'),
+                    ),
+                    ButtonSegment(
+                      value: SpendingIntent.uncertain,
+                      icon: Icon(Icons.help_outline_rounded),
+                      label: Text('不確定'),
+                    ),
+                  ],
+                  selected: {spendingIntent},
+                  onSelectionChanged: widget.busy
+                      ? null
+                      : (value) => setState(() => spendingIntent = value.first),
+                );
+              },
             ),
             const SizedBox(height: FutureMintTokens.space5),
             Text('分帳設定', style: Theme.of(context).textTheme.titleMedium),

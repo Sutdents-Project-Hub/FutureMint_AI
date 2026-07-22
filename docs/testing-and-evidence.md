@@ -4,6 +4,31 @@
 
 驗證日期：2026-07-19（Asia/Taipei）。以下只記錄實際執行結果，不代表 Coolify production、量界正式帳號或真實未成年人服務驗收。
 
+### UI 合併修復複驗（2026-07-22，Asia/Taipei）
+
+以下結果針對 `feat/replicate-homepage` 合併到本機工作目錄後的 UI 修復；尚未建立 commit、push 或部署。
+
+| 元件 | 指令／操作 | 結果 |
+|---|---|---|
+| Flutter format | `dart format --output=none --set-exit-if-changed lib test integration_test` | 52 files，0 changed |
+| Flutter analyze | `flutter analyze` | 0 issues |
+| Flutter tests | `flutter test` | 74 tests 通過；包含 600dp 高度登入頁的訪客入口可見與可點擊檢查 |
+| Flutter Web | `flutter build web --release --dart-define=API_BASE_URL=http://localhost:3000/api/` | 通過 |
+| Short viewport visual QA | 本機 Web，375×600 瀏覽器畫面 | 登入標題未被角色圖遮住；訪客按鈕與「資料不會儲存」說明均在首屏可見；登入表單可向下捲動 |
+
+### 全頁 RWD 與文字重疊修正複驗（2026-07-22，Asia/Taipei）
+
+以下結果針對儀表板、記帳、紀錄、學習、FutureSeed、登入／首次設定、設定與底部導覽的 RWD 巡檢；本機工作目錄仍未建立 commit、push 或部署。
+
+| 元件 | 指令／操作 | 結果 |
+|---|---|---|
+| 定位與控制項巡檢 | 逐一檢視所有前端路由的 `Positioned`、負位移與 `SegmentedButton` | 保留學生原有的角色、插圖與星點，並改放入保留版位或內容背景層，避免覆蓋內容；窄寬或 130% 以上字級的長選項改為可換行 chips。 |
+| Flutter format | `dart format lib test integration_test` | 完成格式化。 |
+| Flutter analyze | `flutter analyze` | 0 issues。 |
+| Flutter tests | `flutter test` | 75 tests 通過；新增 375×812、200% 字級的紀錄頁／設定頁測試，以及 Dashboard 角色插圖保持在預算卡內的幾何檢查。 |
+| Flutter Web | `flutter build web --release --dart-define=API_BASE_URL=http://localhost:3000/api/` | 通過，產出 `app/build/web`。 |
+| 本機預覽快取復原 | `http://127.0.0.1:4173/?reset-cache` | 僅在明確帶入 `reset-cache` 時，解除該 origin 的 Flutter Service Worker 並清除 Cache Storage，接著回到正常網址；用於避免本機 rebuild 後仍執行舊 JavaScript。 |
+
 | 元件 | 指令／操作 | 結果 |
 |---|---|---|
 | Fastify API | `npm test` | 15 個 test files、86 tests 通過 |

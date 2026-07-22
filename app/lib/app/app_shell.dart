@@ -69,6 +69,9 @@ class AppShell extends StatelessWidget {
     return LayoutBuilder(
       builder: (context, constraints) {
         final wide = constraints.maxWidth >= FutureMintTokens.railBreakpoint;
+        final compactMobileActions =
+            constraints.maxWidth < 360 ||
+            MediaQuery.textScalerOf(context).scale(1) >= 1.3;
         final content = SafeArea(
           child: Center(
             child: ConstrainedBox(
@@ -101,11 +104,12 @@ class AppShell extends StatelessWidget {
               surfaceTintColor: Colors.transparent,
               title: const _Brand(),
               actions: [
-                _ModeChip(
-                  guest: guest,
-                  accountEmail: controller.accountEmail,
-                  accountRole: controller.profile?.accountRole,
-                ),
+                if (!compactMobileActions)
+                  _ModeChip(
+                    guest: guest,
+                    accountEmail: controller.accountEmail,
+                    accountRole: controller.profile?.accountRole,
+                  ),
                 _NotificationButton(
                   count: controller.insights?.notices.length ?? 0,
                 ),
@@ -264,6 +268,9 @@ class _MobileNavigation extends StatelessWidget {
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
     final dark = theme.brightness == Brightness.dark;
+    final compactLabels =
+        MediaQuery.sizeOf(context).width < 360 ||
+        MediaQuery.textScalerOf(context).scale(1) >= 1.3;
     final foreground = dark
         ? theme.colorScheme.onSurface
         : FutureMintTokens.paper;
@@ -306,6 +313,9 @@ class _MobileNavigation extends StatelessWidget {
                 animationDuration: Duration.zero,
                 selectedIndex: selectedIndex,
                 onDestinationSelected: onDestinationSelected,
+                labelBehavior: compactLabels
+                    ? NavigationDestinationLabelBehavior.alwaysHide
+                    : NavigationDestinationLabelBehavior.alwaysShow,
                 destinations: [
                   for (final item in appDestinations)
                     NavigationDestination(

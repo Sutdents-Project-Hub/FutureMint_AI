@@ -75,22 +75,28 @@ class _CaptureScreenState extends State<CaptureScreen> {
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.stretch,
                   children: [
-                    Row(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        const MoneyBuddy(
-                          size: 56,
-                          color: FutureMintTokens.sun,
-                          shape: MoneyBuddyShape.spark,
-                        ),
-                        const SizedBox(width: FutureMintTokens.space3),
-                        Expanded(
-                          child: Text(
-                            '把日常語句交給 AI 整理，金額與內容仍由你最後確認。',
-                            style: Theme.of(context).textTheme.titleMedium,
-                          ),
-                        ),
-                      ],
+                    LayoutBuilder(
+                      builder: (context, constraints) {
+                        return Row(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Image.asset(
+                              'assets/images/mascot_note_star.png',
+                              width: 56,
+                              height: 56,
+                              fit: BoxFit.contain,
+                              excludeFromSemantics: true,
+                            ),
+                            const SizedBox(width: FutureMintTokens.space3),
+                            Expanded(
+                              child: Text(
+                                '把日常語句交給 AI 整理，金額與內容仍由你最後確認。',
+                                style: Theme.of(context).textTheme.titleMedium,
+                              ),
+                            ),
+                          ],
+                        );
+                      },
                     ),
                     const SizedBox(height: FutureMintTokens.space4),
                     TextField(
@@ -148,6 +154,31 @@ class _CaptureScreenState extends State<CaptureScreen> {
                             )
                           : const Icon(Icons.auto_fix_high_rounded),
                       label: Text(controller.busy ? '正在整理…' : '幫我整理'),
+                    ),
+                    const SizedBox(height: FutureMintTokens.space2),
+                    Align(
+                      alignment: Alignment.centerRight,
+                      child: Container(
+                        decoration: BoxDecoration(
+                          shape: BoxShape.circle,
+                          boxShadow: [
+                            BoxShadow(
+                              color: FutureMintTokens.sun.withValues(
+                                alpha: .38,
+                              ),
+                              blurRadius: 28,
+                              spreadRadius: 3,
+                            ),
+                          ],
+                        ),
+                        child: Image.asset(
+                          'assets/images/mascot_note_helper.png',
+                          width: 132,
+                          height: 132,
+                          fit: BoxFit.contain,
+                          excludeFromSemantics: true,
+                        ),
+                      ),
                     ),
                   ],
                 ),

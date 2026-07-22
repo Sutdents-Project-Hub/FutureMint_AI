@@ -80,23 +80,63 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
                           const SizedBox(height: FutureMintTokens.space2),
                           const Text('角色只調整內容與說明角度，不會開放查看另一個帳號的明細。'),
                           const SizedBox(height: FutureMintTokens.space3),
-                          SegmentedButton<AccountRole>(
-                            showSelectedIcon: false,
-                            segments: const [
-                              ButtonSegment(
-                                value: AccountRole.child,
-                                icon: Icon(Icons.face_outlined),
-                                label: Text('孩子使用'),
-                              ),
-                              ButtonSegment(
-                                value: AccountRole.parent,
-                                icon: Icon(Icons.family_restroom_outlined),
-                                label: Text('家長陪伴'),
-                              ),
-                            ],
-                            selected: {_accountRole},
-                            onSelectionChanged: (value) =>
-                                setState(() => _accountRole = value.first),
+                          LayoutBuilder(
+                            builder: (context, constraints) {
+                              final compact =
+                                  constraints.maxWidth < 400 ||
+                                  MediaQuery.textScalerOf(context).scale(1) >=
+                                      1.3;
+                              if (compact) {
+                                return Wrap(
+                                  spacing: FutureMintTokens.space2,
+                                  runSpacing: FutureMintTokens.space2,
+                                  children: [
+                                    ChoiceChip(
+                                      avatar: const Icon(
+                                        Icons.face_outlined,
+                                        size: 18,
+                                      ),
+                                      label: const Text('孩子使用'),
+                                      selected:
+                                          _accountRole == AccountRole.child,
+                                      onSelected: (_) => setState(
+                                        () => _accountRole = AccountRole.child,
+                                      ),
+                                    ),
+                                    ChoiceChip(
+                                      avatar: const Icon(
+                                        Icons.family_restroom_outlined,
+                                        size: 18,
+                                      ),
+                                      label: const Text('家長陪伴'),
+                                      selected:
+                                          _accountRole == AccountRole.parent,
+                                      onSelected: (_) => setState(
+                                        () => _accountRole = AccountRole.parent,
+                                      ),
+                                    ),
+                                  ],
+                                );
+                              }
+                              return SegmentedButton<AccountRole>(
+                                showSelectedIcon: false,
+                                segments: const [
+                                  ButtonSegment(
+                                    value: AccountRole.child,
+                                    icon: Icon(Icons.face_outlined),
+                                    label: Text('孩子使用'),
+                                  ),
+                                  ButtonSegment(
+                                    value: AccountRole.parent,
+                                    icon: Icon(Icons.family_restroom_outlined),
+                                    label: Text('家長陪伴'),
+                                  ),
+                                ],
+                                selected: {_accountRole},
+                                onSelectionChanged: (value) =>
+                                    setState(() => _accountRole = value.first),
+                              );
+                            },
                           ),
                           const SizedBox(height: FutureMintTokens.space5),
                           TextFormField(
