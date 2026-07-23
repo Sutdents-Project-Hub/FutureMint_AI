@@ -10,6 +10,7 @@
 - 本機 Docker Compose project：`futuremint_ai`；主要 `compose.yaml` 必須明確設定頂層 `name: futuremint_ai`。
 - Coolify project：`futuremint-ai`；Coolify services：`futuremint-ai-web`、`futuremint-ai-api`、`futuremint-ai-postgres`。
 - Compose services 使用 `web`、`api`、`postgres`，不設定 `container_name`；容器名稱由 Compose project 與 service role 產生。
+- 根目錄 `compose.yaml` 只供本機三容器整合驗證；Coolify production 必須維持 `app/Dockerfile` 的 Web Application、`backend/Dockerfile` 的 API Application 與受管 PostgreSQL Resource 三個獨立 Resources，不得把本機 Compose 當正式入口。
 - 產品型態：`hybrid`。
 - Bootstrap 模式：`executable`；Flutter 與 Fastify API 均需以 manifest、lockfile、Dockerfile 與實際品質指令維持此狀態。
 
@@ -111,6 +112,7 @@
 
 - 部署不是初始化的一部分；未經明確要求，不建立 Coolify／雲端資源、資料庫、DNS、bucket、secret、release 或 production 連線。
 - 有 `docs/deployment.md` 時以其為部署依據；設定尚未驗證時保持「尚未驗證」，不得複製其他專案的 port、domain、Docker 或 healthcheck。
+- 若新增可獨立部署 component，先為它建立自己的 Dockerfile Resource 契約（base directory、port、healthcheck、公開路由、runtime／build variables、backup 與 rollback），而不是加入 production Compose。
 - 交接給學生前，確認 README 能說明目前能做什麼、如何啟動與驗證、已知限制、環境變數來源、部署狀態及下一步。
 
 ## 完成回報
