@@ -28,6 +28,7 @@ void main() {
     expect(find.text('AI 需要／想要建議'), findsOneWidget);
     expect(find.text('需要'), findsOneWidget);
     expect(find.text('想要'), findsOneWidget);
+    expect(find.textContaining('這次修正不會自動拿去訓練 AI'), findsOneWidget);
     expect(find.bySemanticsLabel('AI 已整理草稿，尚未保存'), findsOneWidget);
     expect(controller.events.length, initialCount);
 

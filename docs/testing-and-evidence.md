@@ -6,7 +6,7 @@
 
 ### UI 合併修復複驗（2026-07-22，Asia/Taipei）
 
-以下結果針對 `feat/replicate-homepage` 合併到本機工作目錄後的 UI 修復；尚未建立 commit、push 或部署。
+以下結果針對 `feat/replicate-homepage` 合併到本機工作目錄後的 UI 修復；已建立本機 `main` commit `d876147`，尚未 push 或部署。
 
 | 元件 | 指令／操作 | 結果 |
 |---|---|---|
@@ -18,7 +18,7 @@
 
 ### 全頁 RWD 與文字重疊修正複驗（2026-07-22，Asia/Taipei）
 
-以下結果針對儀表板、記帳、紀錄、學習、FutureSeed、登入／首次設定、設定與底部導覽的 RWD 巡檢；本機工作目錄仍未建立 commit、push 或部署。
+以下結果針對儀表板、記帳、紀錄、學習、FutureSeed、登入／首次設定、設定與底部導覽的 RWD 巡檢；該輪 UI 修復已建立本機 `main` commit `d876147`，尚未 push 或部署。
 
 | 元件 | 指令／操作 | 結果 |
 |---|---|---|
@@ -28,6 +28,43 @@
 | Flutter tests | `flutter test` | 75 tests 通過；新增 375×812、200% 字級的紀錄頁／設定頁測試，以及 Dashboard 角色插圖保持在預算卡內的幾何檢查。 |
 | Flutter Web | `flutter build web --release --dart-define=API_BASE_URL=http://localhost:3000/api/` | 通過，產出 `app/build/web`。 |
 | 本機預覽快取復原 | `http://127.0.0.1:4173/?reset-cache` | 僅在明確帶入 `reset-cache` 時，解除該 origin 的 Flutter Service Worker 並清除 Cache Storage，接著回到正常網址；用於避免本機 rebuild 後仍執行舊 JavaScript。 |
+
+### Desktop 網頁畫布複驗（2026-07-22，Asia/Taipei）
+
+以下結果針對 signed-in／guest 主流程在寬螢幕瀏覽器不再呈現為置中的狹窄 App；本輪變更尚未建立新的 commit、push 或部署。
+
+| 元件 | 指令／操作 | 結果 |
+|---|---|---|
+| Desktop canvas geometry | 新增 `ResponsivePageCanvas` 與 1920dp widget test | 寬螢幕 App Shell 使用扣除 264dp 側欄後的完整寬度；紀錄頁交易清單使用該畫布扣除左右 32dp gutter 的完整寬度。 |
+| Flutter analyze | `flutter analyze` | 0 issues。 |
+| Flutter tests | `flutter test` | 77 tests 通過；包含共用 desktop canvas 與首頁／紀錄頁幾何檢查。 |
+| Flutter Web | `flutter build web --release --dart-define=API_BASE_URL=http://localhost:3000/api/` | 通過，產出 `app/build/web`。 |
+| Browser visual QA | 本機 Web，1920×1080 | 首頁、紀錄、記一筆、學習與 FutureSeed 皆使用側欄右側完整畫布，保留 32dp gutter；角色插圖未遮住標題、金額、表單或操作。登入、說明與設定彈窗維持聚焦寬度。 |
+
+### 登入／註冊垂直節奏複驗（2026-07-23，Asia/Taipei）
+
+以下結果針對寬螢幕登入／註冊畫面中角色插圖與表單之間的非預期大量空白；本輪變更尚未建立新的 commit、push 或部署。
+
+| 元件 | 指令／操作 | 結果 |
+|---|---|---|
+| Desktop geometry | 新增登入圖片槽與表單幾何 widget test | 圖片依 4:3 實際高度保留版位；桌面圖片槽與表單距離維持 8–32dp，不再依圖片寬度產生額外空白。 |
+| Flutter analyze | `flutter analyze` | 0 issues。 |
+| Flutter tests | `flutter test` | 78 tests 通過。 |
+| Flutter Web | `flutter build web --release --dart-define=API_BASE_URL=http://localhost:3000/api/` | 通過，產出 `app/build/web`。 |
+| Browser visual QA | 本機 Web，1920×1080 | 登入／註冊角色插圖與標題形成緊湊視覺群組，保留閱讀呼吸空間且未互相覆蓋。 |
+
+### 決賽答辯可見證據複驗（2026-07-24，Asia/Taipei）
+
+以下結果針對 AI 主導權、FutureSeed 教育邊界與家庭資料最少揭露的畫面說明；本輪變更尚未建立 commit、push 或部署。
+
+| 元件 | 指令／操作 | 結果 |
+|---|---|---|
+| AI 草稿主導權 | `capture_screen_test.dart` | 草稿明示可修改所有欄位、確認後才更新分析、修正不會自動訓練 AI；確認前帳務筆數不變。 |
+| FutureSeed／資料界線 | `settings_transparency_test.dart` | 設定畫面明示 FutureSeed 是教育模擬、決賽僅用合成資料，以及 AI provider／原文保存邊界。 |
+| Flutter analyze | `flutter analyze` | 0 issues。 |
+| Flutter tests | `flutter test` | 79 tests 通過。 |
+| Flutter Web | `flutter build web --release --dart-define=API_BASE_URL=http://localhost:3000/api/` | 通過，產出 `app/build/web`。 |
+| Browser visual QA | 本機 release Web，桌面與 375×812 | 草稿確認、設定抽屜與新說明可完整閱讀；沒有溢位或 console error。 |
 
 | 元件 | 指令／操作 | 結果 |
 |---|---|---|

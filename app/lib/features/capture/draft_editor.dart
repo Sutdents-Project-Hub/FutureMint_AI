@@ -194,6 +194,13 @@ class _DraftEditorState extends State<DraftEditor> {
           ),
           const SizedBox(height: FutureMintTokens.space2),
           Text(
+            '你可以修改每個欄位。確認後會依你的版本更新分析；這次修正不會自動拿去訓練 AI。',
+            style: Theme.of(context).textTheme.bodySmall?.copyWith(
+              color: Theme.of(context).colorScheme.onSurfaceVariant,
+            ),
+          ),
+          const SizedBox(height: FutureMintTokens.space2),
+          Text(
             '解析信心 ${(widget.draft.confidence * 100).round()}%'
             '${widget.draft.missingFields.isEmpty ? '' : ' · 待補：${widget.draft.missingFields.map(_missingFieldLabel).join('、')}'}',
             style: Theme.of(context).textTheme.bodySmall,

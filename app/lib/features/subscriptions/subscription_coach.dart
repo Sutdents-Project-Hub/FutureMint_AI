@@ -22,103 +22,99 @@ class SubscriptionCoachScreen extends StatelessWidget {
         gutter,
         FutureMintTokens.space7,
       ),
-      child: Center(
-        child: ConstrainedBox(
-          constraints: const BoxConstraints(
-            maxWidth: FutureMintTokens.contentReading,
-          ),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.stretch,
-            children: [
-              Align(
-                alignment: Alignment.centerLeft,
-                child: TextButton.icon(
-                  onPressed: () => context.go('/'),
-                  icon: const Icon(Icons.arrow_back_rounded),
-                  label: const Text('回首頁'),
-                ),
+      child: ResponsivePageCanvas(
+        compactMaxWidth: FutureMintTokens.contentReading,
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: [
+            Align(
+              alignment: Alignment.centerLeft,
+              child: TextButton.icon(
+                onPressed: () => context.go('/'),
+                icon: const Icon(Icons.arrow_back_rounded),
+                label: const Text('回首頁'),
               ),
-              const SizedBox(height: FutureMintTokens.space2),
-              const PageHeading(
-                kicker: '訂閱教練',
-                title: '訂閱不是只能留或退',
-                description: '先換算每月真正負擔，再確認資格與使用方式。',
-                accent: FutureMintTokens.skyInk,
-              ),
-              const SizedBox(height: FutureMintTokens.space5),
-              if (comparison == null)
-                const SoftCard(
-                  color: FutureMintTokens.skySoft,
-                  child: Text('目前沒有可比較的訂閱情境。'),
-                )
-              else ...[
-                SoftCard(
-                  key: const Key('subscription-current-card'),
-                  color: FutureMintTokens.ink,
-                  child: DefaultTextStyle.merge(
-                    style: const TextStyle(color: FutureMintTokens.paper),
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Row(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
-                            const CircleAvatar(
-                              backgroundColor: FutureMintTokens.pink,
-                              foregroundColor: FutureMintTokens.ink,
-                              child: Icon(Icons.movie_outlined),
-                            ),
-                            const SizedBox(width: FutureMintTokens.space3),
-                            Expanded(
-                              child: Column(
-                                crossAxisAlignment: CrossAxisAlignment.start,
-                                children: [
-                                  Text(
-                                    '目前：${comparison.currentName}',
-                                    style: const TextStyle(
-                                      fontWeight: FontWeight.w700,
-                                    ),
-                                  ),
-                                  const Text('每月等效成本'),
-                                ],
-                              ),
-                            ),
-                          ],
-                        ),
-                        const SizedBox(height: FutureMintTokens.space4),
-                        MoneyText(
-                          comparison.currentMonthlyCostMinor,
-                          style: Theme.of(context).textTheme.headlineSmall
-                              ?.copyWith(color: FutureMintTokens.paper),
-                        ),
-                      ],
-                    ),
-                  ),
-                ),
-                const SizedBox(height: FutureMintTokens.space5),
-                for (final entry in comparison.options.indexed) ...[
-                  _OptionCard(option: entry.$2, index: entry.$1),
-                  const SizedBox(height: FutureMintTokens.space4),
-                ],
-                SoftCard(
-                  padding: const EdgeInsets.all(FutureMintTokens.space4),
-                  radius: 16,
-                  borderWidth: 1,
-                  color: Theme.of(context).brightness == Brightness.dark
-                      ? FutureMintTokens.darkSurfaceRaised
-                      : FutureMintTokens.coralSoft,
-                  child: Row(
+            ),
+            const SizedBox(height: FutureMintTokens.space2),
+            const PageHeading(
+              kicker: '訂閱教練',
+              title: '訂閱不是只能留或退',
+              description: '先換算每月真正負擔，再確認資格與使用方式。',
+              accent: FutureMintTokens.skyInk,
+            ),
+            const SizedBox(height: FutureMintTokens.space5),
+            if (comparison == null)
+              const SoftCard(
+                color: FutureMintTokens.skySoft,
+                child: Text('目前沒有可比較的訂閱情境。'),
+              )
+            else ...[
+              SoftCard(
+                key: const Key('subscription-current-card'),
+                color: FutureMintTokens.ink,
+                child: DefaultTextStyle.merge(
+                  style: const TextStyle(color: FutureMintTokens.paper),
+                  child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      const Icon(Icons.info_outline_rounded),
-                      const SizedBox(width: FutureMintTokens.space3),
-                      Expanded(child: Text(comparison.disclaimer)),
+                      Row(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          const CircleAvatar(
+                            backgroundColor: FutureMintTokens.pink,
+                            foregroundColor: FutureMintTokens.ink,
+                            child: Icon(Icons.movie_outlined),
+                          ),
+                          const SizedBox(width: FutureMintTokens.space3),
+                          Expanded(
+                            child: Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                Text(
+                                  '目前：${comparison.currentName}',
+                                  style: const TextStyle(
+                                    fontWeight: FontWeight.w700,
+                                  ),
+                                ),
+                                const Text('每月等效成本'),
+                              ],
+                            ),
+                          ),
+                        ],
+                      ),
+                      const SizedBox(height: FutureMintTokens.space4),
+                      MoneyText(
+                        comparison.currentMonthlyCostMinor,
+                        style: Theme.of(context).textTheme.headlineSmall
+                            ?.copyWith(color: FutureMintTokens.paper),
+                      ),
                     ],
                   ),
                 ),
+              ),
+              const SizedBox(height: FutureMintTokens.space5),
+              for (final entry in comparison.options.indexed) ...[
+                _OptionCard(option: entry.$2, index: entry.$1),
+                const SizedBox(height: FutureMintTokens.space4),
               ],
+              SoftCard(
+                padding: const EdgeInsets.all(FutureMintTokens.space4),
+                radius: 16,
+                borderWidth: 1,
+                color: Theme.of(context).brightness == Brightness.dark
+                    ? FutureMintTokens.darkSurfaceRaised
+                    : FutureMintTokens.coralSoft,
+                child: Row(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    const Icon(Icons.info_outline_rounded),
+                    const SizedBox(width: FutureMintTokens.space3),
+                    Expanded(child: Text(comparison.disclaimer)),
+                  ],
+                ),
+              ),
             ],
-          ),
+          ],
         ),
       ),
     );

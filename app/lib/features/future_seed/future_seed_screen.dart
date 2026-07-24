@@ -31,102 +31,97 @@ class _FutureSeedScreenState extends State<FutureSeedScreen> {
         gutter,
         FutureMintTokens.space7,
       ),
-      child: Center(
-        child: ConstrainedBox(
-          constraints: const BoxConstraints(
-            maxWidth: FutureMintTokens.contentCanvas,
-          ),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.stretch,
-            children: [
-              Column(
-                crossAxisAlignment: CrossAxisAlignment.stretch,
-                children: [
-                  const PageHeading(
-                    kicker: 'FutureSeed 教育模擬',
-                    title: '讓省下來的錢，遇見時間、紀律與風險',
-                    description: '比較三條合成路徑的成長與下跌，再用 AI 陪讀員看懂現象。這不是報酬預測。',
-                    accent: FutureMintTokens.teal,
-                  ),
-                  const _FutureSeedDecorationStrip(),
-                  const SizedBox(height: FutureMintTokens.space5),
-                  _FutureSeedEntryCard(
-                    onOpen: () => context.go('/future-seed/investment-lab'),
-                  ),
-                  const SizedBox(height: FutureMintTokens.space5),
-                  LayoutBuilder(
-                    builder: (context, constraints) {
-                      final wide =
-                          constraints.maxWidth >= 860 &&
-                          MediaQuery.textScalerOf(context).scale(1) < 1.5;
-                      final controls = _Controls(
-                        initial: initial,
-                        monthly: monthly,
-                        years: years,
-                        onInitial: controller.busy
-                            ? null
-                            : (value) => setState(() => initial = value),
-                        onMonthly: controller.busy
-                            ? null
-                            : (value) => setState(() => monthly = value),
-                        onYears: controller.busy
-                            ? null
-                            : (value) => setState(() => years = value),
-                        onPreset: controller.busy
-                            ? null
-                            : (nextInitial, nextMonthly, nextYears) =>
-                                  setState(() {
-                                    initial = nextInitial;
-                                    monthly = nextMonthly;
-                                    years = nextYears;
-                                  }),
-                        onRun: controller.busy
-                            ? null
-                            : () async {
-                                await controller.runInvestmentSimulation(
-                                  initialAmountMinor: initial.round(),
-                                  monthlyContributionMinor: monthly.round(),
-                                  years: years.round(),
-                                );
-                              },
-                      );
-                      final results = _SimulationResults(
-                        simulation: simulation,
-                        selectedId: selectedId,
-                        coachReply: controller.coachReply,
-                        busy: controller.busy,
-                        onSelected: (value) =>
-                            setState(() => selectedId = value),
-                        onAsk: (topic, question, style) => controller.askCoach(
-                          topic: topic,
-                          question: question,
-                          style: style,
-                          scenarioId: selectedId,
-                        ),
-                      );
-                      if (wide) {
-                        return Row(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
-                            SizedBox(width: 320, child: controls),
-                            const SizedBox(width: FutureMintTokens.space5),
-                            Expanded(child: results),
-                          ],
-                        );
-                      }
-                      return Column(
+      child: ResponsivePageCanvas(
+        compactMaxWidth: FutureMintTokens.contentCanvas,
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: [
+            Column(
+              crossAxisAlignment: CrossAxisAlignment.stretch,
+              children: [
+                const PageHeading(
+                  kicker: 'FutureSeed 教育模擬',
+                  title: '讓省下來的錢，遇見時間、紀律與風險',
+                  description: '比較三條合成路徑的成長與下跌，再用 AI 陪讀員看懂現象。這不是報酬預測。',
+                  accent: FutureMintTokens.teal,
+                ),
+                const _FutureSeedDecorationStrip(),
+                const SizedBox(height: FutureMintTokens.space5),
+                _FutureSeedEntryCard(
+                  onOpen: () => context.go('/future-seed/investment-lab'),
+                ),
+                const SizedBox(height: FutureMintTokens.space5),
+                LayoutBuilder(
+                  builder: (context, constraints) {
+                    final wide =
+                        constraints.maxWidth >= 860 &&
+                        MediaQuery.textScalerOf(context).scale(1) < 1.5;
+                    final controls = _Controls(
+                      initial: initial,
+                      monthly: monthly,
+                      years: years,
+                      onInitial: controller.busy
+                          ? null
+                          : (value) => setState(() => initial = value),
+                      onMonthly: controller.busy
+                          ? null
+                          : (value) => setState(() => monthly = value),
+                      onYears: controller.busy
+                          ? null
+                          : (value) => setState(() => years = value),
+                      onPreset: controller.busy
+                          ? null
+                          : (nextInitial, nextMonthly, nextYears) =>
+                                setState(() {
+                                  initial = nextInitial;
+                                  monthly = nextMonthly;
+                                  years = nextYears;
+                                }),
+                      onRun: controller.busy
+                          ? null
+                          : () async {
+                              await controller.runInvestmentSimulation(
+                                initialAmountMinor: initial.round(),
+                                monthlyContributionMinor: monthly.round(),
+                                years: years.round(),
+                              );
+                            },
+                    );
+                    final results = _SimulationResults(
+                      simulation: simulation,
+                      selectedId: selectedId,
+                      coachReply: controller.coachReply,
+                      busy: controller.busy,
+                      onSelected: (value) => setState(() => selectedId = value),
+                      onAsk: (topic, question, style) => controller.askCoach(
+                        topic: topic,
+                        question: question,
+                        style: style,
+                        scenarioId: selectedId,
+                      ),
+                    );
+                    if (wide) {
+                      return Row(
+                        crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
-                          controls,
-                          const SizedBox(height: FutureMintTokens.space5),
-                          results,
+                          SizedBox(width: 320, child: controls),
+                          const SizedBox(width: FutureMintTokens.space5),
+                          Expanded(child: results),
                         ],
                       );
-                    },
-                  ),
-                ],
-              ),
-            ],
-          ),
+                    }
+                    return Column(
+                      children: [
+                        controls,
+                        const SizedBox(height: FutureMintTokens.space5),
+                        results,
+                      ],
+                    );
+                  },
+                ),
+              ],
+            ),
+          ],
         ),
       ),
     );

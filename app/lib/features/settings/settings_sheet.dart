@@ -400,7 +400,11 @@ class _SettingsSheet extends StatelessWidget {
                       ),
                       const SizedBox(height: FutureMintTokens.space2),
                       const Text(
-                        'FutureMint AI 是金融教育決策教練，不提供投資標的、報酬保證或真實金融交易。請勿輸入姓名、學校、帳號或卡號；訪客資料不會儲存。',
+                        'FutureMint AI 是金融教育決策教練。FutureSeed 是教育模擬，不是銀行或投資帳戶；不提供投資標的、報酬保證或真實金融交易。',
+                      ),
+                      const SizedBox(height: FutureMintTokens.space2),
+                      const Text(
+                        '決賽版本僅使用合成資料。使用量界 AI 模式時，輸入會經後端送往 AI provider 解析；原文不會寫入交易紀錄或一般 log。請勿輸入姓名、學校、帳號或卡號；訪客資料不會儲存。',
                       ),
                     ],
                   ),
@@ -496,7 +500,7 @@ class _FamilySectionState extends State<_FamilySection> {
             ],
           ),
           const SizedBox(height: FutureMintTokens.space2),
-          const Text('家長只能查看孩子的預算與趨勢摘要，不會看到孩子的交易明細。'),
+          const Text('預設採最少揭露：家長只能查看孩子的預算與趨勢摘要，不會看到交易明細、原始輸入、帳號 email 或投資訂單。'),
           const SizedBox(height: FutureMintTokens.space3),
           if (family == null && isParent) ...[
             const Text('建立邀請碼，讓孩子帳號加入這個家庭。'),

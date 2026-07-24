@@ -1,9 +1,11 @@
+import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:futuremint_app/app/future_mint_app.dart';
 import 'package:futuremint_app/auth/auth_api.dart';
 import 'package:futuremint_app/auth/auth_models.dart';
 import 'package:futuremint_app/auth/session_store.dart';
 import 'package:futuremint_app/data/guest_repository.dart';
+import 'package:futuremint_app/design/tokens.dart';
 import 'package:futuremint_app/state/session_controller.dart';
 
 class _Store implements SessionPersistence {
@@ -64,6 +66,33 @@ void main() {
     await tester.pumpAndSettle();
 
     expect(find.text('訪客資料不會儲存'), findsWidgets);
+    expect(tester.takeException(), isNull);
+  });
+
+  testWidgets('keeps desktop artwork close to the sign-in form', (
+    tester,
+  ) async {
+    final session = SessionController(
+      auth: _Auth(),
+      store: _Store(),
+      authenticatedRepository: (_) => throw UnimplementedError(),
+      guestRepository: GuestRepository.create,
+    );
+    await session.start();
+    tester.view.physicalSize = const Size(1440, 900);
+    tester.view.devicePixelRatio = 1;
+    addTearDown(tester.view.resetPhysicalSize);
+    addTearDown(tester.view.resetDevicePixelRatio);
+
+    await tester.pumpWidget(FutureMintApp(session: session));
+    await tester.pumpAndSettle();
+
+    final artwork = tester.getRect(find.byKey(const Key('auth-artwork-slot')));
+    final form = tester.getRect(find.byKey(const Key('auth-form-content')));
+    final gap = form.top - artwork.bottom;
+
+    expect(gap, greaterThanOrEqualTo(FutureMintTokens.space2));
+    expect(gap, lessThanOrEqualTo(FutureMintTokens.space6));
     expect(tester.takeException(), isNull);
   });
 }

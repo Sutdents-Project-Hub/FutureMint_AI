@@ -55,6 +55,7 @@ abstract final class FutureMintTokens {
   static const contentReading = 840.0;
   static const contentCanvas = 980.0;
   static const railBreakpoint = 720.0;
+  static const desktopCanvasBreakpoint = 900.0;
   static const wideBreakpoint = 1100.0;
   static const dashboardBentoWidth = 900.0;
   static const controlHeight = 48.0;

@@ -4,6 +4,40 @@ import 'package:flutter/material.dart';
 
 import 'tokens.dart';
 
+/// Keeps focused content compact on smaller displays, while allowing primary
+/// web destinations to use the complete area available beside the navigation
+/// rail. Dialogs and authentication screens deliberately do not use this.
+class ResponsivePageCanvas extends StatelessWidget {
+  const ResponsivePageCanvas({
+    super.key,
+    required this.child,
+    required this.compactMaxWidth,
+  });
+
+  final Widget child;
+  final double compactMaxWidth;
+
+  @override
+  Widget build(BuildContext context) => LayoutBuilder(
+    builder: (context, constraints) {
+      final useWebCanvas =
+          constraints.maxWidth >= FutureMintTokens.desktopCanvasBreakpoint;
+
+      if (useWebCanvas) {
+        return SizedBox(width: constraints.maxWidth, child: child);
+      }
+
+      return Align(
+        alignment: Alignment.topCenter,
+        child: ConstrainedBox(
+          constraints: BoxConstraints(maxWidth: compactMaxWidth),
+          child: child,
+        ),
+      );
+    },
+  );
+}
+
 class SoftCard extends StatelessWidget {
   const SoftCard({
     super.key,

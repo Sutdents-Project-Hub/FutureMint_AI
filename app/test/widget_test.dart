@@ -200,6 +200,31 @@ void main() {
     expect(tester.takeException(), isNull);
   });
 
+  testWidgets('uses the remaining desktop width for app pages', (tester) async {
+    final controller = await createController();
+    tester.view.physicalSize = const Size(1920, 1080);
+    tester.view.devicePixelRatio = 1;
+    addTearDown(tester.view.resetPhysicalSize);
+    addTearDown(tester.view.resetDevicePixelRatio);
+
+    await tester.pumpWidget(FutureMintApp(controller: controller));
+    await tester.pumpAndSettle();
+
+    expect(
+      tester.getSize(find.byKey(const Key('app-web-content-canvas'))).width,
+      1920 - 264,
+    );
+
+    await tester.tap(find.text('紀錄').last);
+    await tester.pumpAndSettle();
+
+    expect(
+      tester.getSize(find.byKey(const Key('records-list-surface'))).width,
+      1920 - 264 - (FutureMintTokens.space6 * 2),
+    );
+    expect(tester.takeException(), isNull);
+  });
+
   testWidgets('keeps records in one bounded quiet list surface', (
     tester,
   ) async {

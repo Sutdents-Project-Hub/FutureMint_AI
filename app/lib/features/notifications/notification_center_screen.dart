@@ -25,41 +25,37 @@ class NotificationCenterScreen extends StatelessWidget {
         FutureMintTokens.space7,
       ),
       children: [
-        Center(
-          child: ConstrainedBox(
-            constraints: const BoxConstraints(
-              maxWidth: FutureMintTokens.contentReading,
-            ),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.stretch,
-              children: [
-                const PageHeading(
-                  kicker: '圖形化提醒',
-                  title: '需要注意的，不只是一串數字',
-                  description: '提醒來自已確認的紀錄；訂閱提醒是檢查邀請，不代表一定浪費。',
-                  accent: FutureMintTokens.coralInk,
-                ),
-                const SizedBox(height: FutureMintTokens.space5),
-                if (notices.isEmpty)
-                  const SoftCard(
-                    child: Row(
-                      children: [
-                        Icon(Icons.notifications_none_rounded),
-                        SizedBox(width: FutureMintTokens.space3),
-                        Expanded(child: Text('目前沒有需要處理的提醒。')),
-                      ],
+        ResponsivePageCanvas(
+          compactMaxWidth: FutureMintTokens.contentReading,
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            children: [
+              const PageHeading(
+                kicker: '圖形化提醒',
+                title: '需要注意的，不只是一串數字',
+                description: '提醒來自已確認的紀錄；訂閱提醒是檢查邀請，不代表一定浪費。',
+                accent: FutureMintTokens.coralInk,
+              ),
+              const SizedBox(height: FutureMintTokens.space5),
+              if (notices.isEmpty)
+                const SoftCard(
+                  child: Row(
+                    children: [
+                      Icon(Icons.notifications_none_rounded),
+                      SizedBox(width: FutureMintTokens.space3),
+                      Expanded(child: Text('目前沒有需要處理的提醒。')),
+                    ],
+                  ),
+                )
+              else
+                for (final notice in notices)
+                  Padding(
+                    padding: const EdgeInsets.only(
+                      bottom: FutureMintTokens.space3,
                     ),
-                  )
-                else
-                  for (final notice in notices)
-                    Padding(
-                      padding: const EdgeInsets.only(
-                        bottom: FutureMintTokens.space3,
-                      ),
-                      child: _NoticeCard(notice: notice),
-                    ),
-              ],
-            ),
+                    child: _NoticeCard(notice: notice),
+                  ),
+            ],
           ),
         ),
       ],

@@ -77,6 +77,15 @@ class _AuthScreenState extends State<AuthScreen> {
                 final imageWidth = compactViewport
                     ? (outerConstraints.maxWidth * .52).clamp(160.0, 220.0)
                     : (outerConstraints.maxWidth * .52).clamp(240.0, 420.0);
+                // The trio image is 4:3. Reserve its actual rendered height,
+                // rather than its width, so the heading stays visually tied to
+                // the artwork on wide browser windows.
+                final artworkHeight = imageWidth * .75;
+                final formTop =
+                    artworkHeight +
+                    (compactViewport
+                        ? FutureMintTokens.space4
+                        : FutureMintTokens.space6);
                 return Stack(
                   clipBehavior: Clip.none,
                   alignment: Alignment.topCenter,
@@ -84,75 +93,79 @@ class _AuthScreenState extends State<AuthScreen> {
                     // Large mascot trio, NOT constrained by the 460px form width.
                     Padding(
                       padding: const EdgeInsets.only(top: 12),
-                      child: Stack(
-                        clipBehavior: Clip.none,
-                        alignment: Alignment.topCenter,
-                        children: [
-                          Image.asset(
-                            'assets/images/mascot_trio.png',
-                            width: imageWidth,
-                            fit: BoxFit.contain,
-                          ),
-                          if (!compactViewport) ...[
-                            Positioned(
-                              left: imageWidth * 0.08,
-                              top: -20,
-                              child: IgnorePointer(
-                                child: Icon(
-                                  Icons.auto_awesome_rounded,
-                                  size: 44,
-                                  color: const Color(
-                                    0xFF7CFF4D,
-                                  ).withValues(alpha: .85),
-                                ),
+                      child: SizedBox(
+                        key: const Key('auth-artwork-slot'),
+                        width: imageWidth,
+                        height: artworkHeight,
+                        child: Stack(
+                          clipBehavior: Clip.none,
+                          alignment: Alignment.topCenter,
+                          children: [
+                            Positioned.fill(
+                              child: Image.asset(
+                                'assets/images/mascot_trio.png',
+                                fit: BoxFit.contain,
                               ),
                             ),
-                            Positioned(
-                              right: imageWidth * 0.06,
-                              top: -34,
-                              child: IgnorePointer(
-                                child: Icon(
-                                  Icons.auto_awesome_rounded,
-                                  size: 56,
-                                  color: FutureMintTokens.neonPurple.withValues(
-                                    alpha: .85,
+                            if (!compactViewport) ...[
+                              Positioned(
+                                left: imageWidth * 0.08,
+                                top: -20,
+                                child: IgnorePointer(
+                                  child: Icon(
+                                    Icons.auto_awesome_rounded,
+                                    size: 44,
+                                    color: const Color(
+                                      0xFF7CFF4D,
+                                    ).withValues(alpha: .85),
                                   ),
                                 ),
                               ),
-                            ),
-                            Positioned(
-                              left: 0,
-                              top: imageWidth * 0.42,
-                              child: IgnorePointer(
-                                child: Icon(
-                                  Icons.auto_awesome_rounded,
-                                  size: 34,
-                                  color: Colors.white.withValues(alpha: .55),
+                              Positioned(
+                                right: imageWidth * 0.06,
+                                top: -34,
+                                child: IgnorePointer(
+                                  child: Icon(
+                                    Icons.auto_awesome_rounded,
+                                    size: 56,
+                                    color: FutureMintTokens.neonPurple
+                                        .withValues(alpha: .85),
+                                  ),
                                 ),
                               ),
-                            ),
-                            Positioned(
-                              right: 0,
-                              top: imageWidth * 0.48,
-                              child: IgnorePointer(
-                                child: Icon(
-                                  Icons.auto_awesome_rounded,
-                                  size: 36,
-                                  color: Colors.white.withValues(alpha: .55),
+                              Positioned(
+                                left: 0,
+                                top: imageWidth * 0.42,
+                                child: IgnorePointer(
+                                  child: Icon(
+                                    Icons.auto_awesome_rounded,
+                                    size: 34,
+                                    color: Colors.white.withValues(alpha: .55),
+                                  ),
                                 ),
                               ),
-                            ),
+                              Positioned(
+                                right: 0,
+                                top: imageWidth * 0.48,
+                                child: IgnorePointer(
+                                  child: Icon(
+                                    Icons.auto_awesome_rounded,
+                                    size: 36,
+                                    color: Colors.white.withValues(alpha: .55),
+                                  ),
+                                ),
+                              ),
+                            ],
                           ],
-                        ],
+                        ),
                       ),
                     ),
-                    // Form content is capped at 460px and always gets a
-                    // separate vertical slot below the artwork.
+                    // Form content is capped at 460px and kept close to the
+                    // artwork without allowing the two to overlap.
                     Padding(
-                      padding: EdgeInsets.only(
-                        top: imageWidth + FutureMintTokens.space3,
-                      ),
+                      padding: EdgeInsets.only(top: formTop),
                       child: ConstrainedBox(
+                        key: const Key('auth-form-content'),
                         constraints: const BoxConstraints(maxWidth: 460),
                         child: Column(
                           crossAxisAlignment: CrossAxisAlignment.stretch,

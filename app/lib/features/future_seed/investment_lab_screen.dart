@@ -72,112 +72,106 @@ class _InvestmentLabScreenState extends State<InvestmentLabScreen> {
         gutter,
         FutureMintTokens.space7,
       ),
-      child: Center(
-        child: ConstrainedBox(
-          constraints: const BoxConstraints(
-            maxWidth: FutureMintTokens.contentCanvas,
-          ),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.stretch,
-            children: [
-              PageHeading(
-                kicker: 'FutureSeed 投資練習場',
-                title: '用虛擬資金，練習真實的投資決策',
-                description: '使用盤後行情練習買賣、配置與面對波動；不連券商、不使用真錢，也不提供選股建議。',
-                accent: FutureMintTokens.teal,
-                trailing: TextButton.icon(
-                  onPressed: () => context.go('/future-seed'),
-                  icon: const Icon(Icons.arrow_back_rounded),
-                  label: const Text('回到長期比較'),
-                ),
+      child: ResponsivePageCanvas(
+        compactMaxWidth: FutureMintTokens.contentCanvas,
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: [
+            PageHeading(
+              kicker: 'FutureSeed 投資練習場',
+              title: '用虛擬資金，練習真實的投資決策',
+              description: '使用盤後行情練習買賣、配置與面對波動；不連券商、不使用真錢，也不提供選股建議。',
+              accent: FutureMintTokens.teal,
+              trailing: TextButton.icon(
+                onPressed: () => context.go('/future-seed'),
+                icon: const Icon(Icons.arrow_back_rounded),
+                label: const Text('回到長期比較'),
               ),
+            ),
+            const SizedBox(height: FutureMintTokens.space5),
+            if (lab == null)
+              _LoadingState(
+                busy: controller.busy,
+                onRetry: controller.busy ? null : controller.loadInvestmentLab,
+              )
+            else ...[
+              _PortfolioHero(lab: lab),
+              const SizedBox(height: FutureMintTokens.space3),
+              _MarketSourceStrip(market: lab.market),
               const SizedBox(height: FutureMintTokens.space5),
-              if (lab == null)
-                _LoadingState(
-                  busy: controller.busy,
-                  onRetry: controller.busy
-                      ? null
-                      : controller.loadInvestmentLab,
-                )
-              else ...[
-                _PortfolioHero(lab: lab),
-                const SizedBox(height: FutureMintTokens.space3),
-                _MarketSourceStrip(market: lab.market),
-                const SizedBox(height: FutureMintTokens.space5),
-                LayoutBuilder(
-                  builder: (context, constraints) {
-                    final selected = lab.market.quotes.firstWhere(
-                      (quote) => quote.symbol == selectedSymbol,
-                      orElse: () => lab.market.quotes.first,
-                    );
-                    final market = _MarketList(
-                      quotes: lab.market.quotes,
-                      selectedSymbol: selected.symbol,
-                      onSelected: controller.busy
-                          ? null
-                          : (symbol) => setState(() => selectedSymbol = symbol),
-                    );
-                    final order = _OrderPanel(
-                      lab: lab,
-                      quote: selected,
-                      side: side,
-                      quantityController: quantityController,
-                      quantityError: quantityError,
-                      busy: controller.busy,
-                      onSideChanged: (value) => setState(() => side = value),
-                      onQuantityChanged: () => setState(() {
-                        quantityError = null;
-                      }),
-                      onSubmit: () => _submitOrder(controller, selected),
-                    );
-                    if (constraints.maxWidth >= 820) {
-                      return Row(
-                        key: const Key('investment-lab-wide-layout'),
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          Expanded(child: market),
-                          const SizedBox(width: FutureMintTokens.space5),
-                          SizedBox(width: 340, child: order),
-                        ],
-                      );
-                    }
-                    return Column(
-                      key: const Key('investment-lab-compact-layout'),
+              LayoutBuilder(
+                builder: (context, constraints) {
+                  final selected = lab.market.quotes.firstWhere(
+                    (quote) => quote.symbol == selectedSymbol,
+                    orElse: () => lab.market.quotes.first,
+                  );
+                  final market = _MarketList(
+                    quotes: lab.market.quotes,
+                    selectedSymbol: selected.symbol,
+                    onSelected: controller.busy
+                        ? null
+                        : (symbol) => setState(() => selectedSymbol = symbol),
+                  );
+                  final order = _OrderPanel(
+                    lab: lab,
+                    quote: selected,
+                    side: side,
+                    quantityController: quantityController,
+                    quantityError: quantityError,
+                    busy: controller.busy,
+                    onSideChanged: (value) => setState(() => side = value),
+                    onQuantityChanged: () => setState(() {
+                      quantityError = null;
+                    }),
+                    onSubmit: () => _submitOrder(controller, selected),
+                  );
+                  if (constraints.maxWidth >= 820) {
+                    return Row(
+                      key: const Key('investment-lab-wide-layout'),
+                      crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
-                        market,
-                        const SizedBox(height: FutureMintTokens.space4),
-                        order,
+                        Expanded(child: market),
+                        const SizedBox(width: FutureMintTokens.space5),
+                        SizedBox(width: 340, child: order),
                       ],
                     );
-                  },
+                  }
+                  return Column(
+                    key: const Key('investment-lab-compact-layout'),
+                    children: [
+                      market,
+                      const SizedBox(height: FutureMintTokens.space4),
+                      order,
+                    ],
+                  );
+                },
+              ),
+              const SizedBox(height: FutureMintTokens.space5),
+              _HoldingsSection(lab: lab),
+              const SizedBox(height: FutureMintTokens.space5),
+              _PracticeEventCard(
+                event: controller.practiceDiceEvent,
+                reply: controller.coachReply,
+                busy: controller.busy,
+                onRoll: controller.rollInvestmentDice,
+                onAsk: controller.practiceDiceEvent == null
+                    ? null
+                    : () => controller.askCoach(
+                        topic: 'risk',
+                        question: controller.practiceDiceEvent!.coachQuestion,
+                      ),
+              ),
+              const SizedBox(height: FutureMintTokens.space5),
+              _OrderHistory(orders: lab.orders),
+              const SizedBox(height: FutureMintTokens.space4),
+              Text(
+                lab.disclaimer,
+                style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                  color: Theme.of(context).colorScheme.onSurfaceVariant,
                 ),
-                const SizedBox(height: FutureMintTokens.space5),
-                _HoldingsSection(lab: lab),
-                const SizedBox(height: FutureMintTokens.space5),
-                _PracticeEventCard(
-                  event: controller.practiceDiceEvent,
-                  reply: controller.coachReply,
-                  busy: controller.busy,
-                  onRoll: controller.rollInvestmentDice,
-                  onAsk: controller.practiceDiceEvent == null
-                      ? null
-                      : () => controller.askCoach(
-                          topic: 'risk',
-                          question: controller.practiceDiceEvent!.coachQuestion,
-                        ),
-                ),
-                const SizedBox(height: FutureMintTokens.space5),
-                _OrderHistory(orders: lab.orders),
-                const SizedBox(height: FutureMintTokens.space4),
-                Text(
-                  lab.disclaimer,
-                  style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                    color: Theme.of(context).colorScheme.onSurfaceVariant,
-                  ),
-                ),
-              ],
+              ),
             ],
-          ),
+          ],
         ),
       ),
     );

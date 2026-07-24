@@ -58,70 +58,66 @@ class _LearningScreenState extends State<LearningScreen> {
         gutter,
         FutureMintTokens.space7,
       ),
-      child: Center(
-        child: ConstrainedBox(
-          constraints: const BoxConstraints(
-            maxWidth: FutureMintTokens.contentReading,
-          ),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.stretch,
-            children: [
-              Column(
-                crossAxisAlignment: CrossAxisAlignment.stretch,
-                children: [
-                  const PageHeading(
-                    kicker: '三分鐘微課',
-                    title: '練一個真正用得到的金錢選擇',
-                    description: '內容依合成紀錄挑選，重點是看懂選擇，不是考試。',
-                    accent: FutureMintTokens.lavenderInk,
-                  ),
-                  const _LearningDecorationStrip(),
+      child: ResponsivePageCanvas(
+        compactMaxWidth: FutureMintTokens.contentReading,
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: [
+            Column(
+              crossAxisAlignment: CrossAxisAlignment.stretch,
+              children: [
+                const PageHeading(
+                  kicker: '三分鐘微課',
+                  title: '練一個真正用得到的金錢選擇',
+                  description: '內容依合成紀錄挑選，重點是看懂選擇，不是考試。',
+                  accent: FutureMintTokens.lavenderInk,
+                ),
+                const _LearningDecorationStrip(),
+                const SizedBox(height: FutureMintTokens.space5),
+                if (plan != null) ...[
+                  _LearningPlanCard(plan: plan),
                   const SizedBox(height: FutureMintTokens.space5),
-                  if (plan != null) ...[
-                    _LearningPlanCard(plan: plan),
-                    const SizedBox(height: FutureMintTokens.space5),
-                  ],
-                  _LearningCoachCard(
-                    questionController: _questionController,
-                    topic: _topic,
-                    style: _style,
-                    reply: controller.learningCoachReply,
-                    busy: controller.busy,
-                    onTopicChanged: (value) => setState(() => _topic = value),
-                    onStyleChanged: (value) => setState(() => _style = value),
-                    onAsk: () => _ask(controller),
-                  ),
-                  const SizedBox(height: FutureMintTokens.space5),
-                  if (lesson == null)
-                    SoftCard(
-                      color: Theme.of(context).brightness == Brightness.dark
-                          ? FutureMintTokens.darkSurfaceRaised
-                          : FutureMintTokens.lavenderSoft,
-                      child: controller.busy
-                          ? const Row(
-                              children: [
-                                SizedBox.square(
-                                  dimension: 20,
-                                  child: CircularProgressIndicator(
-                                    strokeWidth: 2,
-                                  ),
-                                ),
-                                SizedBox(width: FutureMintTokens.space3),
-                                Expanded(child: Text('正在準備個人化微課…')),
-                              ],
-                            )
-                          : FilledButton.tonalIcon(
-                              onPressed: controller.loadLesson,
-                              icon: const Icon(Icons.refresh_rounded),
-                              label: const Text('重新載入微課'),
-                            ),
-                    )
-                  else
-                    _LessonContent(lesson: lesson, controller: controller),
                 ],
-              ),
-            ],
-          ),
+                _LearningCoachCard(
+                  questionController: _questionController,
+                  topic: _topic,
+                  style: _style,
+                  reply: controller.learningCoachReply,
+                  busy: controller.busy,
+                  onTopicChanged: (value) => setState(() => _topic = value),
+                  onStyleChanged: (value) => setState(() => _style = value),
+                  onAsk: () => _ask(controller),
+                ),
+                const SizedBox(height: FutureMintTokens.space5),
+                if (lesson == null)
+                  SoftCard(
+                    color: Theme.of(context).brightness == Brightness.dark
+                        ? FutureMintTokens.darkSurfaceRaised
+                        : FutureMintTokens.lavenderSoft,
+                    child: controller.busy
+                        ? const Row(
+                            children: [
+                              SizedBox.square(
+                                dimension: 20,
+                                child: CircularProgressIndicator(
+                                  strokeWidth: 2,
+                                ),
+                              ),
+                              SizedBox(width: FutureMintTokens.space3),
+                              Expanded(child: Text('正在準備個人化微課…')),
+                            ],
+                          )
+                        : FilledButton.tonalIcon(
+                            onPressed: controller.loadLesson,
+                            icon: const Icon(Icons.refresh_rounded),
+                            label: const Text('重新載入微課'),
+                          ),
+                  )
+                else
+                  _LessonContent(lesson: lesson, controller: controller),
+              ],
+            ),
+          ],
         ),
       ),
     );

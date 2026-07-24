@@ -10,7 +10,7 @@
 ## 與程式碼的關係
 
 - Flutter tokens 與 Material theme 位於 `app/lib/design/`。
-- `soft_components.dart` 提供共用 `SoftCard`、`PageHeading` 與 Flutter 原生幾何 `MoneyBuddy`；目前學生 UI 另使用 `app/assets/images/` 的本機 PNG 插圖。Web／Android 品牌圖示是本機 SVG／Android Vector Drawable，不依賴遠端圖片或字型。
+- `soft_components.dart` 提供共用 `SoftCard`、`PageHeading`、`ResponsivePageCanvas` 與 Flutter 原生幾何 `MoneyBuddy`；目前學生 UI 另使用 `app/assets/images/` 的本機 PNG 插圖。Web／Android 品牌圖示是本機 SVG／Android Vector Drawable，不依賴遠端圖片或字型。
 - 新畫面先重用既有 semantic colors、type scale、spacing 與 components，不自行新增近似 token。
 - 規範與實作改變時必須同步兩邊；不得只改文件或只改 UI，造成交接內容漂移。
 
@@ -21,6 +21,7 @@
 ## 人工品質檢查
 
 - 375px、768px、1024px、1440px 與 landscape 不溢位。
+- 可用的 desktop post-rail 寬度達 900dp 時，登入後的主要頁面必須填滿該網頁畫布（保留規定 gutter），不可置中成狹窄 App 卡片；登入、說明與設定彈窗則維持聚焦寬度。
 - 角色插圖與星點等裝飾必須放在自己的版位或內容背景層；不得以負位移、前景絕對定位或固定座標遮住文字、數值、表單與操作項。
 - 學生提供的角色插圖應保有明顯的視覺份量；窄寬時改成獨立視覺列或卡片尾端，而非因避免遮擋就縮小到失去存在感或移除。
 - 窄寬或 130% 以上字級時，多選項切換控制項應改為可換行的 chips／buttons，不能強迫所有項目維持單列。

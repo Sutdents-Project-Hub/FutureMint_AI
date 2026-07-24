@@ -101,8 +101,34 @@ void main() {
     );
   });
 
-  test('global content width is bounded to 1200', () {
+  test('medium-width content cap remains available', () {
     expect(FutureMintTokens.pageMaxWidth, 1200);
+    expect(FutureMintTokens.desktopCanvasBreakpoint, 900);
+  });
+
+  testWidgets('ResponsivePageCanvas uses the full desktop canvas', (
+    tester,
+  ) async {
+    tester.view.physicalSize = const Size(1440, 900);
+    tester.view.devicePixelRatio = 1;
+    addTearDown(tester.view.resetPhysicalSize);
+    addTearDown(tester.view.resetDevicePixelRatio);
+
+    await tester.pumpWidget(
+      const MaterialApp(
+        home: Scaffold(
+          body: ResponsivePageCanvas(
+            compactMaxWidth: FutureMintTokens.contentReading,
+            child: SizedBox(key: Key('desktop-page-child'), height: 24),
+          ),
+        ),
+      ),
+    );
+
+    expect(
+      tester.getSize(find.byKey(const Key('desktop-page-child'))).width,
+      1440,
+    );
   });
 
   test('light theme uses indigo for primary actions and selections', () {

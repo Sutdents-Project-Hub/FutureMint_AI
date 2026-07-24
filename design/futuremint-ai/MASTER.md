@@ -81,7 +81,7 @@ Every foreground/background pair used for body text must meet WCAG 4.5:1. State 
 ## Spacing, shape, and elevation
 
 - Spacing tokens: 4, 8, 12, 16, 24, 32, 48, 64dp.
-- Phone gutters: 16dp; tablet: 24dp; desktop content max width: 1200dp.
+- Phone gutters: 16dp; tablet: 24dp; wide-web gutters: 32dp. Primary signed-in pages use the available post-rail canvas once it reaches 900dp; only focused reading copy inside a surface may keep its own line-length limit.
 - Card radius: 20dp; Hero radius: 28dp; input radius: 12dp; buttons and chips: pill.
 - Card padding: 16dp on phone, 20–24dp on larger screens.
 - Most light cards are flat and borderless. Use a 1dp hairline only when a white surface must be separated from the near-white canvas; reserve a subtle soft shadow for an exceptional floating layer, never for every card. The current dark presentation uses progressively lighter surfaces and restrained purple glow around the Hero for depth.
@@ -92,7 +92,7 @@ Every foreground/background pair used for body text must meet WCAG 4.5:1. State 
 - Under 720dp: five-item bottom navigation inside a dark rounded shell; Capture remains the central, highest-priority destination.
 - 720dp and above: a 264dp NavigationRail; the rail becomes independently scrollable below 560dp height.
 - Dashboard switches from a single column to its bento arrangement only when the post-rail content area is at least 900dp wide. Do not use the full viewport width for this decision.
-- Page content remains bounded to 1200dp; reading/list surfaces use narrower 760／840／980dp bounds where appropriate.
+- When the post-rail page area reaches 900dp, primary destinations expand to the full available web canvas instead of appearing as a centred phone-sized App. Below that threshold, 760／840／980dp compact bounds keep forms and lists comfortable. Authentication, recovery, help, settings sheets, and dialogs remain deliberately focused and bounded.
 - Use `LayoutBuilder`; do not hardcode device width assumptions.
 - Lists reserve padding for persistent navigation and safe areas.
 - Support portrait, landscape, browser keyboard navigation, and text scaling to 200% without horizontal overflow.
@@ -120,7 +120,7 @@ Every foreground/background pair used for body text must meet WCAG 4.5:1. State 
 - Capture input is text／paste only in this MVP; do not add image upload or OCR controls.
 - Navigation: icons and labels from Material Symbols only; active location uses text weight, icon, and an indigo/lavender indicator in addition to color.
 - Charts: accessible violet/amber series, direct values, a written summary, empty/loading/error states, and reduced-motion support.
-- Authentication: sign-in／register screens use the same dark presentation, one clear primary action, visible password rules, and non-technical retry copy. Guest entry must state that data is temporary before entering the app and remain reachable in a 600dp-high viewport.
+- Authentication: sign-in／register screens use the same dark presentation, one clear primary action, visible password rules, and non-technical retry copy. On a normal-height desktop, the mascot artwork and form stay as one compact vertical group with a 8–32dp gap; guest entry must state that data is temporary before entering the app and remain reachable in a 600dp-high viewport.
 - Account state: App shell shows signed-in or guest state with text and icon. Guest state has a persistent, wrapping notice that data is not stored; logout／leave guest is available in Settings.
 - Feedback: snackbars use polite announcements. Network or authentication failure never fabricates a saved result or switches data sources silently.
 

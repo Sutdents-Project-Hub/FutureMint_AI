@@ -69,31 +69,39 @@ class AppShell extends StatelessWidget {
     return LayoutBuilder(
       builder: (context, constraints) {
         final wide = constraints.maxWidth >= FutureMintTokens.railBreakpoint;
+        final useWebCanvas =
+            constraints.maxWidth >= FutureMintTokens.wideBreakpoint;
         final compactMobileActions =
             constraints.maxWidth < 360 ||
             MediaQuery.textScalerOf(context).scale(1) >= 1.3;
+        final contentColumn = Column(
+          children: [
+            if (controller.errorMessage != null ||
+                controller.noticeMessage != null)
+              _GlobalMessage(
+                message: controller.errorMessage ?? controller.noticeMessage!,
+                error: controller.errorMessage != null,
+                onClose: controller.clearMessages,
+              ),
+            if (guest) const _GuestNotice(),
+            Expanded(child: child),
+          ],
+        );
         final content = SafeArea(
-          child: Center(
-            child: ConstrainedBox(
-              constraints: const BoxConstraints(
-                maxWidth: FutureMintTokens.pageMaxWidth,
-              ),
-              child: Column(
-                children: [
-                  if (controller.errorMessage != null ||
-                      controller.noticeMessage != null)
-                    _GlobalMessage(
-                      message:
-                          controller.errorMessage ?? controller.noticeMessage!,
-                      error: controller.errorMessage != null,
-                      onClose: controller.clearMessages,
+          child: useWebCanvas
+              ? SizedBox(
+                  key: const Key('app-web-content-canvas'),
+                  width: double.infinity,
+                  child: contentColumn,
+                )
+              : Center(
+                  child: ConstrainedBox(
+                    constraints: const BoxConstraints(
+                      maxWidth: FutureMintTokens.pageMaxWidth,
                     ),
-                  if (guest) const _GuestNotice(),
-                  Expanded(child: child),
-                ],
-              ),
-            ),
-          ),
+                    child: contentColumn,
+                  ),
+                ),
         );
 
         if (!wide) {

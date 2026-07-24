@@ -51,127 +51,116 @@ class _RecordsScreenState extends State<RecordsScreen> {
           FutureMintTokens.space7,
         ),
         children: [
-          Center(
-            child: ConstrainedBox(
-              constraints: const BoxConstraints(
-                maxWidth: FutureMintTokens.contentReading,
-              ),
-              child: Column(
-                children: [
-                  Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      const _RecordsHeadingArtwork(),
-                      const SizedBox(height: FutureMintTokens.space5),
-                      if (controller.insights != null) ...[
-                        // Soft glow behind the cashflow card.
-                        Container(
-                          decoration: BoxDecoration(
-                            borderRadius: BorderRadius.circular(20),
-                            boxShadow: [
-                              BoxShadow(
-                                color: FutureMintTokens.skyInk.withValues(
-                                  alpha: 0.35,
-                                ),
-                                blurRadius: 40,
-                                spreadRadius: 2,
+          ResponsivePageCanvas(
+            compactMaxWidth: FutureMintTokens.contentReading,
+            child: Column(
+              children: [
+                Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    const _RecordsHeadingArtwork(),
+                    const SizedBox(height: FutureMintTokens.space5),
+                    if (controller.insights != null) ...[
+                      // Soft glow behind the cashflow card.
+                      Container(
+                        decoration: BoxDecoration(
+                          borderRadius: BorderRadius.circular(20),
+                          boxShadow: [
+                            BoxShadow(
+                              color: FutureMintTokens.skyInk.withValues(
+                                alpha: 0.35,
                               ),
-                            ],
-                          ),
-                          child: CashflowAnalysis(
-                            insights: controller.insights!,
-                          ),
+                              blurRadius: 40,
+                              spreadRadius: 2,
+                            ),
+                          ],
                         ),
-                        const SizedBox(height: FutureMintTokens.space6),
-                      ],
-                      Text(
-                        '交易明細',
-                        style: Theme.of(context).textTheme.titleLarge,
+                        child: CashflowAnalysis(insights: controller.insights!),
                       ),
-                      const SizedBox(height: FutureMintTokens.space3),
-                      LayoutBuilder(
-                        builder: (context, filterConstraints) {
-                          final compact =
-                              filterConstraints.maxWidth < 440 ||
-                              MediaQuery.textScalerOf(context).scale(1) >= 1.3;
-                          if (compact) {
-                            return Wrap(
-                              spacing: FutureMintTokens.space2,
-                              runSpacing: FutureMintTokens.space2,
-                              children: [
-                                for (final entry in const [
-                                  (_RecordFilter.all, '全部'),
-                                  (_RecordFilter.expense, '支出'),
-                                  (_RecordFilter.income, '收入'),
-                                  (_RecordFilter.subscription, '訂閱'),
-                                ])
-                                  ChoiceChip(
-                                    label: Text(entry.$2),
-                                    selected: filter == entry.$1,
-                                    onSelected: (_) =>
-                                        setState(() => filter = entry.$1),
-                                  ),
-                              ],
-                            );
-                          }
-                          return SegmentedButton<_RecordFilter>(
-                            showSelectedIcon: false,
-                            segments: const [
-                              ButtonSegment(
-                                value: _RecordFilter.all,
-                                label: Text('全部'),
-                              ),
-                              ButtonSegment(
-                                value: _RecordFilter.expense,
-                                label: Text('支出'),
-                              ),
-                              ButtonSegment(
-                                value: _RecordFilter.income,
-                                label: Text('收入'),
-                              ),
-                              ButtonSegment(
-                                value: _RecordFilter.subscription,
-                                label: Text('訂閱'),
-                              ),
-                            ],
-                            selected: {filter},
-                            onSelectionChanged: (value) =>
-                                setState(() => filter = value.first),
-                          );
-                        },
-                      ),
-                      const SizedBox(height: FutureMintTokens.space5),
-                      const _RecordsListArtwork(),
-                      const SizedBox(height: FutureMintTokens.space2),
-                      SoftCard(
-                        key: const Key('records-list-surface'),
-                        borderWidth: 1,
-                        padding: EdgeInsets.zero,
-                        child: events.isEmpty
-                            ? const Padding(
-                                padding: EdgeInsets.all(
-                                  FutureMintTokens.space5,
-                                ),
-                                child: Center(child: Text('這個分類還沒有紀錄。')),
-                              )
-                            : Column(
-                                children: [
-                                  for (
-                                    var index = 0;
-                                    index < events.length;
-                                    index++
-                                  ) ...[
-                                    _RecordRow(event: events[index]),
-                                    if (index != events.length - 1)
-                                      const Divider(height: 1),
-                                  ],
-                                ],
-                              ),
-                      ),
+                      const SizedBox(height: FutureMintTokens.space6),
                     ],
-                  ),
-                ],
-              ),
+                    Text('交易明細', style: Theme.of(context).textTheme.titleLarge),
+                    const SizedBox(height: FutureMintTokens.space3),
+                    LayoutBuilder(
+                      builder: (context, filterConstraints) {
+                        final compact =
+                            filterConstraints.maxWidth < 440 ||
+                            MediaQuery.textScalerOf(context).scale(1) >= 1.3;
+                        if (compact) {
+                          return Wrap(
+                            spacing: FutureMintTokens.space2,
+                            runSpacing: FutureMintTokens.space2,
+                            children: [
+                              for (final entry in const [
+                                (_RecordFilter.all, '全部'),
+                                (_RecordFilter.expense, '支出'),
+                                (_RecordFilter.income, '收入'),
+                                (_RecordFilter.subscription, '訂閱'),
+                              ])
+                                ChoiceChip(
+                                  label: Text(entry.$2),
+                                  selected: filter == entry.$1,
+                                  onSelected: (_) =>
+                                      setState(() => filter = entry.$1),
+                                ),
+                            ],
+                          );
+                        }
+                        return SegmentedButton<_RecordFilter>(
+                          showSelectedIcon: false,
+                          segments: const [
+                            ButtonSegment(
+                              value: _RecordFilter.all,
+                              label: Text('全部'),
+                            ),
+                            ButtonSegment(
+                              value: _RecordFilter.expense,
+                              label: Text('支出'),
+                            ),
+                            ButtonSegment(
+                              value: _RecordFilter.income,
+                              label: Text('收入'),
+                            ),
+                            ButtonSegment(
+                              value: _RecordFilter.subscription,
+                              label: Text('訂閱'),
+                            ),
+                          ],
+                          selected: {filter},
+                          onSelectionChanged: (value) =>
+                              setState(() => filter = value.first),
+                        );
+                      },
+                    ),
+                    const SizedBox(height: FutureMintTokens.space5),
+                    const _RecordsListArtwork(),
+                    const SizedBox(height: FutureMintTokens.space2),
+                    SoftCard(
+                      key: const Key('records-list-surface'),
+                      borderWidth: 1,
+                      padding: EdgeInsets.zero,
+                      child: events.isEmpty
+                          ? const Padding(
+                              padding: EdgeInsets.all(FutureMintTokens.space5),
+                              child: Center(child: Text('這個分類還沒有紀錄。')),
+                            )
+                          : Column(
+                              children: [
+                                for (
+                                  var index = 0;
+                                  index < events.length;
+                                  index++
+                                ) ...[
+                                  _RecordRow(event: events[index]),
+                                  if (index != events.length - 1)
+                                    const Divider(height: 1),
+                                ],
+                              ],
+                            ),
+                    ),
+                  ],
+                ),
+              ],
             ),
           ),
         ],
