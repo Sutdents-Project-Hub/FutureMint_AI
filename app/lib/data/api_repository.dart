@@ -67,6 +67,7 @@ class ApiRepository implements FutureMintRepository {
         'GET' => _client.get(_uri(path), headers: headers),
         'PUT' => _client.put(_uri(path), headers: headers, body: encoded),
         'PATCH' => _client.patch(_uri(path), headers: headers, body: encoded),
+        'DELETE' => _client.delete(_uri(path), headers: headers),
         _ => _client.post(_uri(path), headers: headers, body: encoded),
       };
       response = await request.timeout(requestTimeout);
@@ -199,6 +200,46 @@ class ApiRepository implements FutureMintRepository {
           )
           as Map<String, dynamic>,
     );
+  }
+
+  Map<String, dynamic> _moneyEventPayload(CaptureDraft draft) {
+    final amount = draft.amountMinor;
+    if (amount == null || amount <= 0) {
+      throw const FormatException('請先補上正確金額。');
+    }
+    return {
+      'type': draft.type.name,
+      'amountMinor': amount,
+      'currency': 'TWD',
+      'category': draft.category.name,
+      if (draft.merchant != null) 'merchant': draft.merchant,
+      'occurredAt': _apiDateTime(draft.occurredAt),
+      if (draft.recurrence != null)
+        'recurrence': {
+          'billingCycle': draft.recurrence!.billingCycle.name,
+          if (draft.recurrence!.nextBillingAt != null)
+            'nextBillingAt': _apiDateTime(draft.recurrence!.nextBillingAt!),
+        },
+      if (draft.split != null) 'split': draft.split!.toJson(),
+      if (draft.spendingIntent != null)
+        'spendingIntent': draft.spendingIntent!.name,
+      if (draft.intentReason != null) 'intentReason': draft.intentReason,
+      'confirmed': true,
+    };
+  }
+
+  @override
+  Future<MoneyEvent> updateMoneyEvent(
+    String eventId,
+    CaptureDraft draft,
+  ) async => MoneyEvent.fromJson(
+    await _send('PUT', 'money-events/$eventId', body: _moneyEventPayload(draft))
+        as Map<String, dynamic>,
+  );
+
+  @override
+  Future<void> deleteMoneyEvent(String eventId) async {
+    await _send('DELETE', 'money-events/$eventId');
   }
 
   @override

@@ -4,7 +4,7 @@
 
 - 正式帳號資料保存於 Coolify PostgreSQL 17；Client 不直接連資料庫。
 - 自然語言原文只存在於單次 parse request 生命週期，不寫入 PostgreSQL、MoneyEvent、SharedPreferences 或一般 log。
-- API 從 Bearer session 推導 `user_id`；所有 profile、event、lesson query 都以該帳號篩選。
+- API 從 Bearer session 推導 `user_id`；所有 profile、event、lesson query 都以該帳號篩選。MoneyEvent 的讀取、完整更新與刪除均以 `(user_id, event_id)` 篩選，跨帳號一律不透露是否存在。
 - 訪客模式只存在 Flutter process memory，重新整理、關閉或切換帳號後消失。
 - 只使用合成競賽資料；未取得同意與去識別前，不輸入真實未成年人財務資料。
 

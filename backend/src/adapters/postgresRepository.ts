@@ -5,6 +5,7 @@ import { Pool } from "pg";
 import type {
   AuthRepository,
   ConfirmedMoneyEventInput,
+  EditableMoneyEventInput,
   FutureMintRepository,
 } from "../application/ports";
 import { DomainError } from "../contracts/errors";
@@ -342,6 +343,50 @@ export class PostgresRepository
       ],
     );
     return moneyEventFromRow(rows[0]);
+  }
+
+  async updateMoneyEvent(
+    userId: string,
+    eventId: string,
+    input: EditableMoneyEventInput,
+  ): Promise<MoneyEvent> {
+    const { rows } = await this.client.query<MoneyEventRow>(
+      `UPDATE money_events SET
+        type = $3, amount_minor = $4, currency = $5, category = $6,
+        merchant = $7, occurred_at = $8, recurrence = $9::jsonb,
+        split = $10::jsonb, spending_intent = $11, intent_reason = $12,
+        updated_at = now()
+      WHERE user_id = $1 AND id = $2
+      RETURNING *`,
+      [
+        userId,
+        eventId,
+        input.type,
+        input.amountMinor,
+        input.currency,
+        input.category,
+        input.merchant ?? null,
+        input.occurredAt,
+        input.recurrence ? JSON.stringify(input.recurrence) : null,
+        input.split ? JSON.stringify(input.split) : null,
+        input.spendingIntent ?? null,
+        input.intentReason ?? null,
+      ],
+    );
+    if (!rows[0]) {
+      throw new DomainError("money_event_not_found", "找不到這筆紀錄。", 404);
+    }
+    return moneyEventFromRow(rows[0]);
+  }
+
+  async deleteMoneyEvent(userId: string, eventId: string): Promise<void> {
+    const { rowCount } = await this.client.query(
+      "DELETE FROM money_events WHERE user_id = $1 AND id = $2",
+      [userId, eventId],
+    );
+    if (rowCount !== 1) {
+      throw new DomainError("money_event_not_found", "找不到這筆紀錄。", 404);
+    }
   }
 
   async getLesson(userId: string, lessonId: string): Promise<Lesson | null> {

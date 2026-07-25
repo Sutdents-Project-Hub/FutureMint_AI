@@ -1,0 +1,302 @@
+<!doctype html>
+<html lang="zh-Hant" data-resolution="landscape">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=1920, height=1080" />
+    <script src="https://cdn.jsdelivr.net/npm/gsap@3.14.2/dist/gsap.min.js"></script>
+    <style>
+      * { box-sizing: border-box; margin: 0; padding: 0; }
+
+      html, body {
+        width: 1920px;
+        height: 1080px;
+        overflow: hidden;
+        background: #14131f;
+      }
+
+      body {
+        color: #fff8ee;
+        font-family: "PingFang TC", "Microsoft JhengHei", system-ui, sans-serif;
+      }
+
+      @font-face { font-family: "PingFang TC"; src: local("PingFang TC"); }
+      @font-face { font-family: "Microsoft JhengHei"; src: local("Microsoft JhengHei"); }
+
+      #root {
+        position: relative;
+        width: 1920px;
+        height: 1080px;
+        overflow: hidden;
+        isolation: isolate;
+        background: #14131f;
+      }
+
+      .footage-window {
+        position: absolute;
+        inset: 0;
+        overflow: hidden;
+      }
+
+      .camera {
+        position: absolute;
+        inset: 0;
+        transform-origin: 50% 50%;
+        will-change: transform;
+      }
+
+      .footage {
+        position: absolute;
+        inset: 0;
+        width: 100%;
+        height: 100%;
+        object-fit: cover;
+        will-change: opacity;
+      }
+
+      .phase-label {
+        position: absolute;
+        left: 292px;
+        top: 62px;
+        min-width: 336px;
+        padding: 14px 20px 16px;
+        border: 1px solid rgba(184, 174, 255, 0.46);
+        border-radius: 18px;
+        background: rgba(20, 19, 31, 0.78);
+        box-shadow: 0 12px 34px rgba(10, 8, 20, 0.26);
+        backdrop-filter: blur(10px);
+      }
+
+      .phase-label__eyebrow {
+        color: #c3bcff;
+        font-size: 18px;
+        font-weight: 700;
+        letter-spacing: 0.12em;
+        line-height: 1;
+      }
+
+      .phase-label__title {
+        margin-top: 9px;
+        color: #fff8ee;
+        font-size: 31px;
+        font-weight: 760;
+        letter-spacing: 0.01em;
+        line-height: 1.14;
+      }
+
+      .focus-ring {
+        position: absolute;
+        border: 4px solid rgba(195, 188, 255, 0.95);
+        border-radius: 999px;
+        box-shadow: 0 0 0 10px rgba(184, 174, 255, 0.12), 0 0 38px rgba(184, 174, 255, 0.38);
+        will-change: opacity, transform;
+      }
+
+      .focus-ring::after {
+        content: "";
+        position: absolute;
+        right: 5%;
+        top: -10px;
+        width: 16px;
+        height: 16px;
+        border-radius: 50%;
+        background: #fff8ee;
+        box-shadow: 0 0 0 7px #393368;
+      }
+
+      #input-focus { left: 286px; top: 278px; width: 1360px; height: 140px; }
+      #confirm-focus { left: 525px; top: 814px; width: 916px; height: 82px; }
+      #seed-focus { left: 1030px; top: 362px; width: 740px; height: 450px; }
+
+      .education-note {
+        position: absolute;
+        right: 66px;
+        bottom: 58px;
+        display: flex;
+        align-items: center;
+        gap: 12px;
+        padding: 13px 17px;
+        border: 1px solid rgba(184, 174, 255, 0.52);
+        border-radius: 14px;
+        background: rgba(20, 19, 31, 0.84);
+        color: #fff8ee;
+        font-size: 20px;
+        font-weight: 650;
+        box-shadow: 0 12px 32px rgba(10, 8, 20, 0.26);
+      }
+
+      .education-note__dot {
+        width: 10px;
+        height: 10px;
+        border-radius: 50%;
+        background: #b8aeff;
+        box-shadow: 0 0 0 5px rgba(184, 174, 255, 0.17);
+      }
+
+      .end-matte {
+        position: absolute;
+        inset: 0;
+        opacity: 0;
+        background: linear-gradient(180deg, rgba(20, 19, 31, 0.02) 0%, rgba(20, 19, 31, 0.38) 58%, rgba(20, 19, 31, 0.9) 100%);
+      }
+
+      .closing-line {
+        position: absolute;
+        left: 292px;
+        bottom: 82px;
+        max-width: 980px;
+      }
+
+      .closing-line__brand {
+        color: #c3bcff;
+        font-size: 24px;
+        font-weight: 740;
+        letter-spacing: 0.12em;
+      }
+
+      .closing-line__statement {
+        margin-top: 14px;
+        color: #fff8ee;
+        font-size: 50px;
+        font-weight: 780;
+        letter-spacing: 0.01em;
+        line-height: 1.14;
+        text-shadow: 0 10px 26px rgba(10, 8, 20, 0.42);
+      }
+    </style>
+  </head>
+  <body>
+    <div id="root" data-composition-id="main" data-start="0" data-duration="60" data-width="1920" data-height="1080">
+      <div class="footage-window">
+        <div id="camera-dashboard" class="camera" data-layout-allow-overflow>
+          <video id="footage-dashboard" class="clip footage" src="assets/futuremint-screen-cfr.mp4" muted playsinline data-start="0" data-duration="5.45" data-media-start="0" data-track-index="0"></video>
+        </div>
+      </div>
+      <div class="footage-window">
+        <div id="camera-capture" class="camera" data-layout-allow-overflow>
+          <video id="footage-capture" class="clip footage" src="assets/futuremint-screen-cfr.mp4" muted playsinline data-start="5" data-duration="13.5" data-media-start="8" data-track-index="1"></video>
+        </div>
+      </div>
+      <div class="footage-window">
+        <div id="camera-insights" class="camera" data-layout-allow-overflow>
+          <video id="footage-insights" class="clip footage" src="assets/futuremint-screen-cfr.mp4" muted playsinline data-start="18.05" data-duration="8.35" data-media-start="28" data-track-index="0"></video>
+        </div>
+      </div>
+      <div class="footage-window">
+        <div id="camera-learning" class="camera" data-layout-allow-overflow>
+          <video id="footage-learning" class="clip footage" src="assets/futuremint-screen-cfr.mp4" muted playsinline data-start="26" data-duration="8.35" data-media-start="37" data-track-index="1"></video>
+        </div>
+      </div>
+      <div class="footage-window">
+        <div id="camera-seed" class="camera" data-layout-allow-overflow>
+          <video id="footage-seed" class="clip footage" src="assets/futuremint-screen-cfr.mp4" muted playsinline data-start="33.95" data-duration="12.5" data-media-start="44" data-track-index="0"></video>
+        </div>
+      </div>
+      <div class="footage-window">
+        <div id="camera-invest" class="camera" data-layout-allow-overflow>
+          <video id="footage-invest" class="clip footage" src="assets/futuremint-screen-cfr.mp4" muted playsinline data-start="46.05" data-duration="9.35" data-media-start="60" data-track-index="1"></video>
+        </div>
+      </div>
+      <div class="footage-window">
+        <div id="camera-outro" class="camera" data-layout-allow-overflow>
+          <video id="footage-outro" class="clip footage" src="assets/futuremint-screen-cfr.mp4" muted playsinline data-start="55" data-duration="5" data-media-start="76" data-track-index="0"></video>
+        </div>
+      </div>
+
+      <section id="label-intro" class="clip phase-label" data-start="0" data-duration="5" data-track-index="2">
+        <p class="phase-label__eyebrow">FUTUREMINT AI</p>
+        <h1 class="phase-label__title">金錢決策教練</h1>
+      </section>
+      <section id="label-capture" class="clip phase-label" data-start="5" data-duration="13.05" data-track-index="3">
+        <p class="phase-label__eyebrow">AI 快速記一筆</p>
+        <h2 class="phase-label__title">一句話，整理一筆消費</h2>
+      </section>
+      <section id="label-insights" class="clip phase-label" data-start="18.05" data-duration="7.95" data-track-index="4">
+        <p class="phase-label__eyebrow">消費洞察</p>
+        <h2 class="phase-label__title">看見錢花在哪裡</h2>
+      </section>
+      <section id="label-learning" class="clip phase-label" data-start="26" data-duration="7.95" data-track-index="2">
+        <p class="phase-label__eyebrow">個人化學習</p>
+        <h2 class="phase-label__title">下一步，剛好適合現在的你</h2>
+      </section>
+      <section id="label-seed" class="clip phase-label" data-start="33.95" data-duration="12.1" data-track-index="3">
+        <p class="phase-label__eyebrow">FUTURESEED</p>
+        <h2 class="phase-label__title">把長期累積看得見</h2>
+      </section>
+      <section id="label-invest" class="clip phase-label" data-start="46.05" data-duration="8.95" data-track-index="4">
+        <p class="phase-label__eyebrow">投資練習場</p>
+        <h2 class="phase-label__title">練習判斷，不提供買賣建議</h2>
+      </section>
+
+      <div id="input-focus" class="clip focus-ring" data-start="6.1" data-duration="5.2" data-track-index="5"></div>
+      <div id="confirm-focus" class="clip focus-ring" data-start="15.8" data-duration="2.2" data-track-index="6"></div>
+      <div id="seed-focus" class="clip focus-ring" data-start="38.5" data-duration="5.6" data-track-index="5"></div>
+      <div id="invest-note" class="clip education-note" data-start="47.1" data-duration="7.6" data-track-index="6"><span class="education-note__dot"></span>虛擬現金 · 延遲公開行情 · 教育用途</div>
+
+      <div id="end-matte" class="clip end-matte" data-start="55" data-duration="5" data-track-index="2"></div>
+      <section id="closing-line" class="clip closing-line" data-start="55" data-duration="5" data-track-index="6">
+        <p class="closing-line__brand">FUTUREMINT AI</p>
+        <h2 class="closing-line__statement">從一筆消費開始，<br>種下更有選擇的未來。</h2>
+      </section>
+    </div>
+
+    <script>
+      window.__timelines = window.__timelines || {};
+      const tl = gsap.timeline({ paused: true });
+      const footage = ["#footage-dashboard", "#footage-capture", "#footage-insights", "#footage-learning", "#footage-seed", "#footage-invest", "#footage-outro"];
+      const labels = [
+        ["#label-intro", 0], ["#label-capture", 5], ["#label-insights", 18.05],
+        ["#label-learning", 26], ["#label-seed", 33.95], ["#label-invest", 46.05],
+      ];
+
+      tl.set(footage, { opacity: 0 }, 0);
+      tl.set("#footage-dashboard", { opacity: 1 }, 0);
+      tl.set("#camera-dashboard", { scale: 1.035, x: -18, y: 0 }, 0);
+      tl.to("#camera-dashboard", { scale: 1.075, x: -42, y: -12, duration: 4.8, ease: "sine.inOut" }, 0);
+
+      function crossfade(previous, next, at) {
+        tl.to(previous, { opacity: 0, duration: 0.45, ease: "power2.out" }, at);
+        tl.to(next, { opacity: 1, duration: 0.45, ease: "power2.out" }, at);
+      }
+
+      crossfade("#footage-dashboard", "#footage-capture", 5);
+      crossfade("#footage-capture", "#footage-insights", 18.05);
+      crossfade("#footage-insights", "#footage-learning", 26);
+      crossfade("#footage-learning", "#footage-seed", 33.95);
+      crossfade("#footage-seed", "#footage-invest", 46.05);
+      crossfade("#footage-invest", "#footage-outro", 55);
+
+      tl.set("#camera-capture", { scale: 1.07, x: 0, y: 0 }, 5);
+      tl.to("#camera-capture", { scale: 1.23, x: -70, y: -50, duration: 1.15, ease: "power3.out" }, 5.5);
+      tl.to("#camera-capture", { scale: 1.16, x: -28, y: -28, duration: 1.0, ease: "sine.inOut" }, 11.2);
+      tl.to("#camera-capture", { scale: 1.22, x: -35, y: -96, duration: 0.7, ease: "power3.out" }, 15.6);
+
+      tl.set("#camera-insights", { scale: 1.01, x: 0, y: 0 }, 18.05);
+      tl.to("#camera-insights", { scale: 1.055, x: -22, y: -12, duration: 6.8, ease: "sine.inOut" }, 18.2);
+      tl.set("#camera-learning", { scale: 1.035, x: -10, y: 0 }, 26);
+      tl.to("#camera-learning", { scale: 1.075, x: -30, y: -18, duration: 7.6, ease: "sine.inOut" }, 26.2);
+      tl.set("#camera-seed", { scale: 1.025, x: 0, y: 0 }, 33.95);
+      tl.to("#camera-seed", { scale: 1.115, x: -68, y: -18, duration: 2.0, ease: "power3.out" }, 37.2);
+      tl.to("#camera-seed", { scale: 1.07, x: -42, y: -8, duration: 4.8, ease: "sine.inOut" }, 41.2);
+      tl.set("#camera-invest", { scale: 1.01, x: 0, y: 0 }, 46.05);
+      tl.to("#camera-invest", { scale: 1.04, x: -16, y: -10, duration: 8.3, ease: "sine.inOut" }, 46.2);
+      tl.set("#camera-outro", { scale: 1.02, x: -8, y: 0 }, 55);
+      tl.to("#camera-outro", { scale: 1.065, x: -40, y: -10, duration: 4.6, ease: "sine.inOut" }, 55.2);
+
+      labels.forEach(([selector, start]) => {
+        tl.fromTo(selector, { opacity: 0, y: 16 }, { opacity: 1, y: 0, duration: 0.35, ease: "power3.out" }, start + 0.18);
+      });
+      tl.fromTo("#input-focus", { opacity: 0, scale: 0.92 }, { opacity: 1, scale: 1, duration: 0.35, ease: "power3.out" }, 6.2);
+      tl.to("#input-focus", { opacity: 0, duration: 0.3, ease: "power2.in" }, 10.9);
+      tl.fromTo("#confirm-focus", { opacity: 0, scale: 0.9 }, { opacity: 1, scale: 1, duration: 0.3, ease: "power3.out" }, 15.9);
+      tl.to("#confirm-focus", { opacity: 0, duration: 0.25, ease: "power2.in" }, 17.7);
+      tl.fromTo("#seed-focus", { opacity: 0, scale: 0.9 }, { opacity: 1, scale: 1, duration: 0.4, ease: "power3.out" }, 38.6);
+      tl.to("#seed-focus", { opacity: 0, duration: 0.35, ease: "power2.in" }, 43.7);
+      tl.fromTo("#invest-note", { opacity: 0, y: 16 }, { opacity: 1, y: 0, duration: 0.35, ease: "power3.out" }, 47.2);
+      tl.fromTo("#end-matte", { opacity: 0 }, { opacity: 1, duration: 0.9, ease: "sine.inOut" }, 55);
+      tl.fromTo("#closing-line", { opacity: 0, y: 20 }, { opacity: 1, y: 0, duration: 0.7, ease: "power3.out" }, 55.5);
+      tl.to(["#end-matte", "#closing-line"], { opacity: 0, duration: 0.55, ease: "sine.inOut" }, 59.35);
+
+      window.__timelines["main"] = tl;
+    </script>
+  </body>
+</html>

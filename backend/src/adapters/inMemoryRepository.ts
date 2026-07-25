@@ -16,6 +16,7 @@ import { DomainError } from "../contracts/errors";
 import type {
   AuthRepository,
   ConfirmedMoneyEventInput,
+  EditableMoneyEventInput,
   FutureMintRepository,
 } from "../application/ports";
 
@@ -169,6 +170,46 @@ export class InMemoryRepository
     events.push(event);
     this.events.set(userId, events);
     return { ...event };
+  }
+
+  async updateMoneyEvent(
+    userId: string,
+    eventId: string,
+    input: EditableMoneyEventInput,
+  ): Promise<MoneyEvent> {
+    const events = this.events.get(userId) ?? [];
+    const index = events.findIndex((event) => event.id === eventId);
+    if (index < 0) {
+      throw new DomainError("money_event_not_found", "找不到這筆紀錄。", 404);
+    }
+    const existing = events[index];
+    const updated: MoneyEvent = {
+      ...existing,
+      type: input.type,
+      amountMinor: input.amountMinor,
+      currency: input.currency,
+      category: input.category,
+      merchant: input.merchant,
+      occurredAt: input.occurredAt,
+      recurrence: input.recurrence,
+      split: input.split,
+      spendingIntent: input.spendingIntent,
+      intentReason: input.intentReason,
+      updatedAt: new Date().toISOString(),
+    };
+    events[index] = updated;
+    this.events.set(userId, events);
+    return { ...updated };
+  }
+
+  async deleteMoneyEvent(userId: string, eventId: string): Promise<void> {
+    const events = this.events.get(userId) ?? [];
+    const index = events.findIndex((event) => event.id === eventId);
+    if (index < 0) {
+      throw new DomainError("money_event_not_found", "找不到這筆紀錄。", 404);
+    }
+    events.splice(index, 1);
+    this.events.set(userId, events);
   }
 
   async getLesson(userId: string, lessonId: string): Promise<Lesson | null> {

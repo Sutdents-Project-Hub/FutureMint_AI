@@ -102,6 +102,10 @@ void main() {
     tester,
   ) async {
     final controller = await createController();
+    tester.view.physicalSize = const Size(1200, 900);
+    tester.view.devicePixelRatio = 1;
+    addTearDown(tester.view.resetPhysicalSize);
+    addTearDown(tester.view.resetDevicePixelRatio);
     await tester.pumpWidget(FutureMintApp(controller: controller));
     await tester.pumpAndSettle();
 
@@ -244,6 +248,33 @@ void main() {
     expect(find.text('珍奶'), findsOneWidget);
     expect(find.text('打工收入'), findsOneWidget);
     expect(find.text('影音訂閱'), findsOneWidget);
+    expect(tester.takeException(), isNull);
+  });
+
+  testWidgets('opens the saved-event editor from a record action menu', (
+    tester,
+  ) async {
+    final controller = await createController();
+    tester.view.physicalSize = const Size(1200, 900);
+    tester.view.devicePixelRatio = 1;
+    addTearDown(tester.view.resetPhysicalSize);
+    addTearDown(tester.view.resetDevicePixelRatio);
+    await tester.pumpWidget(FutureMintApp(controller: controller));
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('紀錄').last);
+    await tester.pumpAndSettle();
+
+    await tester.drag(find.byType(ListView).first, const Offset(0, -700));
+    await tester.pumpAndSettle();
+    await tester.tap(find.byTooltip('交易操作：遊戲點數'));
+    await tester.pumpAndSettle();
+    expect(find.text('編輯'), findsOneWidget);
+    expect(find.text('刪除'), findsOneWidget);
+
+    await tester.tap(find.text('編輯'));
+    await tester.pumpAndSettle();
+    expect(find.text('編輯交易'), findsOneWidget);
+    expect(find.text('儲存變更'), findsOneWidget);
     expect(tester.takeException(), isNull);
   });
 

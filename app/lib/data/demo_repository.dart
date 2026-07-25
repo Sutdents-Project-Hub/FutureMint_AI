@@ -408,6 +408,51 @@ class GuestRepository implements FutureMintRepository {
   }
 
   @override
+  Future<MoneyEvent> updateMoneyEvent(
+    String eventId,
+    CaptureDraft draft,
+  ) async {
+    if (draft.amountMinor == null || draft.amountMinor! <= 0) {
+      throw const FormatException('請先補上正確金額。');
+    }
+    final events = await listMoneyEvents();
+    final index = events.indexWhere((event) => event.id == eventId);
+    if (index < 0) throw const FormatException('找不到這筆紀錄。');
+    final existing = events[index];
+    final updated = MoneyEvent(
+      id: existing.id,
+      userId: existing.userId,
+      type: draft.type,
+      amountMinor: draft.amountMinor!,
+      currency: 'TWD',
+      category: draft.category,
+      merchant: draft.merchant,
+      occurredAt: draft.occurredAt,
+      recurrence: draft.recurrence,
+      split: draft.split,
+      spendingIntent: draft.spendingIntent,
+      intentReason: draft.intentReason,
+      idempotencyKey: existing.idempotencyKey,
+      createdAt: existing.createdAt,
+      updatedAt: DateTime.now(),
+    );
+    events[index] = updated;
+    await _writeEvents(events);
+    return updated;
+  }
+
+  @override
+  Future<void> deleteMoneyEvent(String eventId) async {
+    final events = await listMoneyEvents();
+    final originalLength = events.length;
+    events.removeWhere((event) => event.id == eventId);
+    if (events.length == originalLength) {
+      throw const FormatException('找不到這筆紀錄。');
+    }
+    await _writeEvents(events);
+  }
+
+  @override
   Future<SubscriptionComparison> compareSubscriptions() async {
     final events = await listMoneyEvents();
     final subscriptions = events

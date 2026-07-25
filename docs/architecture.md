@@ -67,7 +67,7 @@ Runtime 要求明確設定 `AI_PROVIDER=demo|liangjie` 與 `DATA_PROVIDER=memory
 2. API 驗證 session、長度、格式與 allowed fields。
 3. Provider 最多回傳五筆草稿與可修改的需要／想要建議：量界回覆先抽取 JSON，再經 Zod 與語意規則驗證；Demo provider 使用可重現規則。
 4. 回覆來源標示 `liangjie-ai` 或 `deterministic-demo`。
-5. 解析不寫資料庫；使用者修正並確認後才 POST MoneyEvent。
+5. 解析不寫資料庫；使用者修正並確認後才 POST MoneyEvent。已保存紀錄可由該帳號以 `PUT` 完整修改或以 `DELETE` 刪除，Client 隨後重載摘要。
 6. PostgreSQL 以 `(user_id, idempotency_key)` unique constraint 避免重複寫入。
 
 ### Dashboard／Insights／Lessons／FutureSeed

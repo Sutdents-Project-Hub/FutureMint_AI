@@ -28,8 +28,7 @@ export const splitDetailsSchema = z.object({
   userShareMinor: positiveMoney,
 });
 
-export const moneyEventInputSchema = z
-  .object({
+const moneyEventFieldsSchema = z.object({
     type: z.enum(moneyEventTypes),
     amountMinor: positiveMoney,
     currency: z.literal("TWD").default("TWD"),
@@ -47,8 +46,20 @@ export const moneyEventInputSchema = z
     intentReason: z.string().trim().min(1).max(160).optional(),
     confirmed: z.literal(true),
     idempotencyKey: z.string().min(8).max(120),
-  })
-  .superRefine((event, context) => {
+  });
+
+type MoneyEventValidationInput = {
+  type: string;
+  category: string;
+  recurrence?: unknown;
+  split?: unknown;
+  spendingIntent?: unknown;
+};
+
+const validateMoneyEvent = (
+  event: MoneyEventValidationInput,
+  context: z.RefinementCtx,
+) => {
     const validCategory =
       (event.type === "income" && event.category === "income") ||
       (event.type === "subscription" && event.category === "subscription") ||
@@ -90,7 +101,19 @@ export const moneyEventInputSchema = z
         message: "收入不使用需要或想要分類。",
       });
     }
-  });
+  };
+
+export const moneyEventInputSchema = moneyEventFieldsSchema.superRefine(
+  validateMoneyEvent,
+);
+
+export const moneyEventUpdateSchema = moneyEventFieldsSchema
+  .omit({ idempotencyKey: true })
+  .superRefine(validateMoneyEvent);
+
+export const moneyEventIdParamsSchema = z.object({
+  eventId: z.string().trim().min(1).max(120),
+});
 
 export const moneyEventListQuerySchema = z
   .object({

@@ -7,7 +7,7 @@ Android、iOS 與 Web 共用 Client。正式 Web deployment 是 Coolify 中獨�
 - Flutter 3.41.x、Dart 3.11.x；manifest 是 `pubspec.yaml`，lockfile 是 `pubspec.lock`。
 - Provider、go_router、http、SharedPreferences、intl、fl_chart；Client 不安裝資料庫或 AI SDK。
 - 註冊、登入、首次預算／目標設定、登出與 Bearer session。
-- 響應式 dashboard、自然語言 Capture、可修改需要／想要建議、收支圖表、圖形化通知、訂閱檢查、個人學習規劃、金融微課、三路徑 FutureSeed 模擬與延遲行情投資練習場。
+- 響應式 dashboard、自然語言 Capture、可修改需要／想要建議，以及可編輯／刪除已保存帳務的紀錄頁；另有收支圖表、圖形化通知、訂閱檢查、個人學習規劃、金融微課、三路徑 FutureSeed 模擬與延遲行情投資練習場。
 - 學習頁與 FutureSeed 支援自由輸入問題、主題與回答方式個人化；設定可建立／加入家庭關聯，家長只看孩子的預算與趨勢摘要，不共享交易明細。
 - Capture 目前只支援繁體中文文字／貼上輸入，不提供圖片上傳或 OCR，避免把個資影像送出。
 - 訪客模式只使用當次記憶體；重新整理或離開後清除。

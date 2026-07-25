@@ -7,6 +7,32 @@ import 'package:futuremint_app/design/tokens.dart';
 import '../widget_test.dart';
 
 void main() {
+  testWidgets('anchors the learning-plan mascot to the card top edge', (
+    tester,
+  ) async {
+    final controller = await createController();
+    tester.view.physicalSize = const Size(1200, 900);
+    tester.view.devicePixelRatio = 1;
+    addTearDown(tester.view.resetPhysicalSize);
+    addTearDown(tester.view.resetDevicePixelRatio);
+
+    await tester.pumpWidget(FutureMintApp(controller: controller));
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('學習').last);
+    await tester.pumpAndSettle();
+
+    final cardRect = tester.getRect(
+      find.byKey(const Key('learning-plan-card')),
+    );
+    final mascotRect = tester.getRect(
+      find.byKey(const Key('learning-plan-mascot')),
+    );
+    expect(mascotRect.top, closeTo(cardRect.top, .1));
+    expect(mascotRect.right, lessThanOrEqualTo(cardRect.right));
+    expect(mascotRect.bottom, lessThanOrEqualTo(cardRect.bottom));
+    expect(tester.takeException(), isNull);
+  });
+
   testWidgets('lesson records one realistic next action', (tester) async {
     final controller = await createController();
     tester.view.physicalSize = const Size(375, 812);

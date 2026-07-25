@@ -12,11 +12,13 @@ class DraftEditor extends StatefulWidget {
     required this.draft,
     required this.busy,
     required this.onConfirm,
+    this.editing = false,
   });
 
   final CaptureDraft draft;
   final bool busy;
   final ValueChanged<CaptureDraft> onConfirm;
+  final bool editing;
 
   @override
   State<DraftEditor> createState() => _DraftEditorState();
@@ -159,7 +161,7 @@ class _DraftEditorState extends State<DraftEditor> {
   Widget build(BuildContext context) => Semantics(
     container: true,
     explicitChildNodes: true,
-    label: 'AI 已整理草稿，尚未保存',
+    label: widget.editing ? '編輯已保存的交易' : 'AI 已整理草稿，尚未保存',
     child: SoftCard(
       color: Theme.of(context).brightness == Brightness.dark
           ? FutureMintTokens.darkSurfaceRaised
@@ -174,37 +176,43 @@ class _DraftEditorState extends State<DraftEditor> {
             spacing: FutureMintTokens.space3,
             runSpacing: FutureMintTokens.space2,
             children: [
-              Text('確認草稿', style: Theme.of(context).textTheme.titleLarge),
-              Chip(
-                avatar: const Icon(Icons.rule_rounded, size: 16),
-                label: Text(
-                  widget.draft.source == CaptureSource.liangjieAi
-                      ? '量界智算 AI 解析'
-                      : '離線規則解析',
-                ),
+              Text(
+                widget.editing ? '編輯交易' : '確認草稿',
+                style: Theme.of(context).textTheme.titleLarge,
               ),
+              if (!widget.editing)
+                Chip(
+                  avatar: const Icon(Icons.rule_rounded, size: 16),
+                  label: Text(
+                    widget.draft.source == CaptureSource.liangjieAi
+                        ? '量界智算 AI 解析'
+                        : '離線規則解析',
+                  ),
+                ),
             ],
           ),
           const SizedBox(height: FutureMintTokens.space2),
           Text(
-            '解析不會自動存檔，請確認內容後再記下。',
+            widget.editing ? '修改後會立即重新計算預算、分析與訂閱比較。' : '解析不會自動存檔，請確認內容後再記下。',
             style: TextStyle(
               color: Theme.of(context).colorScheme.onSurfaceVariant,
             ),
           ),
-          const SizedBox(height: FutureMintTokens.space2),
-          Text(
-            '你可以修改每個欄位。確認後會依你的版本更新分析；這次修正不會自動拿去訓練 AI。',
-            style: Theme.of(context).textTheme.bodySmall?.copyWith(
-              color: Theme.of(context).colorScheme.onSurfaceVariant,
+          if (!widget.editing) ...[
+            const SizedBox(height: FutureMintTokens.space2),
+            Text(
+              '你可以修改每個欄位。確認後會依你的版本更新分析；這次修正不會自動拿去訓練 AI。',
+              style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                color: Theme.of(context).colorScheme.onSurfaceVariant,
+              ),
             ),
-          ),
-          const SizedBox(height: FutureMintTokens.space2),
-          Text(
-            '解析信心 ${(widget.draft.confidence * 100).round()}%'
-            '${widget.draft.missingFields.isEmpty ? '' : ' · 待補：${widget.draft.missingFields.map(_missingFieldLabel).join('、')}'}',
-            style: Theme.of(context).textTheme.bodySmall,
-          ),
+            const SizedBox(height: FutureMintTokens.space2),
+            Text(
+              '解析信心 ${(widget.draft.confidence * 100).round()}%'
+              '${widget.draft.missingFields.isEmpty ? '' : ' · 待補：${widget.draft.missingFields.map(_missingFieldLabel).join('、')}'}',
+              style: Theme.of(context).textTheme.bodySmall,
+            ),
+          ],
           const SizedBox(height: FutureMintTokens.space5),
           Text('交易基本資料', style: Theme.of(context).textTheme.titleMedium),
           const SizedBox(height: FutureMintTokens.space3),
@@ -447,7 +455,7 @@ class _DraftEditorState extends State<DraftEditor> {
           FilledButton.icon(
             onPressed: widget.busy ? null : _submit,
             icon: const Icon(Icons.check_rounded),
-            label: const Text('確認並記下'),
+            label: Text(widget.editing ? '儲存變更' : '確認並記下'),
           ),
         ],
       ),

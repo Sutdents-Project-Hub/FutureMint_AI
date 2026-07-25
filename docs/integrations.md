@@ -17,9 +17,10 @@
 - API base URL 預設 `https://liangjiewis.com/v1`，由 `LIANGJIE_BASE_URL` 注入。
 - Model id 由 `LIANGJIE_MODEL` 注入；範例值只是設定格式，實際可用 model 必須以團隊帳號驗證。
 - `LIANGJIE_API_KEY` 只存在 Fastify API runtime environment；Flutter、Nginx、GitHub 與 Docker build log 都不應取得。
+- 本機 Compose 預設選擇 deterministic demo；要驗證真實量界連線時，僅在 ignored 根目錄 `.env` 設定 `AI_PROVIDER=liangjie` 與量界 runtime values，再重建 API。不得將 key 放進 `compose.yaml`、Docker build argument 或前端設定。
 - Adapter 使用 OpenAI-compatible chat completions。因 relay 不保證所有 provider-specific parameters，程式以 prompt 要求 JSON，再自行去除 Markdown fence、抽取 object、做 schema 與語意驗證。
 - Lesson、learning plan、coach、capture 的使用者可見文字會再驗證繁體中文與常見簡體字；schema 失敗時回 `ai_invalid_output`，不把英文內容直接顯示給使用者。Coach 另接受 `brief`、`example`、`steps` 個人化回答方式。
-- Timeout、429、invalid JSON、schema mismatch 都回安全且可觀察的 domain error；不記錄 prompt、原文、key 或完整 provider body。
+- Timeout 與 429 依既有 budget 處理；invalid JSON 或 schema mismatch 時，adapter 會以相同最小化 context 重新要求一次完整合規 JSON，仍不合格才回安全且可觀察的 domain error。不記錄 prompt、原文、key 或完整 provider body。
 - 不自動 fallback 到 deterministic provider，避免把 Demo 結果冒充即時 AI。
 
 量界智算是第三方 relay。部署前需確認帳號、模型供應來源、資料處理條款、費率、額度、內容政策、穩定性與競賽規則；不應假設它等同原模型供應商的 SLA 或隱私承諾。

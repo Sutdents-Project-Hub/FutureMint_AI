@@ -289,85 +289,162 @@ class _LearningPlanCard extends StatelessWidget {
   final LearningPlan plan;
 
   @override
-  Widget build(BuildContext context) => SoftCard(
-    color: Theme.of(context).brightness == Brightness.dark
-        ? FutureMintTokens.darkSurfaceRaised
-        : FutureMintTokens.skySoft,
-    borderWidth: 1,
-    child: Column(
-      crossAxisAlignment: CrossAxisAlignment.stretch,
-      children: [
-        Wrap(
-          alignment: WrapAlignment.spaceBetween,
-          crossAxisAlignment: WrapCrossAlignment.center,
-          spacing: FutureMintTokens.space3,
-          runSpacing: FutureMintTokens.space2,
+  Widget build(BuildContext context) {
+    final cardPadding = FutureMintTokens.cardPadding(context);
+    final compact =
+        MediaQuery.sizeOf(context).width < 620 ||
+        MediaQuery.textScalerOf(context).scale(1) >= 1.3;
+    final sourceChip = Chip(
+      avatar: const Icon(Icons.auto_awesome_outlined, size: 16),
+      label: Text(plan.source == CaptureSource.liangjieAi ? 'AI 規劃' : '離線規劃'),
+    );
+
+    if (compact) {
+      return SoftCard(
+        key: const Key('learning-plan-card'),
+        padding: EdgeInsets.zero,
+        color: Theme.of(context).brightness == Brightness.dark
+            ? FutureMintTokens.darkSurfaceRaised
+            : FutureMintTokens.skySoft,
+        borderWidth: 1,
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
-            Text(plan.title, style: Theme.of(context).textTheme.titleLarge),
-            Row(
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                Image.asset(
-                  'assets/images/mascot_peek_purple.png',
-                  width: 132,
-                  height: 132,
-                  fit: BoxFit.contain,
-                  excludeFromSemantics: true,
-                ),
-                const SizedBox(width: FutureMintTokens.space2),
-                Chip(
-                  avatar: const Icon(Icons.auto_awesome_outlined, size: 16),
-                  label: Text(
-                    plan.source == CaptureSource.liangjieAi ? 'AI 規劃' : '離線規劃',
-                  ),
-                ),
-              ],
+            Padding(
+              padding: EdgeInsets.only(right: cardPadding.right),
+              child: const Align(
+                alignment: Alignment.topRight,
+                child: _LearningPlanMascot(),
+              ),
+            ),
+            Padding(
+              padding: EdgeInsets.fromLTRB(
+                cardPadding.left,
+                FutureMintTokens.space2,
+                cardPadding.right,
+                cardPadding.bottom,
+              ),
+              child: _content(context, sourceChip: sourceChip),
             ),
           ],
         ),
-        const SizedBox(height: FutureMintTokens.space2),
-        Text(plan.summary),
-        const SizedBox(height: FutureMintTokens.space4),
-        for (var index = 0; index < plan.modules.length; index++)
+      );
+    }
+
+    return SoftCard(
+      key: const Key('learning-plan-card'),
+      padding: EdgeInsets.zero,
+      color: Theme.of(context).brightness == Brightness.dark
+          ? FutureMintTokens.darkSurfaceRaised
+          : FutureMintTokens.skySoft,
+      borderWidth: 1,
+      child: Row(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Expanded(
+            child: Padding(padding: cardPadding, child: _content(context)),
+          ),
           Padding(
-            padding: const EdgeInsets.only(bottom: FutureMintTokens.space3),
+            padding: EdgeInsets.only(right: cardPadding.right),
             child: Row(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                CircleAvatar(
-                  key: Key('learning-plan-module-$index'),
-                  radius: 16,
-                  backgroundColor: plan.modules[index].status == 'current'
-                      ? FutureMintTokens.mint
-                      : FutureMintTokens.paper,
-                  foregroundColor: plan.modules[index].status == 'current'
-                      ? FutureMintTokens.paper
-                      : FutureMintTokens.ink,
-                  child: Text('${index + 1}'),
-                ),
-                const SizedBox(width: FutureMintTokens.space3),
-                Expanded(
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Text(
-                        plan.modules[index].title,
-                        style: const TextStyle(fontWeight: FontWeight.w700),
-                      ),
-                      const SizedBox(height: FutureMintTokens.space1),
-                      Text(plan.modules[index].reason),
-                      Text(
-                        '下一步：${plan.modules[index].nextAction}',
-                        style: Theme.of(context).textTheme.bodySmall,
-                      ),
-                    ],
+                const _LearningPlanMascot(),
+                const SizedBox(width: FutureMintTokens.space2),
+                SizedBox(
+                  height: _LearningPlanMascot.height,
+                  child: Align(
+                    alignment: Alignment.centerLeft,
+                    child: sourceChip,
                   ),
                 ),
               ],
             ),
           ),
-        Text(plan.disclaimer, style: Theme.of(context).textTheme.bodySmall),
+        ],
+      ),
+    );
+  }
+
+  Widget _content(BuildContext context, {Widget? sourceChip}) => Column(
+    crossAxisAlignment: CrossAxisAlignment.stretch,
+    children: [
+      Text(plan.title, style: Theme.of(context).textTheme.titleLarge),
+      if (sourceChip != null) ...[
+        const SizedBox(height: FutureMintTokens.space2),
+        sourceChip,
       ],
+      const SizedBox(height: FutureMintTokens.space2),
+      Text(plan.summary),
+      const SizedBox(height: FutureMintTokens.space4),
+      for (var index = 0; index < plan.modules.length; index++)
+        Padding(
+          padding: const EdgeInsets.only(bottom: FutureMintTokens.space3),
+          child: Row(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              CircleAvatar(
+                key: Key('learning-plan-module-$index'),
+                radius: 16,
+                backgroundColor: plan.modules[index].status == 'current'
+                    ? FutureMintTokens.mint
+                    : FutureMintTokens.paper,
+                foregroundColor: plan.modules[index].status == 'current'
+                    ? FutureMintTokens.paper
+                    : FutureMintTokens.ink,
+                child: Text('${index + 1}'),
+              ),
+              const SizedBox(width: FutureMintTokens.space3),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      plan.modules[index].title,
+                      style: const TextStyle(fontWeight: FontWeight.w700),
+                    ),
+                    const SizedBox(height: FutureMintTokens.space1),
+                    Text(plan.modules[index].reason),
+                    Text(
+                      '下一步：${plan.modules[index].nextAction}',
+                      style: Theme.of(context).textTheme.bodySmall,
+                    ),
+                  ],
+                ),
+              ),
+            ],
+          ),
+        ),
+      Text(plan.disclaimer, style: Theme.of(context).textTheme.bodySmall),
+    ],
+  );
+}
+
+class _LearningPlanMascot extends StatelessWidget {
+  const _LearningPlanMascot();
+
+  static const imageSize = 132.0;
+  static const height = 116.0;
+
+  @override
+  Widget build(BuildContext context) => SizedBox(
+    key: const Key('learning-plan-mascot'),
+    width: imageSize,
+    height: height,
+    child: ClipRect(
+      child: FittedBox(
+        // The PNG has a transparent top margin. This crops only that canvas
+        // space so the visible character rests on the card's top edge.
+        alignment: const Alignment(0, .8),
+        fit: BoxFit.cover,
+        child: Image.asset(
+          'assets/images/mascot_peek_purple.png',
+          width: imageSize,
+          height: imageSize,
+          fit: BoxFit.contain,
+          excludeFromSemantics: true,
+        ),
+      ),
     ),
   );
 }

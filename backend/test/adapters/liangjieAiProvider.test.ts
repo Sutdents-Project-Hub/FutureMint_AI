@@ -141,6 +141,30 @@ describe("LiangjieAiProvider", () => {
     });
   });
 
+  it("retries one schema-invalid response with the correction contract", async () => {
+    const create = vi
+      .fn()
+      .mockResolvedValueOnce(completion('{"drafts":[{"amountMinor":-1}]}'))
+      .mockResolvedValueOnce(completion(validCapture));
+    const provider = new LiangjieAiProvider({
+      client: { chat: { completions: { create } } },
+      model: "gemini-2.5-flash",
+    });
+
+    await expect(
+      provider.parseCapture({
+        text: "早餐 65",
+        locale: "zh-TW",
+        referenceTime: "2026-07-13T12:00:00+08:00",
+      }),
+    ).resolves.toMatchObject({ drafts: [{ amountMinor: 75 }] });
+
+    expect(create).toHaveBeenCalledTimes(2);
+    expect(JSON.stringify(create.mock.calls[1][0])).toContain(
+      "前一個輸出未通過格式或安全檢查",
+    );
+  });
+
   it("rejects a semantic type and category contradiction", async () => {
     const contradictory = JSON.stringify({
       drafts: [
@@ -281,6 +305,9 @@ describe("LiangjieAiProvider", () => {
     expect(lesson.sourceEventIds).toEqual(["event-1"]);
     expect(JSON.stringify(create.mock.calls[0])).not.toContain("userId");
     expect(JSON.stringify(create.mock.calls[0])).not.toContain("amountMinor");
+    expect(JSON.stringify(create.mock.calls[0])).toContain(
+      "options 的每個元素都是可單獨閱讀的繁體中文選項",
+    );
   });
 
   it("rejects lesson prose that invents numeric financial facts", async () => {

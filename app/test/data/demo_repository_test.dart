@@ -61,6 +61,38 @@ void main() {
   });
 
   test(
+    'updates and deletes one guest event without changing the others',
+    () async {
+      final initial = await repository.getDashboard();
+      final draft = (await repository.parseCapture(
+        '今天買珍奶 75',
+        referenceTime: DateTime.now(),
+      )).drafts.single;
+      final saved = await repository.saveDraft(
+        draft,
+        idempotencyKey: 'guest-editable-drink',
+      );
+      final edited = await repository.updateMoneyEvent(
+        saved.id,
+        draft.copyWith(amountMinor: 30, merchant: '買筆'),
+      );
+
+      expect(edited.merchant, '買筆');
+      expect(edited.amountMinor, 30);
+      expect(
+        (await repository.getDashboard()).availableMinor,
+        initial.availableMinor - 30,
+      );
+
+      await repository.deleteMoneyEvent(saved.id);
+      expect(
+        (await repository.getDashboard()).availableMinor,
+        initial.availableMinor,
+      );
+    },
+  );
+
+  test(
     'negative purchase text is rejected instead of becoming an expense',
     () async {
       final result = await repository.parseCapture(

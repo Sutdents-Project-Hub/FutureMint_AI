@@ -59,6 +59,11 @@ export interface ConfirmedMoneyEventInput {
   idempotencyKey: string;
 }
 
+export type EditableMoneyEventInput = Omit<
+  ConfirmedMoneyEventInput,
+  "idempotencyKey"
+>;
+
 export interface FutureMintRepository {
   getProfile(userId: string): Promise<UserProfile>;
   saveProfile(profile: UserProfile): Promise<UserProfile>;
@@ -67,6 +72,12 @@ export interface FutureMintRepository {
     userId: string,
     input: ConfirmedMoneyEventInput,
   ): Promise<MoneyEvent>;
+  updateMoneyEvent(
+    userId: string,
+    eventId: string,
+    input: EditableMoneyEventInput,
+  ): Promise<MoneyEvent>;
+  deleteMoneyEvent(userId: string, eventId: string): Promise<void>;
   getLesson(userId: string, lessonId: string): Promise<Lesson | null>;
   getLatestLesson(userId: string): Promise<Lesson | null>;
   saveLesson(lesson: Lesson): Promise<Lesson>;

@@ -4,6 +4,7 @@ import type {
   AiProvider,
   CaptureInput,
   ConfirmedMoneyEventInput,
+  EditableMoneyEventInput,
   FutureMintRepository,
   MarketDataProvider,
 } from "./ports";
@@ -29,6 +30,7 @@ import {
   investmentSimulationInputSchema,
   investmentOrderInputSchema,
   moneyEventInputSchema,
+  moneyEventUpdateSchema,
   moneyEventListQuerySchema,
   profileInputSchema,
   practiceDiceInputSchema,
@@ -122,18 +124,43 @@ export class FutureMintService {
   ): Promise<MoneyEvent> {
     const parsed = moneyEventInputSchema.parse(input);
     return this.repository.saveMoneyEvent(userId, {
-      ...parsed,
-      ...(parsed.split
+      ...this.normalizedMoneyEventInput(parsed),
+    });
+  }
+
+  async updateMoneyEvent(
+    userId: string,
+    eventId: string,
+    input: EditableMoneyEventInput,
+  ): Promise<MoneyEvent> {
+    const parsed = moneyEventUpdateSchema.parse(input);
+    return this.repository.updateMoneyEvent(
+      userId,
+      eventId,
+      this.normalizedMoneyEventInput(parsed),
+    );
+  }
+
+  async deleteMoneyEvent(userId: string, eventId: string): Promise<void> {
+    await this.repository.deleteMoneyEvent(userId, eventId);
+  }
+
+  private normalizedMoneyEventInput<T extends EditableMoneyEventInput>(
+    input: T,
+  ): T {
+    return {
+      ...input,
+      ...(input.split
         ? {
             split: {
-              participants: parsed.split.participants,
+              participants: input.split.participants,
               userShareMinor: Math.round(
-                parsed.amountMinor / parsed.split.participants,
+                input.amountMinor / input.split.participants,
               ),
             },
           }
         : {}),
-    });
+    };
   }
 
   async listMoneyEvents(
@@ -232,11 +259,19 @@ export class FutureMintService {
       throw new DomainError("lesson_not_found", "目前還沒有微課。", 404);
     }
     const currentSourceIds = this.recentEvents(events).map((event) => event.id);
+    const sourceContentChanged = events
+      .filter((event) => lesson.sourceEventIds.includes(event.id))
+      .some(
+        (event) =>
+          new Date(event.updatedAt).getTime() >
+          new Date(lesson.createdAt).getTime(),
+      );
     if (
       currentSourceIds.length !== lesson.sourceEventIds.length ||
       currentSourceIds.some(
         (eventId, index) => lesson.sourceEventIds[index] !== eventId,
-      )
+      ) ||
+      sourceContentChanged
     ) {
       throw new DomainError(
         "lesson_not_found",

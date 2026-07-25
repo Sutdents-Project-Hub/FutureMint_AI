@@ -7,7 +7,10 @@ import Fastify, {
 import { ZodError } from "zod";
 
 import { DomainError } from "../contracts/errors";
-import { lessonCompletionInputSchema } from "../contracts/schemas";
+import {
+  lessonCompletionInputSchema,
+  moneyEventIdParamsSchema,
+} from "../contracts/schemas";
 import { bearerToken, requireAuthenticatedUser } from "./authentication";
 import { getRuntime, type Runtime } from "./runtime";
 
@@ -104,7 +107,10 @@ export const buildServer = async (
     const isAllowed = Boolean(origin && allowedOrigins.includes(origin));
     if (isAllowed && origin) {
       reply.header("access-control-allow-origin", origin);
-      reply.header("access-control-allow-methods", "GET,POST,PUT,PATCH,OPTIONS");
+      reply.header(
+        "access-control-allow-methods",
+        "GET,POST,PUT,PATCH,DELETE,OPTIONS",
+      );
       reply.header("access-control-allow-headers", "content-type,authorization");
       reply.header("access-control-max-age", "600");
       reply.header("vary", "Origin");
@@ -335,6 +341,25 @@ export const buildServer = async (
       await runtime.service.saveMoneyEvent(account.id, request.body as never),
       201,
     );
+  });
+  app.put("/api/money-events/:eventId", async (request, reply) => {
+    const account = await requireAuthenticatedUser(request, runtime);
+    const { eventId } = moneyEventIdParamsSchema.parse(request.params);
+    return success(
+      request,
+      reply,
+      await runtime.service.updateMoneyEvent(
+        account.id,
+        eventId,
+        request.body as never,
+      ),
+    );
+  });
+  app.delete("/api/money-events/:eventId", async (request, reply) => {
+    const account = await requireAuthenticatedUser(request, runtime);
+    const { eventId } = moneyEventIdParamsSchema.parse(request.params);
+    await runtime.service.deleteMoneyEvent(account.id, eventId);
+    return success(request, reply, { deleted: true });
   });
 
   app.get("/api/dashboard", async (request, reply) => {

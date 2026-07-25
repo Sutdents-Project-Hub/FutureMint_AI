@@ -75,6 +75,7 @@ curl http://localhost:3000/api/health
 | POST | `/api/family/leave` | Bearer |
 | POST | `/api/captures/parse` | Bearer |
 | GET／POST | `/api/money-events` | Bearer |
+| PUT／DELETE | `/api/money-events/:eventId` | Bearer；只可操作自己的紀錄 |
 | GET | `/api/dashboard` | Bearer |
 | GET | `/api/insights` | Bearer |
 | GET | `/api/subscriptions` | Bearer |

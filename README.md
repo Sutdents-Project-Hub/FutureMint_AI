@@ -21,6 +21,7 @@ FutureMint AI 是青少年的 AI 金錢決策教練。使用者以繁體中文�
 
 - 用繁體中文輸入「今天買珍奶 75」、「打工薪水 1500」或「Netflix 390 四個人分」。
 - 查看量界智算或 deterministic demo 的解析來源，修正金額／項目／分類／需要或想要後再確認保存。
+- 在紀錄頁編輯或刪除自己已保存的收入、支出與訂閱；預算、分析與訂閱比較會立即重算。
 - 用電子郵件與密碼註冊、登入、登出，並完成首次預算與目標設定。
 - 每個帳號只能讀寫自己的 PostgreSQL profile、事件與課程資料；重啟 API 後資料仍保留。
 - 先看六個月收支、需要／想要比例與圖形化提醒，再查看長期交易明細。
@@ -94,7 +95,9 @@ Docker Desktop 會顯示一個可展開的 `futuremint_ai` Compose 專案，內�
 - 停止服務：`docker compose down`
 - 停止並清除本機資料：`docker compose down -v`
 
-Compose 使用 `NODE_ENV=development`、`AI_PROVIDER=demo`、PostgreSQL named volume 與只在私有 Docker network 內生效的免密碼本機設定。它適合本機展示，不可直接當 production database 設定；production 會拒絕 demo provider、memory repository、遺漏 origin 或非 HTTPS origin，避免健康檢查正常但 Web 主線失效。
+Compose 預設使用 `NODE_ENV=development`、`AI_PROVIDER=demo`、PostgreSQL named volume 與只在私有 Docker network 內生效的免密碼本機設定。它適合本機展示，不可直接當 production database 設定；production 會拒絕 demo provider、memory repository、遺漏 origin 或非 HTTPS origin，避免健康檢查正常但 Web 主線失效。
+
+要用量界智算做本機整合驗證，將根目錄 `.env.example` 複製為已忽略的 `.env`，設定 `AI_PROVIDER=liangjie`、`LIANGJIE_BASE_URL`、已由帳號確認可用的 `LIANGJIE_MODEL` 與 `LIANGJIE_API_KEY`，再執行 `docker compose up -d --build --wait`。金鑰只會注入 API runtime；不可寫入前端 Dart define、Web image build argument、文件或版本控制。
 
 ### 無外部服務的 Demo API
 

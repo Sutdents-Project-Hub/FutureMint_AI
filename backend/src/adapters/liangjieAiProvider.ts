@@ -467,29 +467,60 @@ export class LiangjieAiProvider implements AiProvider {
     throw new DomainError("ai_unavailable", "AI 服務暫時無法使用。", 503, true);
   }
 
-  async parseCapture(input: CaptureInput): Promise<CaptureParseResult> {
-    const response = await this.request({
-      model: this.model,
-      messages: [
-        {
-          role: "system",
-          content:
-            `你是青少年金錢事件解析器。只抽取已發生的收入、支出或訂閱；否定句不得建立草稿。金額不可猜測。對支出與訂閱提供 need、want 或 uncertain 建議與非責備理由；資訊不足必須選 uncertain，這只是可修改建議。收入的 spendingIntent 與 intentReason 都輸出 null。只輸出一個 JSON object，不得加上 Markdown 或解釋。JSON Schema：${JSON.stringify(captureJsonSchema)}`,
-        },
-        {
-          role: "user",
-          content: JSON.stringify({
-            text: input.text,
-            locale: input.locale,
-            referenceTime: input.referenceTime,
-          }),
-        },
-      ],
-    });
+  private async requestStructuredJson<T>(
+    body: Record<string, unknown>,
+    parse: (value: unknown) => T,
+  ): Promise<T> {
+    let requestBody = body;
+    for (let attempt = 1; attempt <= 2; attempt += 1) {
+      try {
+        return parse(completionJson(await this.request(requestBody)));
+      } catch (error) {
+        const invalidOutput =
+          error instanceof z.ZodError ||
+          (error instanceof DomainError && error.code === "ai_invalid_output");
+        if (!invalidOutput || attempt === 2) throw error;
 
+        const messages = body.messages;
+        if (!Array.isArray(messages)) throw error;
+        requestBody = {
+          ...body,
+          messages: [
+            ...messages,
+            {
+              role: "system",
+              content:
+                "前一個輸出未通過格式或安全檢查。請完整重新產生一個 JSON object，不得加上 Markdown 或解釋，並遵守先前的所有繁體中文、選項格式與不得新增數量規則。",
+            },
+          ],
+        };
+      }
+    }
+    throw new DomainError("ai_invalid_output", "AI 回覆格式無法驗證。", 503, true);
+  }
+
+  async parseCapture(input: CaptureInput): Promise<CaptureParseResult> {
     try {
-      const parsed = captureOutputSchema.parse(
-        completionJson(response),
+      const parsed = await this.requestStructuredJson(
+        {
+          model: this.model,
+          messages: [
+            {
+              role: "system",
+              content:
+                `你是青少年金錢事件解析器。只抽取已發生的收入、支出或訂閱；否定句不得建立草稿。金額不可猜測。對支出與訂閱提供 need、want 或 uncertain 建議與非責備理由；資訊不足必須選 uncertain，這只是可修改建議。收入的 spendingIntent 與 intentReason 都輸出 null。只輸出一個 JSON object，不得加上 Markdown 或解釋。JSON Schema：${JSON.stringify(captureJsonSchema)}`,
+            },
+            {
+              role: "user",
+              content: JSON.stringify({
+                text: input.text,
+                locale: input.locale,
+                referenceTime: input.referenceTime,
+              }),
+            },
+          ],
+        },
+        (value) => captureOutputSchema.parse(value),
       );
       return {
         drafts: parsed.drafts.map((draft) => ({
@@ -547,27 +578,26 @@ export class LiangjieAiProvider implements AiProvider {
       hasRecurrence: Boolean(event.recurrence),
       hasSplit: Boolean(event.split),
     }));
-    const response = await this.request({
-      model: this.model,
-      messages: [
-        {
-          role: "system",
-          content:
-            `產生非責備語氣的台灣繁體中文青少年金融微課。所有使用者可見文字都必須包含繁體中文，不得輸出英文或簡體中文（商家原名除外）。不得推薦投資標的或保證報酬；不得自行新增、推算或回述任何金額、比例、期限或數量。只輸出一個 JSON object，不得加上 Markdown 或解釋。JSON Schema：${JSON.stringify(lessonJsonSchema)}`,
-        },
-        {
-          role: "user",
-          content: JSON.stringify({
-            goalName: context.profile.goalName,
-            eventSummary,
-          }),
-        },
-      ],
-    });
-
     try {
-      const parsed = lessonOutputSchema.parse(
-        completionJson(response),
+      const parsed = await this.requestStructuredJson(
+        {
+          model: this.model,
+          messages: [
+            {
+              role: "system",
+              content:
+                `產生非責備語氣的台灣繁體中文青少年金融微課。所有使用者可見文字都必須包含繁體中文，不得輸出英文或簡體中文（商家原名除外）。options 的每個元素都是可單獨閱讀的繁體中文選項，不得使用數字、英文字母或符號作為編號，也不得只輸出編號。不得推薦投資標的或保證報酬；不得自行新增、推算或回述任何金額、比例、期限或數量。只輸出一個 JSON object，不得加上 Markdown 或解釋。JSON Schema：${JSON.stringify(lessonJsonSchema)}`,
+            },
+            {
+              role: "user",
+              content: JSON.stringify({
+                goalName: context.profile.goalName,
+                eventSummary,
+              }),
+            },
+          ],
+        },
+        (value) => lessonOutputSchema.parse(value),
       );
       return {
         id: randomUUID(),
@@ -591,28 +621,30 @@ export class LiangjieAiProvider implements AiProvider {
   async generateLearningPlan(
     context: LearningPlanContext,
   ): Promise<LearningPlan> {
-    const response = await this.request({
-      model: this.model,
-      messages: [
-        {
-          role: "system",
-          content:
-            `你是青少年金融教育規劃助手。使用台灣繁體中文，所有使用者可見文字不得輸出英文或簡體中文。依聚合分類調整四個固定主題的順序與理由：need-want、subscription、compound、risk。不得推薦標的、保證報酬或自行新增任何數量。每個 id 必須恰好出現一次。只輸出 JSON object。JSON Schema：${JSON.stringify(learningPlanJsonSchema)}`,
-        },
-        {
-          role: "user",
-          content: JSON.stringify({
-            accountRole: context.profile.accountRole,
-            hasGoal: context.profile.goalName.length > 0,
-            eventCategories: context.events.map((event) => event.category),
-            hasSubscriptions: context.insights.subscriptionMinor > 0,
-            hasUncertainIntent: context.insights.uncertainMinor > 0,
-          }),
-        },
-      ],
-    });
     try {
-      const parsed = learningPlanOutputSchema.parse(completionJson(response));
+      const parsed = await this.requestStructuredJson(
+        {
+          model: this.model,
+          messages: [
+            {
+              role: "system",
+              content:
+                `你是青少年金融教育規劃助手。使用台灣繁體中文，所有使用者可見文字不得輸出英文或簡體中文。依聚合分類調整四個固定主題的順序與理由：need-want、subscription、compound、risk。不得推薦標的、保證報酬或自行新增任何數量。每個 id 必須恰好出現一次。只輸出 JSON object。JSON Schema：${JSON.stringify(learningPlanJsonSchema)}`,
+            },
+            {
+              role: "user",
+              content: JSON.stringify({
+                accountRole: context.profile.accountRole,
+                hasGoal: context.profile.goalName.length > 0,
+                eventCategories: context.events.map((event) => event.category),
+                hasSubscriptions: context.insights.subscriptionMinor > 0,
+                hasUncertainIntent: context.insights.uncertainMinor > 0,
+              }),
+            },
+          ],
+        },
+        (value) => learningPlanOutputSchema.parse(value),
+      );
       return {
         ...parsed,
         modules: parsed.modules.map((module, index) => ({
@@ -638,29 +670,31 @@ export class LiangjieAiProvider implements AiProvider {
       example: "請用一個不含新金額的日常例子說明。",
       steps: "請整理成三個可以自己完成的步驟。",
     }[request.style ?? "example"];
-    const response = await this.request({
-      model: this.model,
-      messages: [
-        {
-          role: "system",
-          content:
-            `你是青少年金融教育陪讀員，只能解釋需要與想要、訂閱檢查、複利、波動與分散。使用台灣繁體中文，所有使用者可見文字不得輸出英文或簡體中文。不得推薦或評價任何投資標的，不得保證報酬，不得重算或新增金額、報酬率、期限。${styleInstruction}使用非責備語氣，只輸出 JSON object。JSON Schema：${JSON.stringify(coachJsonSchema)}`,
-        },
-        {
-          role: "user",
-          content: JSON.stringify({
-            topic: request.topic,
-            question: request.question,
-            style: request.style ?? "example",
-            scenarioId: request.scenarioId,
-            selectedYear: request.selectedYear,
-          }),
-        },
-      ],
-    });
     try {
       return {
-        ...coachOutputSchema.parse(completionJson(response)),
+        ...await this.requestStructuredJson(
+          {
+            model: this.model,
+            messages: [
+              {
+                role: "system",
+                content:
+                  `你是青少年金融教育陪讀員，只能解釋需要與想要、訂閱檢查、複利、波動與分散。使用台灣繁體中文，所有使用者可見文字不得輸出英文或簡體中文。不得推薦或評價任何投資標的，不得保證報酬，不得重算或新增金額、報酬率、期限。${styleInstruction}使用非責備語氣，只輸出 JSON object。JSON Schema：${JSON.stringify(coachJsonSchema)}`,
+              },
+              {
+                role: "user",
+                content: JSON.stringify({
+                  topic: request.topic,
+                  question: request.question,
+                  style: request.style ?? "example",
+                  scenarioId: request.scenarioId,
+                  selectedYear: request.selectedYear,
+                }),
+              },
+            ],
+          },
+          (value) => coachOutputSchema.parse(value),
+        ),
         source: "liangjie-ai",
       };
     } catch (error) {

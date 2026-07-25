@@ -1,0 +1,25 @@
+[Script Info]
+ScriptType: v4.00+
+PlayResX: 1920
+PlayResY: 1080
+ScaledBorderAndShadow: yes
+WrapStyle: 2
+
+[V4+ Styles]
+Format: Name, Fontname, Fontsize, PrimaryColour, SecondaryColour, OutlineColour, BackColour, Bold, Italic, Underline, StrikeOut, ScaleX, ScaleY, Spacing, Angle, BorderStyle, Outline, Shadow, Alignment, MarginL, MarginR, MarginV, Encoding
+Style: Phase,Arial Unicode MS,31,&H00EEF8FF,&H00000000,&H00FFAEB8,&H8F1F1314,1,0,0,0,100,100,0,0,3,18,0,7,292,0,62,1
+Style: Note,Arial Unicode MS,21,&H00EEF8FF,&H00000000,&H00FFAEB8,&H701F1314,1,0,0,0,100,100,0,0,3,14,0,3,0,66,58,1
+Style: Close,Arial Unicode MS,54,&H00EEF8FF,&H00000000,&H801F1314,&H801F1314,1,0,0,0,100,100,0,0,1,2,0,1,292,0,82,1
+Style: CloseBrand,Arial Unicode MS,24,&H00FFBCA5,&H00000000,&H801F1314,&H801F1314,1,0,0,0,100,100,2,0,1,1,0,1,292,0,162,1
+
+[Events]
+Format: Layer, Start, End, Style, Name, MarginL, MarginR, MarginV, Effect, Text
+Dialogue: 0,0:00:00.00,0:00:05.00,Phase,,0,0,0,,FUTUREMINT AI\N金錢決策教練
+Dialogue: 0,0:00:05.00,0:00:18.05,Phase,,0,0,0,,AI 快速記一筆\N一句話，整理一筆消費
+Dialogue: 0,0:00:18.05,0:00:26.00,Phase,,0,0,0,,消費洞察\N看見錢花在哪裡
+Dialogue: 0,0:00:26.00,0:00:33.95,Phase,,0,0,0,,個人化學習\N下一步，剛好適合現在的你
+Dialogue: 0,0:00:33.95,0:00:46.05,Phase,,0,0,0,,FUTURESEED\N把長期累積看得見
+Dialogue: 0,0:00:46.05,0:00:55.00,Phase,,0,0,0,,投資練習場\N練習判斷，不提供買賣建議
+Dialogue: 0,0:00:47.10,0:00:54.70,Note,,0,0,0,,虛擬現金 · 延遲公開行情 · 教育用途
+Dialogue: 0,0:00:55.00,0:01:00.00,CloseBrand,,0,0,0,,FUTUREMINT AI
+Dialogue: 0,0:00:55.00,0:01:00.00,Close,,0,0,0,,從一筆消費開始，\N種下更有選擇的未來。

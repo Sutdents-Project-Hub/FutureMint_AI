@@ -4,6 +4,26 @@
 
 驗證日期：2026-07-19（Asia/Taipei）。以下只記錄實際執行結果，不代表 Coolify production、量界正式帳號或真實未成年人服務驗收。
 
+### 帳務修改與刪除複驗（2026-07-25，Asia/Taipei）
+
+| 元件 | 指令／操作 | 結果 |
+|---|---|---|
+| API ownership／更新／刪除 | `cd backend && npm test && npm run typecheck && npm run build` | 15 個 test files、90 tests 通過；驗證同帳號可修改／刪除、分帳重新計算，帳號 B 操作帳號 A 的事件一律 404，CORS 預檢允許 `DELETE`。 |
+| Flutter guest data 與紀錄 UI | `cd app && flutter test test/widget_test.dart test/data/demo_repository_test.dart && flutter analyze` | 通過；驗證訪客單筆修改／刪除會更新餘額，以及紀錄列操作選單可開啟編輯表單。 |
+
+### 本機量界智算整合複驗（2026-07-25，Asia/Taipei）
+
+以下結果使用已忽略根目錄 `.env` 的 runtime secret；不記錄 key、prompt、完整 provider body 或使用者資料。本輪只驗證本機 Compose，尚未部署或連接 Coolify。
+
+| 元件 | 指令／操作 | 結果 |
+|---|---|---|
+| Compose API | `docker compose up -d --build --wait api` | API 與 PostgreSQL healthcheck 通過；API 以 `liangjie`／`postgres` runtime pair 啟動。 |
+| Runtime health | `GET /api/health` | HTTP 200，回報 `aiProvider=liangjie`、`dataProvider=postgres`。 |
+| 實際 AI inference：記帳／陪讀 | API 容器內以合成記帳文字呼叫 capture，再以合成問題呼叫 coach | 兩個請求皆在首次嘗試成功；capture 回傳 1 筆 `liangjie-ai` 草稿，coach 回傳通過既有繁體中文與安全 schema 的 `liangjie-ai` 回覆。 |
+| 實際 AI inference：微課／學習規劃 | API 容器內以合成 profile、事件與洞察呼叫 lesson 與 learning plan | 兩個請求皆在首次嘗試成功；lesson 回傳可顯示的繁中選項，learning plan 回傳 4 個不重複主題且恰有 1 個 next module。 |
+
+上述 inference 不寫入資料庫。
+
 ### UI 合併修復複驗（2026-07-22，Asia/Taipei）
 
 以下結果針對 `feat/replicate-homepage` 合併到本機工作目錄後的 UI 修復；已建立本機 `main` commit `d876147`，尚未 push 或部署。
@@ -136,7 +156,7 @@ Fixture：`backend/test/fixtures/capture-evaluation.json`；報告：
 
 ## 尚未驗證
 
-- 量界正式 API key、帳號可用 model、費率、quota、資料條款、真實 output quality、P95 latency 與 outage 行為。
+- 量界正式環境的費率、quota、資料條款、真實使用情境 output quality、P95 latency 與 outage 行為。
 - GitHub App、webhook／Auto Deploy；workspace 已有 remote，但本次尚未 push 或連接 Coolify。
 - GitHub Actions workflow 已加入，但本次尚未在 GitHub hosted runner 實際執行；需下一次 push／Pull Request 觀察。
 - 實際 Coolify VPS 的 AMD64／ARM64 image build、domains、TLS、CORS、health routing、resource limits 與 rollback。

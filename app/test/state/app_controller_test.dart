@@ -82,6 +82,34 @@ void main() {
     expect(controller.lastSavedEvent?.amountMinor, 75);
   });
 
+  test('records a repeated identical expense as a new confirmed event', () async {
+    await controller.initialize();
+    final initialEventCount = controller.events.length;
+    final initialExpense = controller.dashboard!.expenseMinor;
+    final initialAvailable = controller.dashboard!.availableMinor;
+
+    for (var index = 1; index <= 2; index += 1) {
+      await controller.parseCapture(
+        '今天買珍奶 75',
+        referenceTime: DateTime.now(),
+      );
+      await controller.saveDraft(controller.captureResult!.drafts.single);
+
+      expect(controller.events, hasLength(initialEventCount + index));
+      expect(controller.dashboard?.expenseMinor, initialExpense + (75 * index));
+      expect(
+        controller.dashboard?.availableMinor,
+        initialAvailable - (75 * index),
+      );
+    }
+
+    expect(
+      controller.events.where((event) => event.idempotencyKey != null),
+      hasLength(2),
+    );
+    expect(controller.lastSavedEvent?.amountMinor, 75);
+  });
+
   test(
     'saving one draft keeps the remaining drafts in the same capture',
     () async {

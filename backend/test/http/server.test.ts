@@ -132,7 +132,7 @@ describe("Fastify HTTP server", () => {
     expect(allowed.statusCode).toBe(204);
     expect(allowed.headers).toMatchObject({
       "access-control-allow-origin": "https://futuremint.example",
-      "access-control-allow-methods": "GET,POST,PUT,PATCH,OPTIONS",
+      "access-control-allow-methods": "GET,POST,PUT,PATCH,DELETE,OPTIONS",
       "access-control-max-age": "600",
     });
     expect(denied.statusCode).toBe(403);

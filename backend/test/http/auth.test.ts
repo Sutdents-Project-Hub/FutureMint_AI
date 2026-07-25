@@ -104,6 +104,49 @@ describe("authenticated HTTP routes", () => {
     expect(listedByB.json()).toMatchObject({ data: [] });
   });
 
+  it("does not let account B update or delete account A events", async () => {
+    const registeredA = await register("a@example.com");
+    const registeredB = await register("b@example.com");
+    const tokenA = registeredA.json().data.token as string;
+    const tokenB = registeredB.json().data.token as string;
+    const created = await app.inject({
+      method: "POST",
+      url: "/api/money-events",
+      headers: { authorization: `Bearer ${tokenA}` },
+      payload: {
+        type: "expense",
+        amountMinor: 75,
+        currency: "TWD",
+        category: "food",
+        occurredAt: "2026-07-14T12:00:00+08:00",
+        confirmed: true,
+        idempotencyKey: "account-a-editable-drink",
+      },
+    });
+    const eventId = created.json().data.id as string;
+    const updateByB = await app.inject({
+      method: "PUT",
+      url: `/api/money-events/${eventId}`,
+      headers: { authorization: `Bearer ${tokenB}` },
+      payload: {
+        type: "expense",
+        amountMinor: 30,
+        currency: "TWD",
+        category: "food",
+        occurredAt: "2026-07-14T12:00:00+08:00",
+        confirmed: true,
+      },
+    });
+    const deleteByB = await app.inject({
+      method: "DELETE",
+      url: `/api/money-events/${eventId}`,
+      headers: { authorization: `Bearer ${tokenB}` },
+    });
+
+    expect(updateByB.statusCode).toBe(404);
+    expect(deleteByB.statusCode).toBe(404);
+  });
+
   it("returns the same generic error for invalid login credentials", async () => {
     await register("student@example.com");
     const unknown = await app.inject({

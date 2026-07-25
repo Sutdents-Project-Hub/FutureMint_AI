@@ -14,6 +14,8 @@ abstract interface class FutureMintRepository {
     CaptureDraft draft, {
     required String idempotencyKey,
   });
+  Future<MoneyEvent> updateMoneyEvent(String eventId, CaptureDraft draft);
+  Future<void> deleteMoneyEvent(String eventId);
   Future<SubscriptionComparison?> compareSubscriptions();
   Future<Lesson> generateLesson();
   Future<Lesson> completeLesson(Lesson lesson, String selectedOption);

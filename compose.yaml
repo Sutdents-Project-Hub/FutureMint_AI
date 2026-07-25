@@ -23,15 +23,19 @@ services:
     restart: unless-stopped
     init: true
     environment:
-      # Local Compose intentionally uses the deterministic demo provider.
-      # Production refuses that provider pair and must use Coolify runtime secrets.
+      # Default to the deterministic demo provider. An ignored root .env may
+      # opt into Liangjie for local integration verification; its key remains
+      # a runtime secret and is never passed to the Web build.
       NODE_ENV: development
       HOST: 0.0.0.0
       PORT: 3000
-      AI_PROVIDER: demo
-      DATA_PROVIDER: postgres
+      AI_PROVIDER: ${AI_PROVIDER:-demo}
+      DATA_PROVIDER: ${DATA_PROVIDER:-postgres}
       DATABASE_URL: postgresql://futuremint@postgres:5432/futuremint
       DATABASE_SSL: "false"
+      LIANGJIE_BASE_URL: ${LIANGJIE_BASE_URL:-https://liangjiewis.com/v1}
+      LIANGJIE_MODEL: ${LIANGJIE_MODEL:-gemini-2.5-flash}
+      LIANGJIE_API_KEY: ${LIANGJIE_API_KEY:-}
       ALLOWED_ORIGINS: ${WEB_ORIGIN:-http://localhost:14173}
     ports:
       - "${API_PORT:-13000}:3000"

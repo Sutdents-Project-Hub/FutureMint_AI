@@ -7,6 +7,7 @@ import '../../design/tokens.dart';
 import '../../shared/money_text.dart';
 import '../../shared/date_text.dart';
 import '../../state/app_controller.dart';
+import '../capture/draft_editor.dart';
 import '../dashboard/dashboard_screen.dart';
 import 'analysis_widgets.dart';
 
@@ -310,6 +311,8 @@ class _RecordsSparkleStrip extends StatelessWidget {
   );
 }
 
+enum _RecordAction { edit, delete }
+
 class _RecordRow extends StatelessWidget {
   const _RecordRow({required this.event});
   final MoneyEvent event;
@@ -317,6 +320,7 @@ class _RecordRow extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final income = event.type == MoneyEventType.income;
+    final title = event.merchant ?? categoryLabel(event.category);
     return ListTile(
       contentPadding: const EdgeInsets.symmetric(
         horizontal: FutureMintTokens.space4,
@@ -331,22 +335,192 @@ class _RecordRow extends StatelessWidget {
         foregroundColor: FutureMintTokens.ink,
         child: Icon(_categoryIcon(event)),
       ),
-      title: Text(
-        event.merchant ?? categoryLabel(event.category),
-        style: const TextStyle(fontWeight: FontWeight.w700),
-      ),
+      title: Text(title, style: const TextStyle(fontWeight: FontWeight.w700)),
       subtitle: Text(
         '${categoryLabel(event.category)}${event.spendingIntent == null ? '' : ' · ${_intentLabel(event.spendingIntent!)}'} · ${formatTaipeiDateTime(event.occurredAt, includeYear: true)}${event.split == null ? '' : ' · ${event.split!.participants} 人分帳'}',
       ),
-      trailing: MoneyText(
-        income ? event.effectiveAmountMinor : -event.effectiveAmountMinor,
-        style: TextStyle(
-          fontWeight: FontWeight.w700,
-          color: income ? FutureMintTokens.teal : null,
+      trailing: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          MoneyText(
+            income ? event.effectiveAmountMinor : -event.effectiveAmountMinor,
+            style: TextStyle(
+              fontWeight: FontWeight.w700,
+              color: income ? FutureMintTokens.teal : null,
+            ),
+          ),
+          PopupMenuButton<_RecordAction>(
+            tooltip: '交易操作：$title',
+            onSelected: (action) => switch (action) {
+              _RecordAction.edit => _showEditEventSheet(context, event),
+              _RecordAction.delete => _showDeleteEventDialog(context, event),
+            },
+            itemBuilder: (context) => const [
+              PopupMenuItem(
+                value: _RecordAction.edit,
+                child: ListTile(
+                  leading: Icon(Icons.edit_outlined),
+                  title: Text('編輯'),
+                ),
+              ),
+              PopupMenuItem(
+                value: _RecordAction.delete,
+                child: ListTile(
+                  leading: Icon(Icons.delete_outline),
+                  title: Text('刪除'),
+                ),
+              ),
+            ],
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+CaptureDraft _draftFromEvent(MoneyEvent event) => CaptureDraft(
+  draftId: 'edit-${event.id}',
+  type: event.type,
+  amountMinor: event.amountMinor,
+  currency: event.currency,
+  category: event.category,
+  merchant: event.merchant,
+  occurredAt: event.occurredAt,
+  recurrence: event.recurrence,
+  split: event.split,
+  spendingIntent: event.spendingIntent,
+  intentReason: event.intentReason,
+  confidence: 1,
+  missingFields: const [],
+  needsConfirmation: true,
+  source: CaptureSource.deterministicDemo,
+);
+
+Future<void> _showEditEventSheet(BuildContext context, MoneyEvent event) =>
+    showModalBottomSheet<void>(
+      context: context,
+      isScrollControlled: true,
+      showDragHandle: true,
+      builder: (_) => ChangeNotifierProvider.value(
+        value: context.read<AppController>(),
+        child: _EventEditorSheet(event: event),
+      ),
+    );
+
+class _EventEditorSheet extends StatelessWidget {
+  const _EventEditorSheet({required this.event});
+  final MoneyEvent event;
+
+  @override
+  Widget build(BuildContext context) {
+    final controller = context.watch<AppController>();
+    return SafeArea(
+      child: SingleChildScrollView(
+        padding: EdgeInsets.fromLTRB(
+          FutureMintTokens.space5,
+          FutureMintTokens.space1,
+          FutureMintTokens.space5,
+          FutureMintTokens.space6 + MediaQuery.viewInsetsOf(context).bottom,
+        ),
+        child: Center(
+          child: ConstrainedBox(
+            constraints: const BoxConstraints(maxWidth: 620),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.stretch,
+              children: [
+                DraftEditor(
+                  draft: _draftFromEvent(event),
+                  editing: true,
+                  busy: controller.busy,
+                  onConfirm: (draft) async {
+                    final saved = await controller.updateMoneyEvent(
+                      event.id,
+                      draft,
+                    );
+                    if (saved && context.mounted) Navigator.pop(context);
+                  },
+                ),
+                if (controller.errorMessage != null) ...[
+                  const SizedBox(height: FutureMintTokens.space3),
+                  Text(
+                    controller.errorMessage!,
+                    style: TextStyle(
+                      color: Theme.of(context).colorScheme.error,
+                    ),
+                  ),
+                ],
+              ],
+            ),
+          ),
         ),
       ),
     );
   }
+}
+
+Future<void> _showDeleteEventDialog(
+  BuildContext context,
+  MoneyEvent event,
+) async {
+  final controller = context.read<AppController>();
+  var deleting = false;
+  String? error;
+  await showDialog<void>(
+    context: context,
+    builder: (dialogContext) => StatefulBuilder(
+      builder: (context, setDialogState) => AlertDialog(
+        title: const Text('刪除這筆紀錄？'),
+        content: Text(
+          '確定刪除「${event.merchant ?? categoryLabel(event.category)}」${formatTwd(event.effectiveAmountMinor)}？此動作無法復原，預算與分析會重新整理。',
+        ),
+        actions: [
+          TextButton(
+            onPressed: deleting ? null : () => Navigator.pop(dialogContext),
+            child: const Text('取消'),
+          ),
+          FilledButton.icon(
+            style: FilledButton.styleFrom(
+              backgroundColor: Theme.of(context).colorScheme.error,
+              foregroundColor: Theme.of(context).colorScheme.onError,
+            ),
+            onPressed: deleting
+                ? null
+                : () async {
+                    setDialogState(() {
+                      deleting = true;
+                      error = null;
+                    });
+                    final deleted = await controller.deleteMoneyEvent(event.id);
+                    if (!context.mounted) return;
+                    if (deleted) {
+                      Navigator.pop(dialogContext);
+                      return;
+                    }
+                    setDialogState(() {
+                      deleting = false;
+                      error = controller.errorMessage;
+                    });
+                  },
+            icon: deleting
+                ? const SizedBox.square(
+                    dimension: 18,
+                    child: CircularProgressIndicator(strokeWidth: 2),
+                  )
+                : const Icon(Icons.delete_outline),
+            label: Text(deleting ? '正在刪除…' : '確認刪除'),
+          ),
+          if (error != null)
+            Padding(
+              padding: const EdgeInsets.only(top: FutureMintTokens.space2),
+              child: Text(
+                error!,
+                style: TextStyle(color: Theme.of(context).colorScheme.error),
+              ),
+            ),
+        ],
+      ),
+    ),
+  );
 }
 
 String _intentLabel(SpendingIntent intent) => switch (intent) {

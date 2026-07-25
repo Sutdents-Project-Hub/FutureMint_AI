@@ -179,6 +179,35 @@ class AppController extends ChangeNotifier {
     }
   });
 
+  Future<bool> updateMoneyEvent(
+    String eventId,
+    CaptureDraft draft,
+  ) => _perform(() async {
+    final updated = await repository.updateMoneyEvent(eventId, draft);
+    lesson = null;
+    learningPlan = null;
+    try {
+      await refresh();
+    } catch (error) {
+      events = [updated, ...events.where((event) => event.id != updated.id)];
+      await _handlePartialFailure(error, notice: '紀錄已更新，但摘要暫時無法更新；請稍後重新整理。');
+    }
+    await _loadSubscriptionComparison(unavailableMessage: '紀錄已更新，但訂閱比較暫時無法更新。');
+  });
+
+  Future<bool> deleteMoneyEvent(String eventId) => _perform(() async {
+    await repository.deleteMoneyEvent(eventId);
+    lesson = null;
+    learningPlan = null;
+    try {
+      await refresh();
+    } catch (error) {
+      events = events.where((event) => event.id != eventId).toList();
+      await _handlePartialFailure(error, notice: '紀錄已刪除，但摘要暫時無法更新；請稍後重新整理。');
+    }
+    await _loadSubscriptionComparison(unavailableMessage: '紀錄已刪除，但訂閱比較暫時無法更新。');
+  });
+
   Future<void> completeLesson(String selectedOption) => _run(() async {
     if (lesson == null) return;
     lesson = await repository.completeLesson(lesson!, selectedOption);

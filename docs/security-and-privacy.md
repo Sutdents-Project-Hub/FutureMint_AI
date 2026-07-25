@@ -7,6 +7,7 @@
 - Session token 使用 cryptographically random bytes，Client 只收到明文 token；PostgreSQL 只保存 SHA-256 token hash。
 - Session 七天到期；logout 設 revoked timestamp。
 - API 每次從 session 推導 account，所有 repository query 都依 account `user_id`；不接受 Client 指定 ownership。
+- 已保存的 MoneyEvent 只能由擁有該 session 的帳號完整更新或刪除；更新不接受／改寫建立時的 idempotency key，查無該帳號紀錄時回相同 404。
 
 這是競賽 prototype authentication，不是 production identity system。孩子／家長角色現在可透過家庭邀請碼建立受控關聯，但仍尚未實作 email ownership verification、password reset、MFA、global logout、帳號鎖定、breached-password screening、CSRF cookie flow、帳號刪除、邀請撤銷／轉移或正式未成年人法遵。
 
@@ -44,7 +45,7 @@
 - API `ALLOWED_ORIGINS`
 - `LIANGJIE_BASE_URL` 與 model id（不是 authentication secret）
 
-本機秘密只放已忽略的 `backend/.env`。歷史上可能存在的 ignored `local.settings.json` 不再使用，也不得讀取、提交或複製。GitHub repository、Dockerfile、build arguments、Flutter bundle、文件、測試 fixture 與 log 都不得含真實 key、password、token、connection URL 或學生資料。
+本機直接啟動 API 時，秘密只放已忽略的 `backend/.env`；本機 Docker Compose 則只放已忽略的根目錄 `.env`，由 Compose 在 API runtime 注入。歷史上可能存在的 ignored `local.settings.json` 不再使用，也不得讀取、提交或複製。GitHub repository、Dockerfile、build arguments、Flutter bundle、文件、測試 fixture 與 log 都不得含真實 key、password、token、connection URL 或學生資料。
 
 ## Log 與錯誤
 

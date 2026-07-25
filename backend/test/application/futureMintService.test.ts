@@ -66,6 +66,85 @@ describe("FutureMintService capture lifecycle", () => {
     ).toHaveLength(1);
   });
 
+  it("persists identical confirmed expenses when each capture has a new key", async () => {
+    const { service } = createService();
+    const input = {
+      type: "expense" as const,
+      amountMinor: 75,
+      currency: "TWD" as const,
+      category: "food" as const,
+      merchant: "珍奶",
+      occurredAt: "2026-07-13T12:00:00+08:00",
+      confirmed: true as const,
+    };
+
+    await service.saveMoneyEvent("demo-user", {
+      ...input,
+      idempotencyKey: "capture-pearl-milk-tea-one",
+    });
+    await service.saveMoneyEvent("demo-user", {
+      ...input,
+      idempotencyKey: "capture-pearl-milk-tea-two",
+    });
+
+    const events = await service.listMoneyEvents("demo-user");
+    const dashboard = await service.getDashboard(
+      "demo-user",
+      new Date("2026-07-13T12:00:00+08:00"),
+    );
+
+    expect(
+      events.filter((event) =>
+        event.idempotencyKey?.startsWith("capture-pearl-milk-tea"),
+      ),
+    ).toHaveLength(2);
+    expect(dashboard.expenseMinor).toBe(675);
+    expect(dashboard.availableMinor).toBe(5227);
+  });
+
+  it("updates and deletes only the selected money event", async () => {
+    const { service } = createService();
+    const created = await service.saveMoneyEvent("demo-user", {
+      type: "expense",
+      amountMinor: 75,
+      currency: "TWD",
+      category: "food",
+      merchant: "珍奶",
+      occurredAt: "2026-07-13T12:00:00+08:00",
+      confirmed: true,
+      idempotencyKey: "editable-pearl-milk-tea",
+    });
+
+    const updated = await service.updateMoneyEvent("demo-user", created.id, {
+      type: "expense",
+      amountMinor: 30,
+      currency: "TWD",
+      category: "food",
+      merchant: "買筆",
+      occurredAt: "2026-07-13T12:00:00+08:00",
+      confirmed: true,
+    });
+    const afterUpdate = await service.getDashboard(
+      "demo-user",
+      new Date("2026-07-13T12:00:00+08:00"),
+    );
+
+    expect(updated).toMatchObject({
+      id: created.id,
+      idempotencyKey: "editable-pearl-milk-tea",
+      merchant: "買筆",
+      amountMinor: 30,
+    });
+    expect(afterUpdate.availableMinor).toBe(5347);
+
+    await service.deleteMoneyEvent("demo-user", created.id);
+    const afterDelete = await service.getDashboard(
+      "demo-user",
+      new Date("2026-07-13T12:00:00+08:00"),
+    );
+    expect(afterDelete.availableMinor).toBe(5377);
+  });
+
   it("sorts the event timeline consistently by newest occurrence", async () => {
     const { service } = createService();
 
