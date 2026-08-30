@@ -84,6 +84,8 @@ class AppShell extends StatelessWidget {
                 onClose: controller.clearMessages,
               ),
             if (guest) const _GuestNotice(),
+            if (!guest && !controller.aiConsent.granted)
+              _AiConsentNotice(onOpen: () => showAiConsentDisclosure(context)),
             Expanded(child: child),
           ],
         );
@@ -459,6 +461,47 @@ class _GuestNotice extends StatelessWidget {
                 ).textTheme.bodyMedium?.copyWith(fontWeight: FontWeight.w700),
               ),
               Text('離開或重新整理後會清除', style: Theme.of(context).textTheme.bodySmall),
+            ],
+          ),
+        ),
+      ],
+    ),
+  );
+}
+
+class _AiConsentNotice extends StatelessWidget {
+  const _AiConsentNotice({required this.onOpen});
+
+  final VoidCallback onOpen;
+
+  @override
+  Widget build(BuildContext context) => Container(
+    key: const Key('ai-consent-notice'),
+    color: Theme.of(context).brightness == Brightness.dark
+        ? FutureMintTokens.darkSurfaceRaised
+        : FutureMintTokens.sunSoft,
+    padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 9),
+    child: Row(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        const Padding(
+          padding: EdgeInsets.only(top: 2),
+          child: Icon(Icons.auto_awesome_outlined, size: 20),
+        ),
+        const SizedBox(width: FutureMintTokens.space3),
+        Expanded(
+          child: Wrap(
+            spacing: FutureMintTokens.space3,
+            runSpacing: FutureMintTokens.space1,
+            crossAxisAlignment: WrapCrossAlignment.center,
+            children: [
+              Text(
+                'AI 尚未啟用，非 AI 功能仍可使用。',
+                style: Theme.of(
+                  context,
+                ).textTheme.bodyMedium?.copyWith(fontWeight: FontWeight.w700),
+              ),
+              TextButton(onPressed: onOpen, child: const Text('查看資料用途')),
             ],
           ),
         ),

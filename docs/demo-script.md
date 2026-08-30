@@ -3,7 +3,7 @@
 ## 展示前準備
 
 1. 開啟 Coolify production Flutter Web，確認登入畫面與 HTTPS。
-2. 使用專為決賽建立的 synthetic test account；台上不顯示 email、password、token、key、database URL 或 Coolify secrets。
+2. 使用專為決賽建立的 synthetic test account；預先查看 AI 資料說明並明確啟用，台上不顯示 email、password、token、key、database URL 或 Coolify secrets。
 3. 確認 `/api/health` 為 ok、PostgreSQL healthy、`ALLOWED_ORIGINS` 正確。
 4. 先用合成文字確認量界 model 可用；若無網路，改用明確標示的訪客／deterministic demo。
 5. 投影解析度先測 1440×900；手機備援測 375px。
@@ -62,6 +62,7 @@
 
 - 投資練習場：20 秒指出 TWSE 延遲日期、虛擬現金、事件骰子與不提供買賣建議；只在被問到風險教育或資料來源時打開。
 - 孩子／家長角色與設定：展示家長建立 8 碼邀請碼、孩子加入，以及家長只看到預算／趨勢摘要、不看到交易明細；完整共管與撤銷仍是未來工作。
+- 隱私控制：展示量界智算的資料類別／用途、拒絕後仍可用的功能、撤回入口，以及需目前密碼與雙重確認的帳號刪除流程；不在台上真正刪除 demo account。
 - Coolify：只展示 Web／API health 與 PostgreSQL Resource 的 healthy 狀態，不露 private repository、database URL 或 secrets。
 
 ## 降級展示

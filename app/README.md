@@ -6,7 +6,8 @@ Android、iOS 與 Web 共用 Client。正式 Web deployment 是 Coolify 中獨�
 
 - Flutter 3.41.x、Dart 3.11.x；manifest 是 `pubspec.yaml`，lockfile 是 `pubspec.lock`。
 - Provider、go_router、http、SharedPreferences、intl、fl_chart；Client 不安裝資料庫或 AI SDK。
-- 註冊、登入、首次預算／目標設定、登出與 Bearer session。
+- 註冊、登入、首次預算／目標設定、登出、App 內帳號刪除與 Bearer session。
+- 第三方 AI 資料說明、明確啟用／撤回，以及未同意時的 Client-side AI 功能攔截；設定與首頁提示都可再次開啟說明。
 - 響應式 dashboard、自然語言 Capture、可修改需要／想要建議，以及可編輯／刪除已保存帳務的紀錄頁；另有收支圖表、圖形化通知、訂閱檢查、個人學習規劃、金融微課、三路徑 FutureSeed 模擬與延遲行情投資練習場。
 - 學習頁與 FutureSeed 支援自由輸入問題、主題與回答方式個人化；設定可建立／加入家庭關聯，家長只看孩子的預算與趨勢摘要，不共享交易明細。
 - Capture 目前只支援繁體中文文字／貼上輸入，不提供圖片上傳或 OCR，避免把個資影像送出。
@@ -65,10 +66,14 @@ flutter drive \
   -d chrome
 ```
 
+iOS release 必須先把 `.env.appstore.example` 複製為已忽略的 `.env.appstore.local`，填入已驗證值後執行 `./tool/build_ios_release.sh`。腳本會拒絕 localhost／placeholder API URL、無效 build number 及與 Runner 不一致的 Bundle ID，但不會上傳 App Store Connect。
+
+iOS Client 本身只使用系統 HTTPS／TLS，沒有實作自訂或非豁免加密，因此 `Info.plist` 已設定 `ITSAppUsesNonExemptEncryption=false`。若後續新增加密或安全相關 SDK，必須重新進行出口法規分類，不可沿用此結論。
+
 ## 資料與限制
 
 - 原始輸入只用於當次解析，不寫入 MoneyEvent。
-- Session token 儲存在本機；目前 prototype 尚未實作 email 驗證、忘記密碼、帳號刪除、家庭邀請撤銷／轉移或 production 未成年人法遵。家庭摘要權限已由 API 驗證，家長不會取得孩子交易明細。
+- Session token 儲存在本機；帳號刪除已實作目前密碼再驗證與雙重確認。目前 prototype 仍尚未實作 email 驗證、忘記密碼、家庭邀請撤銷／轉移或 production 未成年人法遵。家庭摘要權限已由 API 驗證，家長不會取得孩子交易明細。
 - FutureSeed 使用版本化合成報酬路徑；投資練習場另外讀取 API 提供的證交所每日成交快照，且始終顯示行情日期、來源與是否為降級資料。
 - 投資練習場只建立虛擬訂單。登入帳號保存到 PostgreSQL；訪客持倉與訂單只留在記憶體，重新整理後清除。
 - 畫面中的五個標的是跨產業教學範例，不是推薦清單；骰子只產生學習事件，不代替使用者決定買賣。

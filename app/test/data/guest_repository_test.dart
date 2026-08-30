@@ -4,7 +4,8 @@ import 'package:futuremint_app/data/guest_repository.dart';
 
 void main() {
   test('guest data is discarded when a new guest session starts', () async {
-    final first = await GuestRepository.create();
+    final fixedNow = DateTime.parse('2026-08-30T10:00:00+08:00');
+    final first = await GuestRepository.create(now: () => fixedNow);
     final initial = await first.getProfile();
     await first.updateProfile(
       UserProfile(
@@ -19,7 +20,7 @@ void main() {
       ),
     );
 
-    final second = await GuestRepository.create();
+    final second = await GuestRepository.create(now: () => fixedNow);
 
     expect((await second.getProfile()).goalName, isNot('不應保存的訪客目標'));
   });

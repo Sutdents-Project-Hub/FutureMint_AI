@@ -4,9 +4,10 @@ import 'package:futuremint_app/data/guest_repository.dart';
 
 void main() {
   late GuestRepository repository;
+  final fixedNow = DateTime.parse('2026-08-30T10:00:00+08:00');
 
   setUp(() async {
-    repository = await GuestRepository.create();
+    repository = await GuestRepository.create(now: () => fixedNow);
   });
 
   test('starts with a complete temporary guest profile and ledger', () async {
@@ -21,6 +22,53 @@ void main() {
       isTrue,
     );
   });
+
+  test(
+    'seeds the current Taipei month with a future goal and renewal',
+    () async {
+      final profile = await repository.getProfile();
+      final events = await repository.listMoneyEvents();
+      final taipeiNow = fixedNow.toUtc().add(const Duration(hours: 8));
+      DateTime taipei(DateTime value) =>
+          value.toUtc().add(const Duration(hours: 8));
+
+      expect(
+        events.every((event) {
+          final occurredAt = taipei(event.occurredAt);
+          return occurredAt.year == taipeiNow.year &&
+              occurredAt.month == taipeiNow.month &&
+              !event.occurredAt.isAfter(fixedNow);
+        }),
+        isTrue,
+      );
+      expect(events.map((event) => event.id), [
+        'seed-income',
+        'seed-drink',
+        'seed-game',
+        'seed-subscription',
+      ]);
+      expect(events.map((event) => event.amountMinor), [1500, 75, 450, 390]);
+
+      final chronological = [...events]
+        ..sort((a, b) => a.occurredAt.compareTo(b.occurredAt));
+      expect(chronological.map((event) => event.id), [
+        'seed-subscription',
+        'seed-income',
+        'seed-drink',
+        'seed-game',
+      ]);
+
+      final subscription = events.singleWhere(
+        (event) => event.type == MoneyEventType.subscription,
+      );
+      final renewal = taipei(subscription.recurrence!.nextBillingAt!);
+      expect(taipei(subscription.occurredAt).day, 22);
+      expect(renewal.year, 2026);
+      expect(renewal.month, 9);
+      expect(renewal.day, 22);
+      expect(profile.goalDate.isAfter(fixedNow), isTrue);
+    },
+  );
 
   test('parsing does not persist until a draft is confirmed', () async {
     final before = await repository.listMoneyEvents();
@@ -66,7 +114,7 @@ void main() {
       final initial = await repository.getDashboard();
       final draft = (await repository.parseCapture(
         '今天買珍奶 75',
-        referenceTime: DateTime.now(),
+        referenceTime: fixedNow,
       )).drafts.single;
       final saved = await repository.saveDraft(
         draft,
@@ -147,7 +195,7 @@ void main() {
       final lesson = await repository.generateLesson();
       await repository.completeLesson(lesson, lesson.options.first);
 
-      final reloaded = await GuestRepository.create();
+      final reloaded = await GuestRepository.create(now: () => fixedNow);
       final persisted = await reloaded.generateLesson();
 
       expect(persisted.selectedOption, isNull);
@@ -172,7 +220,7 @@ void main() {
     () async {
       final result = await repository.parseCapture(
         'Netflix 390',
-        referenceTime: DateTime.parse('2026-07-13T18:00:00+08:00'),
+        referenceTime: fixedNow,
       );
       await repository.saveDraft(
         result.drafts.single,

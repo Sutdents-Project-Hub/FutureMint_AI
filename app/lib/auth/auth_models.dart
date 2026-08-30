@@ -37,3 +37,34 @@ class AuthSession {
     account: PublicAccount.fromJson(json['account'] as Map<String, dynamic>),
   );
 }
+
+class AiConsentStatus {
+  const AiConsentStatus({
+    required this.granted,
+    required this.policyVersion,
+    this.grantedAt,
+    this.withdrawnAt,
+  });
+
+  const AiConsentStatus.notGranted()
+    : granted = false,
+      policyVersion = null,
+      grantedAt = null,
+      withdrawnAt = null;
+
+  final bool granted;
+  final String? policyVersion;
+  final DateTime? grantedAt;
+  final DateTime? withdrawnAt;
+
+  factory AiConsentStatus.fromJson(Map<String, dynamic> json) =>
+      AiConsentStatus(
+        granted: json['granted'] as bool? ?? false,
+        policyVersion: json['policyVersion'] as String?,
+        grantedAt: _dateOrNull(json['grantedAt']),
+        withdrawnAt: _dateOrNull(json['withdrawnAt']),
+      );
+
+  static DateTime? _dateOrNull(Object? value) =>
+      value is String ? DateTime.tryParse(value) : null;
+}

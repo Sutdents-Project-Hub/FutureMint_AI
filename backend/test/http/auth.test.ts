@@ -6,6 +6,7 @@ import { DemoAiProvider } from "../../src/adapters/demoAiProvider";
 import { InMemoryRepository } from "../../src/adapters/inMemoryRepository";
 import { EducationalMarketDataProvider } from "../../src/adapters/twseMarketDataProvider";
 import { FutureMintService } from "../../src/application/futureMintService";
+import type { AiProvider } from "../../src/application/ports";
 import { AuthService } from "../../src/auth/authService";
 import { buildServer } from "../../src/http/server";
 import type { Runtime } from "../../src/http/runtime";
@@ -171,5 +172,166 @@ describe("authenticated HTTP routes", () => {
       code: "invalid_credentials",
       message: "電子郵件或密碼不正確。",
     });
+  });
+
+  it("reads and updates the current third-party AI consent", async () => {
+    const registered = await register("student@example.com");
+    const token = registered.json().data.token as string;
+    const headers = { authorization: `Bearer ${token}` };
+
+    const initial = await app.inject({
+      method: "GET",
+      url: "/api/privacy/ai-consent",
+      headers,
+    });
+    const granted = await app.inject({
+      method: "PUT",
+      url: "/api/privacy/ai-consent",
+      headers,
+      payload: { granted: true },
+    });
+    const withdrawn = await app.inject({
+      method: "PUT",
+      url: "/api/privacy/ai-consent",
+      headers,
+      payload: { granted: false },
+    });
+
+    expect(initial.json()).toMatchObject({
+      data: {
+        granted: false,
+        policyVersion: "third-party-ai-v1",
+        grantedAt: null,
+        withdrawnAt: null,
+      },
+    });
+    expect(granted.json().data).toMatchObject({
+      granted: true,
+      grantedAt: expect.any(String),
+      withdrawnAt: null,
+    });
+    expect(withdrawn.json().data).toMatchObject({
+      granted: false,
+      grantedAt: expect.any(String),
+      withdrawnAt: expect.any(String),
+    });
+  });
+
+  it("blocks Liangjie-like capture before upstream use until consent is granted", async () => {
+    const repository = new InMemoryRepository();
+    let providerCalls = 0;
+    const provider = {
+      parseCapture: async () => {
+        providerCalls += 1;
+        return { drafts: [] };
+      },
+    } as AiProvider;
+    const runtime: Runtime = {
+      mode: "hosted",
+      aiProvider: "liangjie",
+      dataProvider: "postgres",
+      service: new FutureMintService(
+        repository,
+        provider,
+        demoCatalog,
+        new EducationalMarketDataProvider(),
+      ),
+      authService: new AuthService(repository),
+      healthCheck: async () => undefined,
+      close: async () => undefined,
+    };
+    const liangjieApp = await buildServer({ runtime, logger: false });
+    try {
+      const registered = await liangjieApp.inject({
+        method: "POST",
+        url: "/api/auth/register",
+        payload: credentials("student@example.com"),
+      });
+      const token = registered.json().data.token as string;
+      const headers = { authorization: `Bearer ${token}` };
+      const payload = {
+        text: "今天買珍奶 75",
+        locale: "zh-TW",
+        referenceTime: "2026-08-30T12:00:00+08:00",
+      };
+
+      const blocked = await liangjieApp.inject({
+        method: "POST",
+        url: "/api/captures/parse",
+        headers,
+        payload,
+      });
+      expect(blocked.statusCode).toBe(403);
+      expect(blocked.json()).toMatchObject({ code: "ai_consent_required" });
+      const blockedLesson = await liangjieApp.inject({
+        method: "POST",
+        url: "/api/lessons/generate",
+        headers,
+      });
+      const blockedPlan = await liangjieApp.inject({
+        method: "GET",
+        url: "/api/learning-plan",
+        headers,
+      });
+      const blockedCoach = await liangjieApp.inject({
+        method: "POST",
+        url: "/api/coach/chat",
+        headers,
+        payload: { topic: "general", question: "怎麼開始記帳？" },
+      });
+      for (const response of [blockedLesson, blockedPlan, blockedCoach]) {
+        expect(response.statusCode).toBe(403);
+        expect(response.json()).toMatchObject({ code: "ai_consent_required" });
+      }
+      expect(providerCalls).toBe(0);
+
+      const consent = await liangjieApp.inject({
+        method: "PUT",
+        url: "/api/privacy/ai-consent",
+        headers,
+        payload: { granted: true },
+      });
+      const allowed = await liangjieApp.inject({
+        method: "POST",
+        url: "/api/captures/parse",
+        headers,
+        payload,
+      });
+      expect(consent.statusCode).toBe(200);
+      expect(allowed.statusCode).toBe(200);
+      expect(providerCalls).toBe(1);
+    } finally {
+      await liangjieApp.close();
+    }
+  });
+
+  it("deletes an account only after password verification and invalidates its session", async () => {
+    const registered = await register("student@example.com");
+    const token = registered.json().data.token as string;
+    const headers = { authorization: `Bearer ${token}` };
+    const wrongPassword = await app.inject({
+      method: "DELETE",
+      url: "/api/auth/account",
+      headers,
+      payload: { password: "wrong-password2026" },
+    });
+    const deleted = await app.inject({
+      method: "DELETE",
+      url: "/api/auth/account",
+      headers,
+      payload: { password: "futuremint2026" },
+    });
+    const after = await app.inject({
+      method: "GET",
+      url: "/api/auth/me",
+      headers,
+    });
+
+    expect(wrongPassword.statusCode).toBe(401);
+    expect(wrongPassword.json()).toMatchObject({ code: "invalid_credentials" });
+    expect(deleted.json()).toMatchObject({ data: { deleted: true } });
+    expect(after.statusCode).toBe(401);
+    const reRegistered = await register("student@example.com");
+    expect(reRegistered.statusCode).toBe(201);
   });
 });

@@ -33,6 +33,22 @@ class _Auth implements AuthGateway {
   Future<void> logout(String token) async {}
 
   @override
+  Future<void> deleteAccount({
+    required String token,
+    required String password,
+  }) => throw UnimplementedError();
+
+  @override
+  Future<AiConsentStatus> getAiConsent(String token) async =>
+      const AiConsentStatus.notGranted();
+
+  @override
+  Future<AiConsentStatus> updateAiConsent({
+    required String token,
+    required bool granted,
+  }) async => AiConsentStatus(granted: granted, policyVersion: 'test');
+
+  @override
   Future<AuthSession> register({
     required String email,
     required String password,

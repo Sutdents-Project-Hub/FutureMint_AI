@@ -8,8 +8,9 @@
 - Session 七天到期；logout 設 revoked timestamp。
 - API 每次從 session 推導 account，所有 repository query 都依 account `user_id`；不接受 Client 指定 ownership。
 - 已保存的 MoneyEvent 只能由擁有該 session 的帳號完整更新或刪除；更新不接受／改寫建立時的 idempotency key，查無該帳號紀錄時回相同 404。
+- App 內帳號刪除需目前密碼再驗證與文字二次確認；成功後刪除 live account 及 FK cascade 資料、使現有 sessions 失效並清除 Client token。
 
-這是競賽 prototype authentication，不是 production identity system。孩子／家長角色現在可透過家庭邀請碼建立受控關聯，但仍尚未實作 email ownership verification、password reset、MFA、global logout、帳號鎖定、breached-password screening、CSRF cookie flow、帳號刪除、邀請撤銷／轉移或正式未成年人法遵。
+這是競賽 prototype authentication，不是 production identity system。孩子／家長角色現在可透過家庭邀請碼建立受控關聯，但仍尚未實作 email ownership verification、password reset、MFA、global logout、帳號鎖定、breached-password screening、CSRF cookie flow、邀請撤銷／轉移或正式未成年人法遵。帳號刪除的 production backup retention 與實際清除 SLA 仍待定案。
 
 ### 家庭關聯與資料權限
 
@@ -56,7 +57,11 @@
 
 ## 隱私與外部 AI
 
-量界智算會收到單次文字 capture 原文；目前不提供圖片上傳或 OCR。學習規劃只送角色、分類與布林／加總摘要，陪讀只送使用者問題與所選合成情境，不送完整流水。它仍是外部資料處理邊界。比賽只輸入合成資料。任何真實未成年人資料使用前，都必須先取得適當同意、確認 relay／上游模型的資料條款、設定保留與刪除流程，並完成法遵與 incident response。
+量界智算會收到單次文字 capture 原文；目前不提供圖片上傳或 OCR。學習規劃只送角色、儲蓄目標、分類與布林／加總摘要，陪讀只送使用者問題與所選合成情境，不送完整流水或密碼。它仍是外部資料處理邊界。
+
+已登入 Client 在首次啟用前會列出第三方名稱、資料類別、用途、拒絕後可用功能與撤回入口。同意以 `third-party-ai-v1` 保存；Client 未同意時不發出 AI request，量界 API routes 仍在 server-side 呼叫 provider 前強制檢查，撤回後立即恢復阻擋。
+
+以上機制只處理產品內的明確同意與撤回，不等於量界／上游供應商條款、保留、訓練使用、subprocessors、資料地區或刪除能力已確認。比賽只輸入合成資料。任何真實未成年人資料使用前，都必須再確認 relay／上游模型的資料條款、設定保留與刪除流程，並完成法遵與 incident response。
 
 TWSE OpenAPI 是另一個外部可用性邊界，但 request 只要求公開市場資料，不傳帳號、持倉、訂單或任何個資。內建標的與事件骰子都必須標示為教育範例，不得以推薦、勝率、排名或獎勵高風險交易的方式呈現。
 

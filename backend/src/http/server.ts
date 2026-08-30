@@ -269,6 +269,28 @@ export const buildServer = async (
     await runtime.authService.logout(bearerToken(request));
     return success(request, reply, { loggedOut: true });
   });
+  app.delete("/api/auth/account", authRateLimit, async (request, reply) => {
+    const account = await requireAuthenticatedUser(request, runtime);
+    await runtime.authService.deleteAccount(account.id, request.body as never);
+    return success(request, reply, { deleted: true });
+  });
+
+  app.get("/api/privacy/ai-consent", async (request, reply) => {
+    const account = await requireAuthenticatedUser(request, runtime);
+    return success(
+      request,
+      reply,
+      await runtime.authService.getAiConsent(account.id),
+    );
+  });
+  app.put("/api/privacy/ai-consent", async (request, reply) => {
+    const account = await requireAuthenticatedUser(request, runtime);
+    return success(
+      request,
+      reply,
+      await runtime.authService.setAiConsent(account.id, request.body as never),
+    );
+  });
 
   app.get("/api/profile", async (request, reply) => {
     const account = await requireAuthenticatedUser(request, runtime);
@@ -317,6 +339,9 @@ export const buildServer = async (
 
   app.post("/api/captures/parse", aiRateLimit, async (request, reply) => {
     const account = await requireAuthenticatedUser(request, runtime);
+    if (runtime.aiProvider === "liangjie") {
+      await runtime.authService.requireAiConsent(account.id);
+    }
     return success(
       request,
       reply,
@@ -398,6 +423,9 @@ export const buildServer = async (
 
   app.post("/api/lessons/generate", aiRateLimit, async (request, reply) => {
     const account = await requireAuthenticatedUser(request, runtime);
+    if (runtime.aiProvider === "liangjie") {
+      await runtime.authService.requireAiConsent(account.id);
+    }
     return success(
       request,
       reply,
@@ -428,6 +456,9 @@ export const buildServer = async (
   });
   app.get("/api/learning-plan", aiRateLimit, async (request, reply) => {
     const account = await requireAuthenticatedUser(request, runtime);
+    if (runtime.aiProvider === "liangjie") {
+      await runtime.authService.requireAiConsent(account.id);
+    }
     return success(
       request,
       reply,
@@ -452,7 +483,10 @@ export const buildServer = async (
     );
   });
   app.post("/api/coach/chat", aiRateLimit, async (request, reply) => {
-    await requireAuthenticatedUser(request, runtime);
+    const account = await requireAuthenticatedUser(request, runtime);
+    if (runtime.aiProvider === "liangjie") {
+      await runtime.authService.requireAiConsent(account.id);
+    }
     return success(
       request,
       reply,

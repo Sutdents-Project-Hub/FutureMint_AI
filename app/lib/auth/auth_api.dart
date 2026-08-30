@@ -14,6 +14,12 @@ abstract interface class AuthGateway {
   Future<AuthSession> login({required String email, required String password});
   Future<PublicAccount> me(String token);
   Future<void> logout(String token);
+  Future<AiConsentStatus> getAiConsent(String token);
+  Future<AiConsentStatus> updateAiConsent({
+    required String token,
+    required bool granted,
+  });
+  Future<void> deleteAccount({required String token, required String password});
 }
 
 class AuthApi implements AuthGateway {
@@ -53,7 +59,14 @@ class AuthApi implements AuthGateway {
       final encoded = body == null ? null : jsonEncode(body);
       final request = switch (method) {
         'GET' => _client.get(_uri(path), headers: headers),
-        _ => _client.post(_uri(path), headers: headers, body: encoded),
+        'POST' => _client.post(_uri(path), headers: headers, body: encoded),
+        'PUT' => _client.put(_uri(path), headers: headers, body: encoded),
+        'DELETE' => _client.delete(_uri(path), headers: headers, body: encoded),
+        _ => throw ArgumentError.value(
+          method,
+          'method',
+          'Unsupported HTTP method',
+        ),
       };
       response = await request.timeout(requestTimeout);
     } on TimeoutException {
@@ -81,9 +94,12 @@ class AuthApi implements AuthGateway {
       );
     }
     if (response.statusCode < 200 || response.statusCode >= 300) {
+      final code = decoded['code'] as String? ?? 'request_failed';
       throw ApiException(
-        code: decoded['code'] as String? ?? 'request_failed',
-        message: response.statusCode == 401
+        code: code,
+        message: code == 'invalid_credentials'
+            ? decoded['message'] as String? ?? '電子郵件或密碼不正確。'
+            : response.statusCode == 401
             ? '登入已過期，請重新登入。'
             : decoded['message'] as String? ?? '目前無法完成請求。',
         retryable: decoded['retryable'] as bool? ?? false,
@@ -126,5 +142,39 @@ class AuthApi implements AuthGateway {
   @override
   Future<void> logout(String token) async {
     await _send('POST', 'auth/logout', body: const {}, token: token);
+  }
+
+  @override
+  Future<AiConsentStatus> getAiConsent(String token) async =>
+      AiConsentStatus.fromJson(
+        await _send('GET', 'privacy/ai-consent', token: token)
+            as Map<String, dynamic>,
+      );
+
+  @override
+  Future<AiConsentStatus> updateAiConsent({
+    required String token,
+    required bool granted,
+  }) async => AiConsentStatus.fromJson(
+    await _send(
+          'PUT',
+          'privacy/ai-consent',
+          token: token,
+          body: {'granted': granted},
+        )
+        as Map<String, dynamic>,
+  );
+
+  @override
+  Future<void> deleteAccount({
+    required String token,
+    required String password,
+  }) async {
+    await _send(
+      'DELETE',
+      'auth/account',
+      token: token,
+      body: {'password': password},
+    );
   }
 }

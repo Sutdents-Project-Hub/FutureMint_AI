@@ -10,12 +10,13 @@
 
 ## PostgreSQL schema
 
-Schema 由 `backend/migrations/001_initial.sql`、`002_roles_and_intents.sql`、`003_investment_lab.sql` 與 `004_family_accounts.sql` 管理：
+Schema 由 `backend/migrations/001_initial.sql`、`002_roles_and_intents.sql`、`003_investment_lab.sql`、`004_family_accounts.sql` 與 `005_ai_consents.sql` 管理：
 
 | Table | 內容 | 重要約束 |
 |---|---|---|
 | `accounts` | Email、scrypt password hash/salt、profile 完成狀態 | email／user_id unique |
 | `sessions` | Token hash、建立／到期／撤銷時間 | token hash unique，account cascade delete |
+| `ai_consents` | 第三方 AI policy version、當前授權狀態、最近授權／撤回時間 | 一個 user 一筆；account cascade delete；非 append-only ledger |
 | `profiles` | 月／週預算、目標、偏好語氣、孩子／家長內容角色 | 一個 user 一筆；金額、tone、account role checks |
 | `money_events` | 收入、支出、訂閱、日期、recurrence、split、需要／想要判斷與理由 | `(user_id, idempotency_key)` unique；收入不得有 spending intent |
 | `lessons` | 個人化課程、options、action、完成狀態、來源 | user FK；source 只允許量界或 demo |
@@ -58,8 +59,10 @@ Pool 目前上限 10 connections，connection／idle timeout 由 repository 設�
 尚待決定：
 
 - 備份頻率、保留天數與異地儲存。
-- 帳號刪除、資料匯出與 session 清理排程。
+- 備份中的帳號刪除保留／到期清理、資料匯出與 session 清理排程。
 - Competition environment 結束後的整庫刪除日期。
 - 真實未成年人資料的同意、年齡、家長、存取與 incident response 流程。
 
-目前 MVP 沒有帳號刪除 UI、忘記密碼、email 驗證、自動 session cleanup 或 production retention；不可用於正式金融或未成年人服務。
+帳號刪除已有 App UI 與 API：使用者需再驗證目前密碼，成功後即時刪除 live PostgreSQL 中的 account 與 cascade 資料。這不等於備份已同步清除；backup retention、帳號刪除後備份排除／到期清除與實際回復流程仍待 production 治理定案。
+
+目前 MVP 仍沒有忘記密碼、email 驗證、自動 session cleanup 或 production retention；不可用於正式金融或未成年人服務。

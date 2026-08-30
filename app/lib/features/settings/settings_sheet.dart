@@ -21,8 +21,176 @@ Future<void> showSettingsSheet(BuildContext context) =>
       ),
     );
 
+Future<void> showAiConsentDisclosure(BuildContext context) => showDialog<void>(
+  context: context,
+  builder: (_) => ChangeNotifierProvider.value(
+    value: context.read<AppController>(),
+    child: Consumer<AppController>(
+      builder: (dialogContext, controller, _) => AlertDialog(
+        key: const Key('ai-consent-disclosure'),
+        title: const Text('啟用 AI 前的資料說明'),
+        content: ConstrainedBox(
+          constraints: const BoxConstraints(maxWidth: 520),
+          child: SingleChildScrollView(
+            child: const Column(
+              mainAxisSize: MainAxisSize.min,
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text('第三方服務：量界智算。'),
+                SizedBox(height: FutureMintTokens.space2),
+                Text(
+                  '依使用的功能，後端會傳送你主動輸入的文字、財務事件的分類／金額摘要、儲蓄目標與角色，以及教練提問／所選情境。FutureMint 傳送這些資料的目的，是解析輸入與產生個人化金融教育回覆。',
+                ),
+                SizedBox(height: FutureMintTokens.space2),
+                Text(
+                  '量界可能以轉送服務連接上游模型；上游來源、資料保留／訓練、再委託與資料地區尚未完成正式確認。在公開政策完成前，只應用於不含個資的原型測試。',
+                ),
+                SizedBox(height: FutureMintTokens.space2),
+                Text(
+                  '不會傳送你的密碼。你可以拒絕，預算、紀錄、FutureSeed 與虛擬投資等非 AI 功能仍可使用；之後也可在設定隨時撤回。',
+                ),
+              ],
+            ),
+          ),
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.of(dialogContext).pop(),
+            child: const Text('暫不啟用'),
+          ),
+          FilledButton(
+            key: const Key('enable-ai-consent'),
+            onPressed: controller.busy || !controller.canManageAiConsent
+                ? null
+                : () async {
+                    final enabled = await controller.updateAiConsent(true);
+                    if (enabled && dialogContext.mounted) {
+                      Navigator.of(dialogContext).pop();
+                    }
+                  },
+            child: const Text('同意並啟用'),
+          ),
+        ],
+      ),
+    ),
+  ),
+);
+
 class _SettingsSheet extends StatelessWidget {
   const _SettingsSheet();
+
+  Future<void> _deleteAccount(
+    BuildContext sheetContext,
+    AppController controller,
+  ) async {
+    final password = TextEditingController();
+    final confirmation = TextEditingController();
+    var deleting = false;
+    String? actionError;
+    await showDialog<void>(
+      context: sheetContext,
+      builder: (dialogContext) => StatefulBuilder(
+        builder: (context, setDialogState) {
+          final ready =
+              password.text.isNotEmpty && confirmation.text.trim() == '刪除帳號';
+          return AlertDialog(
+            key: const Key('delete-account-dialog'),
+            title: const Text('刪除帳號'),
+            content: ConstrainedBox(
+              constraints: const BoxConstraints(maxWidth: 520),
+              child: SingleChildScrollView(
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    const Text(
+                      '此操作會立即刪除 FutureMint 目前資料庫中的帳號、預算、紀錄、課程、虛擬投資與家庭關聯，之後無法由 App 復原。正式服務仍須另行公布備份與第三方服務的保留、刪除期限。',
+                    ),
+                    const SizedBox(height: FutureMintTokens.space3),
+                    TextField(
+                      key: const Key('delete-account-password'),
+                      controller: password,
+                      obscureText: true,
+                      enableSuggestions: false,
+                      autocorrect: false,
+                      onChanged: (_) => setDialogState(() {}),
+                      decoration: const InputDecoration(
+                        labelText: '目前密碼',
+                        border: OutlineInputBorder(),
+                      ),
+                    ),
+                    const SizedBox(height: FutureMintTokens.space3),
+                    TextField(
+                      key: const Key('delete-account-confirmation'),
+                      controller: confirmation,
+                      onChanged: (_) => setDialogState(() {}),
+                      decoration: const InputDecoration(
+                        labelText: '輸入「刪除帳號」確認',
+                        border: OutlineInputBorder(),
+                      ),
+                    ),
+                    if (actionError != null) ...[
+                      const SizedBox(height: FutureMintTokens.space2),
+                      Text(
+                        actionError!,
+                        style: TextStyle(
+                          color: Theme.of(context).colorScheme.error,
+                        ),
+                      ),
+                    ],
+                  ],
+                ),
+              ),
+            ),
+            actions: [
+              TextButton(
+                onPressed: deleting
+                    ? null
+                    : () => Navigator.of(dialogContext).pop(),
+                child: const Text('取消'),
+              ),
+              FilledButton.icon(
+                key: const Key('confirm-delete-account'),
+                style: FilledButton.styleFrom(
+                  backgroundColor: Theme.of(context).colorScheme.error,
+                  foregroundColor: Theme.of(context).colorScheme.onError,
+                ),
+                onPressed: !ready || deleting || !controller.canDeleteAccount
+                    ? null
+                    : () async {
+                        setDialogState(() {
+                          deleting = true;
+                          actionError = null;
+                        });
+                        final deleted = await controller.deleteAccount(
+                          password.text,
+                        );
+                        if (!dialogContext.mounted) return;
+                        if (deleted) {
+                          Navigator.of(dialogContext).pop();
+                          if (sheetContext.mounted) {
+                            Navigator.of(sheetContext).pop();
+                          }
+                        } else {
+                          setDialogState(() {
+                            deleting = false;
+                            actionError =
+                                controller.errorMessage ??
+                                '帳號尚未刪除，請確認目前密碼後再試一次。';
+                          });
+                        }
+                      },
+                icon: const Icon(Icons.delete_forever_outlined),
+                label: Text(deleting ? '正在刪除…' : '永久刪除帳號'),
+              ),
+            ],
+          );
+        },
+      ),
+    );
+    password.dispose();
+    confirmation.dispose();
+  }
 
   Future<void> _editProfile(
     BuildContext context,
@@ -308,7 +476,65 @@ class _SettingsSheet extends StatelessWidget {
                       ),
                       const SizedBox(height: FutureMintTokens.space3),
                       if (!guest) ...[
+                        const Divider(height: FutureMintTokens.space7),
+                        Text(
+                          'AI 使用同意',
+                          style: Theme.of(context).textTheme.titleMedium,
+                        ),
+                        const SizedBox(height: FutureMintTokens.space2),
+                        Text(
+                          controller.aiConsent.granted
+                              ? '已啟用量界智算 AI；你可隨時撤回。'
+                              : '尚未啟用 AI；非 AI 功能仍可使用。',
+                        ),
+                        const SizedBox(height: FutureMintTokens.space2),
+                        OutlinedButton.icon(
+                          key: const Key('settings-ai-consent'),
+                          onPressed: controller.busy
+                              ? null
+                              : () => showAiConsentDisclosure(context),
+                          icon: Icon(
+                            controller.aiConsent.granted
+                                ? Icons.settings_suggest_outlined
+                                : Icons.auto_awesome_outlined,
+                          ),
+                          label: Text(
+                            controller.aiConsent.granted
+                                ? '查看或撤回 AI 同意'
+                                : '查看 AI 資料用途',
+                          ),
+                        ),
+                        if (controller.aiConsent.granted) ...[
+                          const SizedBox(height: FutureMintTokens.space2),
+                          TextButton.icon(
+                            key: const Key('revoke-ai-consent'),
+                            onPressed:
+                                controller.busy ||
+                                    !controller.canManageAiConsent
+                                ? null
+                                : () => controller.revokeAiConsent(),
+                            icon: const Icon(Icons.block_outlined),
+                            label: const Text('撤回 AI 同意'),
+                          ),
+                        ],
+                        const SizedBox(height: FutureMintTokens.space3),
                         const _FamilySection(),
+                        const SizedBox(height: FutureMintTokens.space3),
+                        const Divider(height: FutureMintTokens.space7),
+                        Text(
+                          '帳號',
+                          style: Theme.of(context).textTheme.titleMedium,
+                        ),
+                        const SizedBox(height: FutureMintTokens.space2),
+                        OutlinedButton.icon(
+                          key: const Key('delete-account-action'),
+                          onPressed:
+                              controller.busy || !controller.canDeleteAccount
+                              ? null
+                              : () => _deleteAccount(context, controller),
+                          icon: const Icon(Icons.delete_outline),
+                          label: const Text('刪除帳號與資料'),
+                        ),
                         const SizedBox(height: FutureMintTokens.space3),
                       ],
                       OutlinedButton.icon(
@@ -404,7 +630,7 @@ class _SettingsSheet extends StatelessWidget {
                       ),
                       const SizedBox(height: FutureMintTokens.space2),
                       const Text(
-                        '決賽版本僅使用合成資料。使用量界 AI 模式時，輸入會經後端送往 AI provider 解析；原文不會寫入交易紀錄或一般 log。請勿輸入姓名、學校、帳號或卡號；訪客資料不會儲存。',
+                        '決賽展示與測試應只使用合成資料，或已取得同意且完成去識別的資料；系統不會自動判斷輸入是否含個資。使用量界 AI 模式時，輸入會經後端送往 AI provider 解析；原文不會寫入交易紀錄或一般 log。請勿輸入姓名、學校、帳號或卡號；訪客資料不會儲存。',
                       ),
                     ],
                   ),

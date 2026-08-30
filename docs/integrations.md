@@ -9,6 +9,7 @@
 | Coolify | 兩個 Dockerfile、ports、health checks、三 Resource 設定文件 | 本機 image／container 驗證 | Private GitHub App、webhook、domains、TLS、rollback |
 | GitHub | private repository `main`、`.github/workflows/ci.yml` CI | workflow 已加入 repository；本機可執行相同檢查 | 尚未在 GitHub hosted runner 執行，也尚未連 Coolify 或驗證 Auto Deploy |
 | 家庭帳號 | PostgreSQL family groups／members、邀請碼與摘要權限 | InMemory／PostgreSQL repository 契約與 service tests | 尚未做 production 多帳號實機驗收與邀請撤銷／轉移 |
+| 第三方 AI 同意 | App 內 disclosure、啟用／撤回、versioned PostgreSQL state、量界 route server gate | Auth／HTTP／Flutter unit 與 widget tests | 量界／上游條款、retention、training、subprocessors 與 production E2E |
 | TWSE 市場資料 | 官方 OpenAPI adapter、timeout、schema、15 分鐘 cache、明確 fallback | 本機實際取得 2026-07-14 每日成交快照 | Coolify outbound HTTPS、上游可用性與長期欄位穩定性 |
 | 虛擬投資 | 教學標的、虛擬買賣、持倉／成本／配置／訂單、事件骰子 | API／Flutter tests、PostgreSQL 重啟持久化 | 不含即時行情、配息、手續費、公司行動或真實成交撮合 |
 
@@ -22,6 +23,7 @@
 - Lesson、learning plan、coach、capture 的使用者可見文字會再驗證繁體中文與常見簡體字；schema 失敗時回 `ai_invalid_output`，不把英文內容直接顯示給使用者。Coach 另接受 `brief`、`example`、`steps` 個人化回答方式。
 - Timeout 與 429 依既有 budget 處理；invalid JSON 或 schema mismatch 時，adapter 會以相同最小化 context 重新要求一次完整合規 JSON，仍不合格才回安全且可觀察的 domain error。不記錄 prompt、原文、key 或完整 provider body。
 - 不自動 fallback 到 deterministic provider，避免把 Demo 結果冒充即時 AI。
+- 只有當前 `third-party-ai-v1` 明確授權才可進入量界 provider；parse、lesson、learning plan 與 coach 的 HTTP routes 都在呼叫 provider 前檢查，未授權回 `ai_consent_required`。
 
 量界智算是第三方 relay。部署前需確認帳號、模型供應來源、資料處理條款、費率、額度、內容政策、穩定性與競賽規則；不應假設它等同原模型供應商的 SLA 或隱私承諾。
 

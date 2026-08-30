@@ -20,6 +20,7 @@ FutureMint AI 是專為青少年設計的 AI 金錢決策教練：把使用者�
 8. 投資練習場使用 TWSE 延遲日資料與虛擬現金，提供買賣、持倉、配置、訂單與事件骰子；不連券商、不執行真實交易。
 9. 孩子／家長以邀請碼建立家庭關聯；家長只收到孩子的預算、可用金額、目標進度與提醒數量摘要，使用導覽與制式客服不讀取交易明細。
 10. 訪客模式可離線展示，但資料只留在 Flutter 記憶體；Capture 只支援文字／貼上，不提供圖片上傳或 OCR。
+11. 已登入帳號在量界 AI 功能啟用前明確查看並同意資料類別／用途，且可撤回；也可在 App 內再驗證密碼後刪除帳號與關聯資料。
 
 ## 非範圍
 
@@ -35,7 +36,8 @@ FutureMint AI 是專為青少年設計的 AI 金錢決策教練：把使用者�
 | 流程 | 可觀察完成條件 |
 |---|---|
 | Quick Capture | 30 筆 deterministic 合成繁中回歸通過；量界 adapter 的 JSON／timeout／429／schema 行為有 fake client tests，真實模型另行實測 |
-| Authentication | Register／login／logout／session revoke；不同帳號無法讀寫彼此資料 |
+| Authentication | Register／login／logout／session revoke；不同帳號無法讀寫彼此資料；帳號刪除需目前密碼並使 session 失效 |
+| 第三方 AI 同意 | 資料類別、用途、拒絕與撤回可見；未同意時 Client 與 API 皆不呼叫量界 |
 | 交易保存 | Parse 不寫入；確認後重新整理與 API restart 仍能取回 |
 | 預算與分析 | 相同輸入產生相同收支、需要／想要、通知與數學結果，金額與邊界條件有測試 |
 | 訂閱教練 | 比較至少兩種合成方案，區分已知價格、使用者輸入與解釋 |

@@ -11,13 +11,19 @@ import type { AuthRepository } from "../application/ports";
 import { DomainError } from "../contracts/errors";
 import type {
   Account,
+  AiConsent,
   PublicAccount,
   SessionRecord,
 } from "../contracts/models";
-import { authCredentialsSchema } from "../contracts/schemas";
+import {
+  accountDeletionSchema,
+  aiConsentInputSchema,
+  authCredentialsSchema,
+} from "../contracts/schemas";
 
 const scrypt = promisify(scryptCallback);
 const sessionDurationMs = 7 * 24 * 60 * 60 * 1000;
+export const aiConsentPolicyVersion = "third-party-ai-v1";
 
 export interface AuthCredentials {
   email: string;
@@ -126,6 +132,62 @@ export class AuthService {
 
   async logout(token: string): Promise<void> {
     await this.repository.revokeSession(hashToken(token));
+  }
+
+  async getAiConsent(userId: string): Promise<AiConsent> {
+    const consent = await this.repository.getAiConsent(userId);
+    if (consent?.policyVersion === aiConsentPolicyVersion) return consent;
+    return {
+      granted: false,
+      policyVersion: aiConsentPolicyVersion,
+      grantedAt: null,
+      withdrawnAt: null,
+    };
+  }
+
+  async setAiConsent(
+    userId: string,
+    input: { granted: boolean },
+  ): Promise<AiConsent> {
+    const parsed = aiConsentInputSchema.parse(input);
+    const now = this.now().toISOString();
+    const current = await this.getAiConsent(userId);
+    const consent: AiConsent = parsed.granted
+      ? {
+          granted: true,
+          policyVersion: aiConsentPolicyVersion,
+          grantedAt: now,
+          withdrawnAt: null,
+        }
+      : {
+          granted: false,
+          policyVersion: aiConsentPolicyVersion,
+          grantedAt: current.grantedAt,
+          withdrawnAt: now,
+        };
+    return this.repository.saveAiConsent(userId, consent);
+  }
+
+  async requireAiConsent(userId: string): Promise<void> {
+    if (!(await this.getAiConsent(userId)).granted) {
+      throw new DomainError(
+        "ai_consent_required",
+        "使用第三方 AI 前，請先同意資料處理說明。",
+        403,
+      );
+    }
+  }
+
+  async deleteAccount(
+    userId: string,
+    input: { password: string },
+  ): Promise<void> {
+    const parsed = accountDeletionSchema.parse(input);
+    const account = await this.repository.findAccountById(userId);
+    if (!account || !(await passwordsMatch(parsed.password, account))) {
+      throw invalidCredentials();
+    }
+    await this.repository.deleteAccount(userId);
   }
 
   async markProfileComplete(userId: string): Promise<void> {

@@ -4,7 +4,7 @@
 
 FutureMint AI 是青少年的 AI 金錢決策教練。使用者以繁體中文主動輸入收入、支出或訂閱（目前只接受文字／貼上，不提供圖片上傳或 OCR），系統先整理成可修改草稿與「需要／想要」建議；只有確認後才保存，並以確定性程式更新收支分析、訂閱提醒、個人學習規劃、FutureSeed 複利比較與延遲行情投資練習場。
 
-主辦方 Azure 環境已關閉，因此目前架構已改為自己的 VPS／Coolify。前端、API 與 PostgreSQL 是三個獨立 Resource；AI 由 API 呼叫量界智算，瀏覽器不會接觸資料庫或模型金鑰。2026-07-20 已在 Coolify 的既有 `Student Project / production` environment 建立三個 FutureMint Resources，三者均已部署；API 與 Web health check、公開 API `/api/health`、前端首頁、正式 `ALLOWED_ORIGINS` 與 Web bundle 的 `API_BASE_URL` 已完成驗證。
+主辦方 Azure 環境已關閉，因此目標架構已改為團隊 VPS／Coolify。前端、API 與 PostgreSQL 是三個獨立 Resource；AI 由 API 呼叫量界智算，瀏覽器不會接觸資料庫或模型金鑰。Repository 已具備 Dockerfile、migration、health check 與三 Resource 設定文件；但目前沒有本輪可採信的 Coolify、DNS／TLS、正式 PostgreSQL、量界連線或完整使用者流程實測證據，因此統一視為「尚未部署與驗收」。
 
 ## 命名對照
 
@@ -23,6 +23,8 @@ FutureMint AI 是青少年的 AI 金錢決策教練。使用者以繁體中文�
 - 查看量界智算或 deterministic demo 的解析來源，修正金額／項目／分類／需要或想要後再確認保存。
 - 在紀錄頁編輯或刪除自己已保存的收入、支出與訂閱；預算、分析與訂閱比較會立即重算。
 - 用電子郵件與密碼註冊、登入、登出，並完成首次預算與目標設定。
+- 在第三方 AI 功能啟用前查看量界智算的資料類別與用途，可選擇不啟用或日後撤回；未同意時 Client 與 API 都會擋住量界請求。
+- 已登入帳號可在 App 內輸入目前密碼並二次確認，刪除帳號及其預算、紀錄、課程、虛擬投資與家庭關聯。
 - 每個帳號只能讀寫自己的 PostgreSQL profile、事件與課程資料；重啟 API 後資料仍保留。
 - 先看六個月收支、需要／想要比例與圖形化提醒，再查看長期交易明細。
 - 以 AI 摘要產生個人理財學習路線，並保留可完成的三分鐘微課。
@@ -136,6 +138,19 @@ flutter run -d chrome \
 
 API 的 `ALLOWED_ORIGINS` 必須包含完整前端 origin，例如 `http://localhost:4173`；多個 origin 用逗號分隔，不使用任意 `*`。
 
+### iOS App Store release build
+
+`app/.env.appstore.example` 只是可提交的變數名索引。實際值應放在已忽略的 `app/.env.appstore.local`，再由受控腳本驗證 build number 與正式 HTTPS API URL：
+
+```bash
+cd app
+cp .env.appstore.example .env.appstore.local
+# 在本機填入真實值，不要提交此檔
+./tool/build_ios_release.sh
+```
+
+腳本會拒絕 `localhost`、`example.invalid`、非 HTTPS 或未以 `/api/` 結尾的 `API_BASE_URL`、無效 build number，以及與 Xcode Runner 不一致的 Bundle ID，避免 iOS archive 誤連手機自身或建置錯誤身分。它只產生 IPA，不上傳、不送審；Apple Team、Bundle ID 歸屬與 signing 仍需在正確的開發者帳號驗證。
+
 ## 個別 Docker image 建置
 
 ```bash
@@ -205,8 +220,8 @@ API 變數名稱索引在 `backend/.env.example`。Coolify production 至少需�
 ## 部署與 Git 狀態
 
 - 目標：private GitHub repository 的 `main` 經 Coolify GitHub App／webhook 自動部署。
-- Coolify 已建立並啟動 `futuremint-ai-postgres`、`futuremint-ai-api`、`futuremint-ai-web`；API `/api/health`、前端首頁、CORS 與 Web bundle 的正式 API URL 已驗證。完整註冊、事件保存與量界 capture 流程仍需以 synthetic test account 做人工驗收。
-- VPS 容量、PostgreSQL 備份目的地、量界帳號模型與額度，以及首次 production 連線仍需在平台內驗證。
+- Repository 已建立 Web／API Dockerfile、PostgreSQL migration、health check 與 Coolify 三 Resource 的設定契約；這些是可部署配置，不是已部署證據。
+- Coolify resources、private GitHub integration、DNS／TLS、正式 PostgreSQL、CORS、Web bundle 的 production API URL、量界帳號模型／額度與完整 synthetic-account 主線都尚待在平台內建立並留下驗證證據。
 - 部署不需要 Azure VM、Azure Functions、Cosmos DB 或 Azure OpenAI。
 
 ## 文件索引

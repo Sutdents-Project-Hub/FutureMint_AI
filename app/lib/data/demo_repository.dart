@@ -34,10 +34,14 @@ class _MemoryStore implements _KeyValueStore {
 }
 
 class GuestRepository implements FutureMintRepository {
-  GuestRepository.transient({Uri? marketBaseUri, http.Client? client})
-    : _preferences = _MemoryStore(),
-      _marketBaseUri = marketBaseUri,
-      _client = client ?? http.Client();
+  GuestRepository.transient({
+    Uri? marketBaseUri,
+    http.Client? client,
+    DateTime Function()? now,
+  }) : _preferences = _MemoryStore(),
+       _marketBaseUri = marketBaseUri,
+       _client = client ?? http.Client(),
+       _now = now ?? DateTime.now;
 
   static const _profileKey = 'futuremint.demo.profile.v1';
   static const _eventsKey = 'futuremint.demo.events.v1';
@@ -46,34 +50,39 @@ class GuestRepository implements FutureMintRepository {
   final _KeyValueStore _preferences;
   final Uri? _marketBaseUri;
   final http.Client _client;
+  final DateTime Function() _now;
   int? _investmentStartingCashMinor;
   final List<VirtualInvestmentOrder> _investmentOrders = [];
 
   static Future<GuestRepository> create({
     Uri? marketBaseUri,
     http.Client? client,
+    DateTime Function()? now,
   }) async {
     final repository = GuestRepository.transient(
       marketBaseUri: marketBaseUri,
       client: client,
+      now: now,
     );
     await repository._ensureSeeded();
     return repository;
   }
 
   Future<void> _ensureSeeded() async {
+    final referenceNow = _now();
+    final seedNow = toTaipeiTime(referenceNow);
     if (!_preferences.containsKey(_profileKey)) {
       await _preferences.setString(
         _profileKey,
-        jsonEncode(_seedProfile.toJson()),
+        jsonEncode(_seedProfile(seedNow).toJson()),
       );
     }
     if (!_preferences.containsKey(_eventsKey)) {
-      await _writeEvents(_seedEvents);
+      await _writeEvents(_seedEvents(seedNow, referenceNow));
     }
   }
 
-  static final _seedProfile = UserProfile(
+  static UserProfile _seedProfile(DateTime seedNow) => UserProfile(
     userId: 'guest-user',
     accountRole: AccountRole.child,
     monthlyBudgetMinor: 6000,
@@ -81,58 +90,98 @@ class GuestRepository implements FutureMintRepository {
     goalName: '校外活動基金',
     goalTargetMinor: 12000,
     goalSavedMinor: 4200,
-    goalDate: DateTime(2026, 10, 31),
+    goalDate: DateTime(seedNow.year, seedNow.month + 4, 0),
   );
 
-  static final _seedEvents = [
-    _event(
-      'seed-income',
-      MoneyEventType.income,
-      1500,
-      MoneyCategory.income,
-      '打工收入',
-      DateTime.parse('2026-07-05T18:00:00+08:00'),
-    ),
-    _event(
-      'seed-drink',
-      MoneyEventType.expense,
-      75,
-      MoneyCategory.food,
-      '珍奶',
-      DateTime.parse('2026-07-08T16:30:00+08:00'),
-      spendingIntent: SpendingIntent.want,
-      intentReason: 'AI 建議：這筆較像可以延後或替代的享受型支出。',
-    ),
-    _event(
-      'seed-game',
-      MoneyEventType.expense,
-      450,
-      MoneyCategory.entertainment,
-      '遊戲點數',
-      DateTime.parse('2026-07-09T20:10:00+08:00'),
-      spendingIntent: SpendingIntent.want,
-      intentReason: 'AI 建議：娛樂有價值，但通常可以先確認本月預算。',
-    ),
-    MoneyEvent(
-      id: 'seed-subscription',
-      userId: 'guest-user',
-      type: MoneyEventType.subscription,
-      amountMinor: 390,
-      currency: 'TWD',
-      category: MoneyCategory.subscription,
-      merchant: '影音訂閱',
-      occurredAt: DateTime.parse('2026-07-01T08:00:00+08:00'),
-      recurrence: RecurrenceDetails(
-        billingCycle: BillingCycle.monthly,
-        nextBillingAt: DateTime.parse('2026-08-01T08:00:00+08:00'),
+  static List<MoneyEvent> _seedEvents(DateTime seedNow, DateTime referenceNow) {
+    final gameDay = seedNow.day;
+    final drinkDay = max(1, gameDay - 1);
+    final incomeDay = max(1, gameDay - 4);
+    final subscriptionDay = max(1, gameDay - 8);
+    final incomeAt = _notAfter(
+      _taipeiDateTime(seedNow.year, seedNow.month, incomeDay, 12),
+      referenceNow,
+    );
+    final drinkAt = _notAfter(
+      _taipeiDateTime(seedNow.year, seedNow.month, drinkDay, 16, 30),
+      referenceNow,
+    );
+    final gameAt = _notAfter(
+      _taipeiDateTime(seedNow.year, seedNow.month, gameDay, 20, 10),
+      referenceNow,
+    );
+    final subscriptionAt = _notAfter(
+      _taipeiDateTime(seedNow.year, seedNow.month, subscriptionDay, 8),
+      referenceNow,
+    );
+    return [
+      _event(
+        'seed-income',
+        MoneyEventType.income,
+        1500,
+        MoneyCategory.income,
+        '打工收入',
+        incomeAt,
       ),
-      split: const SplitDetails(participants: 4, userShareMinor: 98),
-      spendingIntent: SpendingIntent.want,
-      intentReason: 'AI 建議：訂閱是否值得，要搭配實際使用頻率判斷。',
-      createdAt: DateTime.parse('2026-07-01T08:00:00+08:00'),
-      updatedAt: DateTime.parse('2026-07-01T08:00:00+08:00'),
-    ),
-  ];
+      _event(
+        'seed-drink',
+        MoneyEventType.expense,
+        75,
+        MoneyCategory.food,
+        '珍奶',
+        drinkAt,
+        spendingIntent: SpendingIntent.want,
+        intentReason: 'AI 建議：這筆較像可以延後或替代的享受型支出。',
+      ),
+      _event(
+        'seed-game',
+        MoneyEventType.expense,
+        450,
+        MoneyCategory.entertainment,
+        '遊戲點數',
+        gameAt,
+        spendingIntent: SpendingIntent.want,
+        intentReason: 'AI 建議：娛樂有價值，但通常可以先確認本月預算。',
+      ),
+      MoneyEvent(
+        id: 'seed-subscription',
+        userId: 'guest-user',
+        type: MoneyEventType.subscription,
+        amountMinor: 390,
+        currency: 'TWD',
+        category: MoneyCategory.subscription,
+        merchant: '影音訂閱',
+        occurredAt: subscriptionAt,
+        recurrence: RecurrenceDetails(
+          billingCycle: BillingCycle.monthly,
+          nextBillingAt: _taipeiDateTime(
+            seedNow.year,
+            seedNow.month + 1,
+            subscriptionDay,
+            8,
+          ),
+        ),
+        split: const SplitDetails(participants: 4, userShareMinor: 98),
+        spendingIntent: SpendingIntent.want,
+        intentReason: 'AI 建議：訂閱是否值得，要搭配實際使用頻率判斷。',
+        createdAt: subscriptionAt,
+        updatedAt: subscriptionAt,
+      ),
+    ];
+  }
+
+  static DateTime _taipeiDateTime(
+    int year,
+    int month,
+    int day,
+    int hour, [
+    int minute = 0,
+  ]) => DateTime.utc(year, month, day, hour - 8, minute);
+
+  static DateTime _notAfter(DateTime candidate, DateTime referenceNow) {
+    final latest = referenceNow.toUtc();
+    return candidate.isAfter(latest) ? latest : candidate;
+  }
 
   static MoneyEvent _event(
     String id,
@@ -184,7 +233,7 @@ class GuestRepository implements FutureMintRepository {
   Future<DashboardSummary> getDashboard() async {
     final profile = await getProfile();
     final events = await listMoneyEvents();
-    final now = toTaipeiTime(DateTime.now());
+    final now = toTaipeiTime(_now());
     final current = events.where((event) {
       final occurredAt = toTaipeiTime(event.occurredAt);
       return occurredAt.year == now.year && occurredAt.month == now.month;
@@ -499,7 +548,7 @@ class GuestRepository implements FutureMintRepository {
   Future<FinancialInsights> getInsights() async {
     final profile = await getProfile();
     final events = await listMoneyEvents();
-    final now = toTaipeiTime(DateTime.now());
+    final now = toTaipeiTime(_now());
     final months = List.generate(6, (index) {
       final month = DateTime(now.year, now.month - 5 + index);
       return '${month.year}-${month.month.toString().padLeft(2, '0')}';
@@ -555,7 +604,7 @@ class GuestRepository implements FutureMintRepository {
     final upcoming = subscriptions.where((event) {
       final next = event.recurrence?.nextBillingAt;
       if (next == null) return false;
-      final days = next.difference(DateTime.now()).inDays;
+      final days = next.difference(_now()).inDays;
       return days >= 0 && days <= 30;
     }).firstOrNull;
     if (upcoming != null) {
@@ -610,7 +659,7 @@ class GuestRepository implements FutureMintRepository {
     );
     final classified = need + want;
     return FinancialInsights(
-      generatedAt: DateTime.now(),
+      generatedAt: _now(),
       monthlyCashflow: cashflow,
       needMinor: need,
       wantMinor: want,

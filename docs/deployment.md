@@ -8,7 +8,7 @@
 2. `futuremint-ai-api`：private GitHub repository 的 `/backend` Dockerfile Application。
 3. `futuremint-ai-web`：同一 repository 的 `/app` Dockerfile Application。
 
-Coolify 從 GitHub clone source，與開發者電腦無關。2026-07-20 已在團隊既有的 `Student Project / production` environment 建立以下 Resources：`futuremint-ai-postgres`（PostgreSQL 17、running、無 host port mapping）、`futuremint-ai-api`（Dockerfile、`/backend`、port 3000、`/api/health`、Auto Deploy）及 `futuremint-ai-web`（Dockerfile、`/app`、port 3000、`/`、Auto Deploy）。API 已寫入 runtime variables、資料庫 internal URL 與量界 runtime key，並完成正式 DNS／TLS domains 與 `ALLOWED_ORIGINS`；Web 的 `API_BASE_URL` 也已設定。三個 Resources 均已完成首次 production deployment；已驗證 API `/api/health`、前端首頁、CORS 及 Web bundle 的正式 API URL。本文件其餘段落保留部署、rollback 與人工驗收清單，不代表完整使用者流程已驗收。
+Coolify 從 GitHub clone source，與開發者電腦無關。Repository 已定義 `futuremint-ai-postgres`、`futuremint-ai-api` 與 `futuremint-ai-web` 的目標設定，並已完成本機 Docker／migration／health check 基礎；但目前沒有本輪可採信的平台截圖、設定導出、公開 endpoint 或 smoke-test 證據能證明 Coolify resources、DNS／TLS、runtime variables、正式資料庫與量界連線已建立。因此本文件以「尚未部署」為當前狀態，以下內容是待執行的部署、rollback 與人工驗收契約，不得當成已完成證據。
 
 根目錄 `compose.yaml` 只供本機整合測試：頂層 `name: futuremint_ai` 讓 Docker Desktop 顯示 `futuremint_ai` Compose project，內含 `web`、`api`、`postgres` 三個容器。Coolify project 使用 `futuremint-ai`，production 仍應建立下列三個獨立 Resources，不使用 Compose 的本機免密碼 PostgreSQL 設定。
 
@@ -151,7 +151,7 @@ Nginx 會：
 1. PostgreSQL healthy，取得 Internal URL。
 2. API 填完 runtime variables，Deploy；確認 migration log 與 health 200。
 3. Web 填 `API_BASE_URL` build variable，Deploy；確認首頁與 deep link。
-4. 由 Web 註冊一個 synthetic test account，完成 profile，新增一筆事件，logout／login。
+4. 由 Web 註冊一個 synthetic test account，完成 profile，查看 AI 資料說明並為此合成帳號明確啟用，新增一筆事件，logout／login。
 5. Redeploy 或 restart API，再登入確認事件仍在，證明不是 memory provider。
 6. 用一筆合成 capture 驗證量界；UI source 應顯示量界智算。若失敗，保留錯誤證據，不改成宣稱 AI 成功。
 7. 觸發一次 backup，並在隔離資料庫驗證 restore。
@@ -203,6 +203,6 @@ curl -fsSI https://<frontend-domain>/capture
 - VPS sizing、resource limits、監控、磁碟告警與 Coolify backup。
 - PostgreSQL backup schedule／retention／S3 endpoint。
 - 量界正式 model、費率、額度、資料條款與競賽允許性。
-- Production email verification、password reset、帳號刪除與未成年人法遵。
+- Production email verification、password reset、備份中帳號刪除 SLA、公開隱私／支援頁與未成年人法遵。
 
 參考官方文件：[Dockerfile Build Pack](https://coolify.io/docs/applications/build-packs/dockerfile)、[GitHub Auto Deploy](https://coolify.io/docs/applications/ci-cd/github/auto-deploy)、[Environment Variables](https://coolify.io/docs/knowledge-base/environment-variables)、[Database internal URL](https://coolify.io/docs/databases/)、[Backups](https://coolify.io/docs/databases/backups)。

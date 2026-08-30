@@ -7,6 +7,7 @@ Node.js 22／TypeScript 後端，提供帳號與 session、Zod 契約、確定�
 - Node.js 22.x，Fastify 5，TypeScript，Zod，Vitest。
 - PostgreSQL 17 透過 `pg` 連線；SQL migration 位於 `migrations/`。
 - 量界智算由 OpenAI SDK 透過 OpenAI-compatible base URL 呼叫；瀏覽器不會取得 API key。使用者可見文字會經 Zod 驗證，必須包含繁體中文並拒絕常見簡體字；不符合時回傳可重試錯誤。
+- 量界 runtime 會在 parse、lesson generate、learning plan 與 coach 四個入口檢查當前 `third-party-ai-v1` 同意；未同意或 policy version 已過期時於 provider 呼叫前回 `403 ai_consent_required`。
 - API base path 是 `/api`，預設監聽 `0.0.0.0:3000`。
 - 全域限制每個來源每分鐘 120 requests；register／login 每分鐘 10 requests；會呼叫 AI 的 parse、lesson generate、learning plan 與 coach routes 每分鐘 20 requests。限制器是單一 API instance 的記憶體狀態。
 
@@ -68,6 +69,8 @@ curl http://localhost:3000/api/health
 | POST | `/api/auth/login` | 無 |
 | GET | `/api/auth/me` | Bearer |
 | POST | `/api/auth/logout` | Bearer |
+| DELETE | `/api/auth/account` | Bearer；再驗證目前密碼 |
+| GET／PUT | `/api/privacy/ai-consent` | Bearer |
 | GET／PUT | `/api/profile` | Bearer |
 | GET | `/api/family` | Bearer |
 | POST | `/api/family/invite` | Bearer；家長 |
@@ -93,7 +96,9 @@ curl http://localhost:3000/api/health
 
 成功回應包含 `requestId` 與 `data`；錯誤回應包含安全的 `code`、`message`、`retryable` 與 `requestId`，不回傳 stack、SQL、prompt 或 provider response。`insights`、投資曲線、虛擬持倉、成本、配置與訂單限制由 deterministic domain 計算；AI 只提供分類理由、學習規劃與白話解釋。
 
-`/api/coach/chat` 可帶 `style=brief|example|steps`，讓學習頁與 FutureSeed 自訂回答方式。家庭關聯使用 8 碼邀請碼；家長回傳的 `childSummaries` 只含預算、收支摘要、可用金額、目標進度與提醒數量，不回傳孩子的 `money_events`。
+`/api/coach/chat` 可帶 `style=brief|example|steps`，讓學習頁與 FutureSeed 自訂回答方式。`/api/privacy/ai-consent` 保存當前同意狀態與最近授權／撤回時間；目前不是 append-only 事件帳本。帳號刪除成功後，PostgreSQL FK cascade 會移除 session、profile、events、lessons、虛擬投資、AI consent 與家庭關聯；email 可再註冊。
+
+家庭關聯使用 8 碼邀請碼；家長回傳的 `childSummaries` 只含預算、收支摘要、可用金額、目標進度與提醒數量，不回傳孩子的 `money_events`。
 
 `/api/market/quotes` 使用不需金鑰的證交所 OpenAPI 每日成交資料，server 端快取 15 分鐘，且同一個 cache miss 只會共用一個上游請求。來源逾時或格式異常時會回明確標示的教育快照，不會把 fallback 冒充即時行情。投資練習場只接受內建教學標的與虛擬買賣，不連券商或交易所下單；同一 API process 會序列化同帳號的下單，若未來改為多個 API replicas，需以資料庫 transaction／lock 延伸這項保護。
 

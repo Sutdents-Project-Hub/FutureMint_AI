@@ -130,6 +130,13 @@ export interface SessionRecord {
   revokedAt?: string;
 }
 
+export interface AiConsent {
+  granted: boolean;
+  policyVersion: string;
+  grantedAt: string | null;
+  withdrawnAt: string | null;
+}
+
 export interface CategoryTotal {
   category: MoneyCategory;
   amountMinor: number;

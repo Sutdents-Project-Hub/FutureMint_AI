@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:futuremint_app/app/future_mint_app.dart';
+import 'package:futuremint_app/auth/auth_models.dart';
 import 'package:futuremint_app/core/models.dart';
 import 'package:futuremint_app/data/guest_repository.dart';
 import 'package:futuremint_app/design/tokens.dart';
@@ -10,12 +11,18 @@ import 'package:shared_preferences/shared_preferences.dart';
 Future<AppController> createController({
   AppMode mode = AppMode.guest,
   String? accountEmail,
+  AiConsentStatus aiConsent = const AiConsentStatus.notGranted(),
+  Future<AiConsentStatus> Function(bool granted)? onAiConsentChanged,
+  Future<void> Function(String password)? onDeleteAccount,
 }) async {
   SharedPreferences.setMockInitialValues({});
   final controller = AppController(
     repository: await GuestRepository.create(),
     mode: mode,
     accountEmail: accountEmail,
+    aiConsent: aiConsent,
+    onAiConsentChanged: onAiConsentChanged,
+    onDeleteAccount: onDeleteAccount,
   );
   await controller.initialize();
   return controller;
@@ -96,6 +103,21 @@ void main() {
     final chip = tester.widget<Chip>(find.byType(Chip).first);
     expect(chip.labelStyle?.color, FutureMintTokens.paper);
     expect(chip.labelStyle?.foreground, isNull);
+  });
+
+  testWidgets('keeps an AI consent notice visible for signed-in users', (
+    tester,
+  ) async {
+    final controller = await createController(
+      mode: AppMode.authenticated,
+      accountEmail: 'student@example.com',
+    );
+
+    await tester.pumpWidget(FutureMintApp(controller: controller));
+    await tester.pumpAndSettle();
+
+    expect(find.byKey(const Key('ai-consent-notice')), findsOneWidget);
+    expect(find.text('查看資料用途'), findsOneWidget);
   });
 
   testWidgets('keeps the neon budget hero and its progress accessible', (

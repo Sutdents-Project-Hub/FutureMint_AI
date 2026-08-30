@@ -1,3 +1,6 @@
+import { readFileSync } from "node:fs";
+import { resolve } from "node:path";
+
 import { describe, expect, it } from "vitest";
 
 import {
@@ -272,5 +275,84 @@ describe("PostgresRepository", () => {
 
     expect(client.queries[0].text).toBe("SELECT 1 AS ok");
     expect(closed).toBe(true);
+  });
+
+  it("stores current AI consent through a user-owned upsert", async () => {
+    const client = new FakeSqlClient();
+    client.enqueue([
+      {
+        granted: true,
+        policy_version: "third-party-ai-v1",
+        granted_at: new Date("2026-08-30T01:00:00.000Z"),
+        withdrawn_at: null,
+      },
+    ]);
+    const repository = new PostgresRepository(client);
+
+    await expect(
+      repository.saveAiConsent("user-1", {
+        granted: true,
+        policyVersion: "third-party-ai-v1",
+        grantedAt: "2026-08-30T01:00:00.000Z",
+        withdrawnAt: null,
+      }),
+    ).resolves.toEqual({
+      granted: true,
+      policyVersion: "third-party-ai-v1",
+      grantedAt: "2026-08-30T01:00:00.000Z",
+      withdrawnAt: null,
+    });
+    expect(client.queries[0]).toMatchObject({
+      values: [
+        "user-1",
+        "third-party-ai-v1",
+        true,
+        "2026-08-30T01:00:00.000Z",
+        null,
+      ],
+    });
+    expect(client.queries[0].text).toContain("INSERT INTO ai_consents");
+    expect(client.queries[0].text).toContain("ON CONFLICT (user_id)");
+  });
+
+  it("reads consent and deletes the account through parameterized SQL", async () => {
+    const client = new FakeSqlClient();
+    client.enqueue([
+      {
+        granted: false,
+        policy_version: "third-party-ai-v1",
+        granted_at: new Date("2026-08-30T01:00:00.000Z"),
+        withdrawn_at: new Date("2026-08-30T02:00:00.000Z"),
+      },
+    ]);
+    const repository = new PostgresRepository(client);
+
+    await expect(repository.getAiConsent("user-1")).resolves.toEqual({
+      granted: false,
+      policyVersion: "third-party-ai-v1",
+      grantedAt: "2026-08-30T01:00:00.000Z",
+      withdrawnAt: "2026-08-30T02:00:00.000Z",
+    });
+    await repository.deleteAccount("user-1");
+    expect(client.queries[0]).toMatchObject({
+      text: expect.stringContaining("FROM ai_consents WHERE user_id = $1"),
+      values: ["user-1"],
+    });
+    expect(client.queries[1]).toEqual({
+      text: "DELETE FROM accounts WHERE user_id = $1",
+      values: ["user-1"],
+    });
+  });
+
+  it("defines AI consent as an account-cascading migration with audit timestamps", () => {
+    const migration = readFileSync(
+      resolve(process.cwd(), "migrations/005_ai_consents.sql"),
+      "utf8",
+    );
+    expect(migration).toContain("CREATE TABLE IF NOT EXISTS ai_consents");
+    expect(migration).toContain("REFERENCES accounts(user_id) ON DELETE CASCADE");
+    expect(migration).toContain("policy_version text NOT NULL");
+    expect(migration).toContain("granted_at timestamptz");
+    expect(migration).toContain("withdrawn_at timestamptz");
   });
 });

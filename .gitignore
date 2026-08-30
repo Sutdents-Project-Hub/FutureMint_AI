@@ -7,6 +7,10 @@
 *.key
 *.p12
 *.pfx
+*.p8
+*.mobileprovision
+*.provisionprofile
+*.cer
 credentials/
 secrets/
 private/

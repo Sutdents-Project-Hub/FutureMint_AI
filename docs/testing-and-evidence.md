@@ -2,7 +2,19 @@
 
 ## 最新本機驗證
 
-驗證日期：2026-07-19（Asia/Taipei）。以下只記錄實際執行結果，不代表 Coolify production、量界正式帳號或真實未成年人服務驗收。
+最新驗證日期：2026-08-30（Asia/Taipei）。以下只記錄實際執行結果，不代表 Coolify production、量界正式帳號、App Store Connect 或真實未成年人服務驗收。
+
+### App Store P0 本機收斂（2026-08-30，Asia/Taipei）
+
+| 元件 | 指令／操作 | 結果 |
+|---|---|---|
+| API 帳號刪除／AI 同意 | `cd backend && npm test && npm run typecheck && npm run build` | 15 個 test files、100 tests 通過；含密碼再驗證、session 失效、email 再註冊、家庭 cascade、consent 版本／授權／撤回，以及四個量界 routes 在 provider 呼叫前攔截。 |
+| Flutter 同意／撤回／刪除 UI | `cd app && dart format lib test integration_test && flutter analyze && flutter test` | 53 files 格式檢查完成、analyze 0 issues、95 tests 通過；含 HTTP method／body、未同意不呼叫 repository、policy 升版後本機 fail closed、撤回清除 AI state、錯誤密碼保留 session 與雙重確認 UI。 |
+| Guest 日期回歸 | 整套 `flutter test` 及固定 clock tests | 合成種子依當前台北年月產生，下次續訂在下月、目標日在未來；不再因日曆跨月讓 dashboard／insights 失真。 |
+| App Store 本機設定安全 | `bash -n app/tool/build_ios_release.sh`、`.gitignore` 與 example env 檢查 | 腳本語法通過；會拒絕 localhost／placeholder／非 HTTPS API URL、無效 build number 與 Runner 不一致的 Bundle ID。`.p8`、provisioning profile 與憑證類型已忽略，example 無真實 secret。 |
+| iOS unsigned Release | `flutter build ios --release --no-codesign --dart-define=API_BASE_URL=https://api.example.invalid/api/` | Xcode build 通過，產出 29.0 MB `Runner.app`；Bundle ID `tw.futuremint.futuremintApp`、版本 `1.0.0`、build `1`。內嵌 Flutter 與 `shared_preferences_foundation` privacy manifest；Client 只使用系統 HTTPS，`ITSAppUsesNonExemptEncryption=false`。此結果只證明本機可編譯，不代表已簽章或可上傳。 |
+
+本輪沒有對外部 PostgreSQL 執行 `005_ai_consents.sql`，也沒有以真實量界帳號或已簽章 IPA 做 E2E；migration 與 repository SQL 目前只有契約測試。
 
 ### 帳務修改與刪除複驗（2026-07-25，Asia/Taipei）
 
@@ -122,7 +134,7 @@
 
 ### API
 
-- Register／login／logout／revoked session、相同 generic invalid-credential error。
+- Register／login／logout／revoked session、相同 generic invalid-credential error、目前密碼再驗證帳號刪除與 cascade。
 - 帳號 ownership：帳號 B 看不到帳號 A 的事件。
 - Budget、split、subscription monthly cost、六個月 cashflow、提醒、FutureSeed zero rate、三情境曲線與 drawdown calculation。
 - FutureSeed 1.5%／5%／8% 合成路徑的十年幾何平均校準，以及不被每月投入稀釋的報酬指數 drawdown。
@@ -133,12 +145,14 @@
 - Runtime 設定缺失／不合法時明確失敗；production 只允許完整的 `liangjie + postgres` provider pair。
 - 量界 adapter：OpenAI-compatible request、nullable fields、type／category／intent semantics、Markdown JSON fence、invalid JSON／schema、timeout、429 retry budget、學習規劃與安全陪讀回覆。
 - AI 文字安全：英文 lesson output 會被 `ai_invalid_output` schema 拒絕；coach 支援回答方式契約；家庭 service 驗證邀請碼、家長／孩子角色與摘要權限。
+- AI 同意：當前 policy version、授權／撤回 timestamps、舊版重新同意，以及量界 parse／lesson／plan／coach 的 provider-before-call gate。
 - PostgreSQL mapping、parameterized queries、event idempotency、sessions、lessons、health 與 close。
 
 ### Flutter
 
 - Model JSON 與 `liangjie-ai` source mapping。
-- Register／login envelope、Bearer header、首次設定、訪客不保存 session。
+- Register／login envelope、Bearer header、首次設定、訪客不保存 session、帳號刪除後清除 token。
+- AI consent GET／PUT、揭露／啟用／撤回 UI、未同意時本機不發 AI request，以及撤回後的 AI-only state 清除。
 - API timeout／problem envelope、明確 timezone、空資料不虛構 subscription、session 還原時的暫時網路失敗／未授權分流。
 - Capture 三階段、多 draft、修正、單筆確認、儲存後清空輸入、partial refresh recovery。
 - Dashboard、phone／desktop direct navigation、subscription、lesson action、需要／想要控制、無延遲分析圖表與三路徑 FutureSeed。
@@ -163,9 +177,12 @@ Fixture：`backend/test/fixtures/capture-evaluation.json`；報告：
 - Coolify PostgreSQL internal URL、production capacity、scheduled S3 backup 與隔離 restore。
 - Production log retention、磁碟告警與 server／Coolify 自身備份。
 - Flutter Web integration drive；Flutter CLI 的 Web integration test 仍需相容 ChromeDriver。等價主線已有 Widget／HTTP／container tests，不冒充 drive 通過。
-- Android 實機、iOS build／signing 未驗證。
+- Android 實機與 iOS signing／archive／TestFlight 尚未驗證；iOS 26.4 SDK 的 unsigned release build 已在本機通過，不代表可上傳。
+- iOS AppIcon 仍是 Flutter 預設圖標，LaunchImage 仍是 1×1 預設空白資產；需先確認正式品牌圖示，再產生完整 asset catalog 並做實機啟動畫面 QA。
+- iOS 目前支援 iPhone 與 iPad（`TARGETED_DEVICE_FAMILY="1,2"`）；需確認上架範圍。若保留 iPad，還需 iPad RWD 與 App Store 截圖驗收。
+- 目前 unsigned `Runner.app` 會內嵌 dev-only `integration_test.framework`；尚未證實會造成 Apple rejection，但正式 signed archive 前應將 integration-test harness 與 production target 隔離或移除。
 - 正式螢幕閱讀器、完整鍵盤、色覺與 reduced-motion 人工驗收。
-- Production identity hardening：email verification、password reset、MFA、帳號刪除、session cleanup、shared rate limit、同意與資料保留。
+- Production identity/privacy hardening：email verification、password reset、MFA、session cleanup、shared rate limit、備份保留／刪除 SLA、公開隱私政策／支援 URL、量界與上游資料條款、正式未成年人法遵。
 
 ## 重現方式
 

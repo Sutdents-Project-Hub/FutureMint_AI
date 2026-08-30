@@ -25,7 +25,7 @@ flowchart LR
 |---|---|---|
 | Flutter Web Application | 編譯 release bundle，Nginx 提供 SPA 與 deep-link fallback | 公開 HTTPS |
 | Fastify API Application | Authentication、契約驗證、AI 協調、確定性計算、資料 ownership | 公開 HTTPS；可連 private database |
-| PostgreSQL 17 Database | Accounts、sessions、profiles、events、lessons、migration history | 不公開；只允許 Coolify internal network |
+| PostgreSQL 17 Database | Accounts、sessions、AI consents、profiles、events、lessons、migration history | 不公開；只允許 Coolify internal network |
 
 量界智算不是第四個 Coolify Resource，而是 API 使用的外部 AI provider。前端只知道 API URL。
 
@@ -42,7 +42,7 @@ flowchart LR
 ### Fastify API
 
 - `contracts/`：Zod input／output schema、錯誤與資料模型。
-- `auth/`：email/password prototype、session 發行／驗證／撤銷。
+- `auth/`：email/password prototype、session 發行／驗證／撤銷、AI 同意與帳號刪除。
 - `application/`：use cases 與 repository/provider ports。
 - `domain/`：預算、訂閱、六個月收支分析、提醒、FutureSeed 三情境，以及虛擬持倉／配置／事件牌組的確定性計算。
 - `adapters/`：量界 AI、TWSE 每日成交資料、deterministic demo、PostgreSQL、in-memory。
@@ -60,11 +60,12 @@ Runtime 要求明確設定 `AI_PROVIDER=demo|liangjie` 與 `DATA_PROVIDER=memory
 3. PostgreSQL 保存 account；session 只保存 token hash，明文 token 只回傳一次給 Client。
 4. 後續 API 從 Bearer session 推導 account，不接受前端指定 user ID。
 5. Logout 將 session 設為 revoked；session 七天到期。
+6. 刪除帳號時需再輸入目前密碼；成功後由 account FK cascade 刪除相關主資料與 session，Client 同時清除本機 token。
 
 ### Quick Capture
 
 1. Client 送出原始文字、locale 與 reference time。
-2. API 驗證 session、長度、格式與 allowed fields。
+2. API 驗證 session、長度、格式與 allowed fields；量界 runtime 還必須先確認當前 policy version 已明確授權。
 3. Provider 最多回傳五筆草稿與可修改的需要／想要建議：量界回覆先抽取 JSON，再經 Zod 與語意規則驗證；Demo provider 使用可重現規則。
 4. 回覆來源標示 `liangjie-ai` 或 `deterministic-demo`。
 5. 解析不寫資料庫；使用者修正並確認後才 POST MoneyEvent。已保存紀錄可由該帳號以 `PUT` 完整修改或以 `DELETE` 刪除，Client 隨後重載摘要。
@@ -108,6 +109,7 @@ Runtime 要求明確設定 `AI_PROVIDER=demo|liangjie` 與 `DATA_PROVIDER=memory
 | PostgreSQL unavailable | 顯示服務暫時無法使用 | health 回 503，不宣稱保存成功 |
 | 重複 submit | 回同一事件 | PostgreSQL unique idempotency key 保護 |
 | Session 過期／撤銷 | 回登入頁 | API 回 401 |
+| 未同意／已撤回第三方 AI | 保留非 AI 功能，可重新開啟資料說明 | Client 不發出 AI request；API 再於 provider 前回 403 |
 | Web deep link refresh | 畫面正常載入 | Nginx fallback 到 `index.html` |
 | 正式網路中斷 | 可明確切訪客模式 | 訪客資料只在記憶體，不同步到帳號 |
 | TWSE unavailable／schema mismatch | 顯示降級資料與日期 | 回明確標示的教育快照，不冒充即時行情 |

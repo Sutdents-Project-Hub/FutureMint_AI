@@ -3,6 +3,7 @@ import 'dart:convert';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:futuremint_app/auth/auth_api.dart';
 import 'package:futuremint_app/auth/session_store.dart';
+import 'package:futuremint_app/data/api_repository.dart';
 import 'package:http/http.dart' as http;
 import 'package:http/testing.dart';
 import 'package:shared_preferences/shared_preferences.dart';
@@ -55,5 +56,94 @@ void main() {
     expect(store.preferences.getKeys(), {SessionStore.tokenKey});
     await store.clearToken();
     expect(await store.readToken(), isNull);
+  });
+
+  test(
+    'consent and deletion use the required authenticated HTTP methods',
+    () async {
+      final api = AuthApi(
+        baseUri: Uri.parse('https://example.test/api/'),
+        client: MockClient((request) async {
+          expect(request.headers['authorization'], 'Bearer token-value');
+          if (request.method == 'GET') {
+            expect(request.url.path, '/api/privacy/ai-consent');
+            return http.Response(
+              jsonEncode({
+                'requestId': 'consent-get',
+                'data': {
+                  'granted': false,
+                  'policyVersion': '2026-08-30',
+                  'grantedAt': null,
+                  'withdrawnAt': null,
+                },
+              }),
+              200,
+            );
+          }
+          if (request.method == 'PUT') {
+            expect(request.url.path, '/api/privacy/ai-consent');
+            expect(jsonDecode(request.body), {'granted': true});
+            return http.Response(
+              jsonEncode({
+                'requestId': 'consent-put',
+                'data': {
+                  'granted': true,
+                  'policyVersion': '2026-08-30',
+                  'grantedAt': '2026-08-30T00:00:00.000Z',
+                  'withdrawnAt': null,
+                },
+              }),
+              200,
+            );
+          }
+          expect(request.method, 'DELETE');
+          expect(request.url.path, '/api/auth/account');
+          expect(jsonDecode(request.body), {'password': 'current-pass'});
+          return http.Response(
+            jsonEncode({'requestId': 'account-delete', 'data': {}}),
+            200,
+          );
+        }),
+      );
+
+      final current = await api.getAiConsent('token-value');
+      final updated = await api.updateAiConsent(
+        token: 'token-value',
+        granted: true,
+      );
+      await api.deleteAccount(token: 'token-value', password: 'current-pass');
+
+      expect(current.granted, isFalse);
+      expect(updated.granted, isTrue);
+    },
+  );
+
+  test('invalid credentials retain their password-specific message', () async {
+    final api = AuthApi(
+      baseUri: Uri.parse('https://example.test/api/'),
+      client: MockClient(
+        (_) async => http.Response(
+          jsonEncode({
+            'requestId': 'wrong-password',
+            'code': 'invalid_credentials',
+            'message': '電子郵件或密碼不正確。',
+            'retryable': false,
+          }),
+          401,
+          headers: {'content-type': 'application/json; charset=utf-8'},
+        ),
+      ),
+    );
+
+    expect(
+      () => api.deleteAccount(token: 'token-value', password: 'wrong-pass'),
+      throwsA(
+        isA<ApiException>().having(
+          (error) => error.message,
+          'message',
+          '電子郵件或密碼不正確。',
+        ),
+      ),
+    );
   });
 }

@@ -23,6 +23,14 @@ export const authCredentialsSchema = z.object({
     .regex(/\d/, "密碼需包含數字。"),
 });
 
+export const aiConsentInputSchema = z.object({
+  granted: z.boolean(),
+});
+
+export const accountDeletionSchema = z.object({
+  password: authCredentialsSchema.shape.password,
+});
+
 export const splitDetailsSchema = z.object({
   participants: z.number().int().min(2).max(20),
   userShareMinor: positiveMoney,

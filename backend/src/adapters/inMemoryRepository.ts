@@ -2,6 +2,7 @@ import { randomUUID } from "node:crypto";
 
 import type {
   Account,
+  AiConsent,
   FamilyGroupRecord,
   FamilyMemberRecord,
   Lesson,
@@ -105,6 +106,7 @@ export class InMemoryRepository
   private accountsByEmail = new Map<string, Account>();
   private accountsById = new Map<string, Account>();
   private sessions = new Map<string, SessionRecord>();
+  private aiConsents = new Map<string, AiConsent>();
   private familyGroups = new Map<string, FamilyGroupRecord>();
   private familyMembers = new Map<string, FamilyMemberRecord>();
 
@@ -415,5 +417,40 @@ export class InMemoryRepository
       ...session,
       revokedAt: new Date().toISOString(),
     });
+  }
+
+  async getAiConsent(userId: string): Promise<AiConsent | null> {
+    const consent = this.aiConsents.get(userId);
+    return consent ? { ...consent } : null;
+  }
+
+  async saveAiConsent(userId: string, consent: AiConsent): Promise<AiConsent> {
+    const copy = { ...consent };
+    this.aiConsents.set(userId, copy);
+    return { ...copy };
+  }
+
+  async deleteAccount(userId: string): Promise<void> {
+    const account = this.accountsById.get(userId);
+    if (!account) return;
+
+    const createdGroups = [...this.familyGroups.values()]
+      .filter((group) => group.createdBy === userId)
+      .map((group) => group.familyId);
+    for (const familyId of createdGroups) {
+      await this.deleteFamilyGroup(familyId);
+    }
+    this.familyMembers.delete(userId);
+    this.profiles.delete(userId);
+    this.events.delete(userId);
+    this.lessons.delete(userId);
+    this.investmentAccounts.delete(userId);
+    this.investmentOrders.delete(userId);
+    this.aiConsents.delete(userId);
+    for (const [tokenHash, session] of this.sessions) {
+      if (session.userId === userId) this.sessions.delete(tokenHash);
+    }
+    this.accountsById.delete(userId);
+    this.accountsByEmail.delete(account.email);
   }
 }

@@ -5,6 +5,7 @@ import 'package:flutter/material.dart';
 import '../core/future_mint_repository.dart';
 import '../core/models.dart';
 import '../data/api_repository.dart';
+import '../auth/auth_models.dart';
 
 class AppController extends ChangeNotifier {
   AppController({
@@ -13,6 +14,9 @@ class AppController extends ChangeNotifier {
     this.accountEmail,
     this.onExit,
     this.onUnauthorized,
+    this.aiConsent = const AiConsentStatus.notGranted(),
+    this.onAiConsentChanged,
+    this.onDeleteAccount,
   });
 
   FutureMintRepository repository;
@@ -20,6 +24,8 @@ class AppController extends ChangeNotifier {
   final String? accountEmail;
   final Future<void> Function()? onExit;
   final Future<void> Function()? onUnauthorized;
+  final Future<AiConsentStatus> Function(bool granted)? onAiConsentChanged;
+  final Future<void> Function(String password)? onDeleteAccount;
   ThemeMode themeMode = ThemeMode.system;
 
   bool initialized = false;
@@ -42,6 +48,28 @@ class AppController extends ChangeNotifier {
   CoachReply? coachReply;
   CoachReply? learningCoachReply;
   FamilyOverview? familyOverview;
+  AiConsentStatus aiConsent;
+
+  bool get isAiEnabled => mode != AppMode.authenticated || aiConsent.granted;
+  bool get canManageAiConsent =>
+      mode == AppMode.authenticated && onAiConsentChanged != null;
+  bool get canDeleteAccount =>
+      mode == AppMode.authenticated && onDeleteAccount != null;
+
+  bool _blockAiWhenDisabled() {
+    if (isAiEnabled) return false;
+    errorMessage = '尚未啟用 AI。你仍可使用非 AI 功能，請在設定查看資料用途後再決定。';
+    notifyListeners();
+    return true;
+  }
+
+  void _clearAiState() {
+    captureResult = null;
+    lesson = null;
+    learningPlan = null;
+    coachReply = null;
+    learningCoachReply = null;
+  }
 
   Future<bool> _perform(Future<void> Function() operation) async {
     if (busy) return false;
@@ -59,6 +87,11 @@ class AppController extends ChangeNotifier {
       };
       if (error case ApiException(code: 'unauthorized')) {
         await onUnauthorized?.call();
+      } else if (error case ApiException(code: 'ai_consent_required')) {
+        // The server is authoritative when a policy version changes while the
+        // app is open. Fail closed locally and ask for fresh consent.
+        aiConsent = const AiConsentStatus.notGranted();
+        _clearAiState();
       }
       return false;
     } finally {
@@ -136,15 +169,17 @@ class AppController extends ChangeNotifier {
     initialized = true;
   });
 
-  Future<void> parseCapture(String text, {DateTime? referenceTime}) =>
-      _run(() async {
-        lastSavedEvent = null;
-        captureResult = null;
-        captureResult = await repository.parseCapture(
-          text,
-          referenceTime: referenceTime ?? DateTime.now(),
-        );
-      });
+  Future<void> parseCapture(String text, {DateTime? referenceTime}) async {
+    if (_blockAiWhenDisabled()) return;
+    await _run(() async {
+      lastSavedEvent = null;
+      captureResult = null;
+      captureResult = await repository.parseCapture(
+        text,
+        referenceTime: referenceTime ?? DateTime.now(),
+      );
+    });
+  }
 
   Future<void> saveDraft(CaptureDraft draft) => _run(() async {
     final currentCapture = captureResult;
@@ -214,14 +249,14 @@ class AppController extends ChangeNotifier {
   });
 
   Future<void> loadLesson() async {
-    if (lesson != null || busy) return;
+    if (_blockAiWhenDisabled() || lesson != null || busy) return;
     await _run(() async {
       lesson = await repository.generateLesson();
     });
   }
 
   Future<void> loadLearningPlan() async {
-    if (learningPlan != null || busy) return;
+    if (_blockAiWhenDisabled() || learningPlan != null || busy) return;
     await _run(() async {
       learningPlan = await repository.getLearningPlan();
     });
@@ -256,27 +291,33 @@ class AppController extends ChangeNotifier {
     String style = 'example',
     InvestmentScenarioId? scenarioId,
     int? selectedYear,
-  }) => _run(() async {
-    coachReply = await repository.askCoach(
-      topic: topic,
-      question: question,
-      style: style,
-      scenarioId: scenarioId,
-      selectedYear: selectedYear,
-    );
-  });
+  }) async {
+    if (_blockAiWhenDisabled()) return;
+    await _run(() async {
+      coachReply = await repository.askCoach(
+        topic: topic,
+        question: question,
+        style: style,
+        scenarioId: scenarioId,
+        selectedYear: selectedYear,
+      );
+    });
+  }
 
   Future<void> askLearningCoach({
     required String topic,
     required String question,
     String style = 'example',
-  }) => _run(() async {
-    learningCoachReply = await repository.askCoach(
-      topic: topic,
-      question: question,
-      style: style,
-    );
-  });
+  }) async {
+    if (_blockAiWhenDisabled()) return;
+    await _run(() async {
+      learningCoachReply = await repository.askCoach(
+        topic: topic,
+        question: question,
+        style: style,
+      );
+    });
+  }
 
   Future<void> loadFamily() => _run(() async {
     familyOverview = await repository.getFamilyOverview();
@@ -336,6 +377,25 @@ class AppController extends ChangeNotifier {
   void setThemeMode(ThemeMode value) {
     themeMode = value;
     notifyListeners();
+  }
+
+  Future<bool> updateAiConsent(bool granted) async {
+    final update = onAiConsentChanged;
+    if (mode != AppMode.authenticated || update == null) return false;
+    return _perform(() async {
+      aiConsent = await update(granted);
+      if (!aiConsent.granted) _clearAiState();
+    });
+  }
+
+  Future<bool> revokeAiConsent() => updateAiConsent(false);
+
+  Future<bool> deleteAccount(String password) async {
+    final delete = onDeleteAccount;
+    if (mode != AppMode.authenticated || delete == null) return false;
+    return _perform(() async {
+      await delete(password);
+    });
   }
 
   void clearMessages() {

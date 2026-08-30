@@ -37,6 +37,7 @@
 - Market lab：TWSE source／日期／fallback 可見，虛擬訂單的 cash／holding／idempotency tests 通過，登入訂單重啟後仍存在。
 - Deployment：兩個 Application health checks、private database、GitHub `main` auto deploy、rollback 與 backup／restore。
 - Security：UI／log／簡報不顯示 email、password、token、key、database URL、prompt 或完整財務原文。
+- Privacy controls：量界 AI 資料說明、明確啟用／撤回、provider 前後端雙層攔截與帳號刪除有自動化測試；production 供應商條款與 backup retention 另列未驗證。
 - 所有數字標示「本機實測」、「Coolify 實測」或「目標」，不混用。
 
 ## Demo 備援
@@ -55,6 +56,7 @@
 - [ ] 量界 model／quota／資料條款確認，合成案例實測完成。
 - [ ] PostgreSQL 不公開；backup 與隔離 restore 實測完成。
 - [ ] Register／profile／capture／save／restart／login／read 主線通過。
+- [ ] Synthetic account 的 AI 同意／撤回與帳號刪除在 production API 做端對端驗收，並確認備份保留說明一致。
 - [ ] 簡報、README、畫面與實際功能一致，不宣稱 Azure、真實金融串接或 production 法遵。
 - [ ] 每位成員完成至少三輪計時演練，Demo 帳號、網路、充電、轉接器與錄影備援就緒。
 - [ ] Repository 與 bundle 完成 secret／個資／合約掃描。

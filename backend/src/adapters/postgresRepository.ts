@@ -11,6 +11,7 @@ import type {
 import { DomainError } from "../contracts/errors";
 import type {
   Account,
+  AiConsent,
   FamilyGroupRecord,
   FamilyMemberRecord,
   Lesson,
@@ -47,6 +48,13 @@ interface SessionRow extends Record<string, unknown> {
   created_at: Date | string;
   expires_at: Date | string;
   revoked_at: Date | string | null;
+}
+
+interface AiConsentRow extends Record<string, unknown> {
+  granted: boolean;
+  policy_version: string;
+  granted_at: Date | string | null;
+  withdrawn_at: Date | string | null;
 }
 
 interface ProfileRow extends Record<string, unknown> {
@@ -151,6 +159,13 @@ const sessionFromRow = (row: SessionRow): SessionRecord => ({
   createdAt: isoDateTime(row.created_at),
   expiresAt: isoDateTime(row.expires_at),
   ...(row.revoked_at ? { revokedAt: isoDateTime(row.revoked_at) } : {}),
+});
+
+const aiConsentFromRow = (row: AiConsentRow): AiConsent => ({
+  granted: row.granted,
+  policyVersion: row.policy_version,
+  grantedAt: row.granted_at ? isoDateTime(row.granted_at) : null,
+  withdrawnAt: row.withdrawn_at ? isoDateTime(row.withdrawn_at) : null,
 });
 
 const profileFromRow = (row: ProfileRow): UserProfile => ({
@@ -749,6 +764,42 @@ export class PostgresRepository
       WHERE token_hash = $1`,
       [tokenHash],
     );
+  }
+
+  async getAiConsent(userId: string): Promise<AiConsent | null> {
+    const { rows } = await this.client.query<AiConsentRow>(
+      `SELECT granted, policy_version, granted_at, withdrawn_at
+      FROM ai_consents WHERE user_id = $1 LIMIT 1`,
+      [userId],
+    );
+    return rows[0] ? aiConsentFromRow(rows[0]) : null;
+  }
+
+  async saveAiConsent(userId: string, consent: AiConsent): Promise<AiConsent> {
+    const { rows } = await this.client.query<AiConsentRow>(
+      `INSERT INTO ai_consents (
+        user_id, policy_version, granted, granted_at, withdrawn_at, updated_at
+      ) VALUES ($1, $2, $3, $4, $5, NOW())
+      ON CONFLICT (user_id) DO UPDATE SET
+        policy_version = EXCLUDED.policy_version,
+        granted = EXCLUDED.granted,
+        granted_at = EXCLUDED.granted_at,
+        withdrawn_at = EXCLUDED.withdrawn_at,
+        updated_at = NOW()
+      RETURNING granted, policy_version, granted_at, withdrawn_at`,
+      [
+        userId,
+        consent.policyVersion,
+        consent.granted,
+        consent.grantedAt,
+        consent.withdrawnAt,
+      ],
+    );
+    return aiConsentFromRow(rows[0]);
+  }
+
+  async deleteAccount(userId: string): Promise<void> {
+    await this.client.query("DELETE FROM accounts WHERE user_id = $1", [userId]);
   }
 }
 

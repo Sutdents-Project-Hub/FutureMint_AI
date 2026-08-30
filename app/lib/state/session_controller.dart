@@ -112,12 +112,17 @@ class SessionController extends ChangeNotifier {
       status = SessionStatus.onboarding;
       return;
     }
+    final aiConsent = await _loadAiConsent(token);
     final nextApp = AppController(
       repository: _authenticatedRepository(token),
       mode: AppMode.authenticated,
       accountEmail: nextAccount.email,
       onExit: logout,
       onUnauthorized: expireSession,
+      aiConsent: aiConsent,
+      onAiConsentChanged: (granted) =>
+          _auth.updateAiConsent(token: token, granted: granted),
+      onDeleteAccount: deleteAccount,
     );
     await nextApp.initialize();
     if (!nextApp.initialized) {
@@ -141,6 +146,10 @@ class SessionController extends ChangeNotifier {
       accountEmail: account!.email,
       onExit: logout,
       onUnauthorized: expireSession,
+      aiConsent: await _loadAiConsent(token),
+      onAiConsentChanged: (granted) =>
+          _auth.updateAiConsent(token: token, granted: granted),
+      onDeleteAccount: deleteAccount,
     );
     final saved = await nextApp.updateProfile(profile);
     busy = false;
@@ -197,6 +206,46 @@ class SessionController extends ChangeNotifier {
       app = null;
       busy = false;
       status = SessionStatus.signedOut;
+      notifyListeners();
+    }
+  }
+
+  Future<AiConsentStatus> _loadAiConsent(String token) async {
+    try {
+      return await _auth.getAiConsent(token);
+    } catch (error) {
+      if (_isExpiredSession(error)) rethrow;
+      // Consent is security-sensitive: network or server failures must not
+      // activate AI features locally.
+      return const AiConsentStatus.notGranted();
+    }
+  }
+
+  Future<void> deleteAccount(String password) async {
+    final token = _token;
+    if (token == null) {
+      throw const ApiException(
+        code: 'unauthorized',
+        message: '登入已過期，請重新登入。',
+        retryable: false,
+      );
+    }
+    busy = true;
+    message = null;
+    notifyListeners();
+    try {
+      await _auth.deleteAccount(token: token, password: password);
+      await _store.clearToken();
+      _token = null;
+      account = null;
+      app = null;
+      status = SessionStatus.signedOut;
+      message = '帳號已刪除。';
+    } catch (error) {
+      message = _messageFor(error);
+      rethrow;
+    } finally {
+      busy = false;
       notifyListeners();
     }
   }

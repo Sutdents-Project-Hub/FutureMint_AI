@@ -1,6 +1,7 @@
 import 'dart:convert';
 
 import 'package:flutter_test/flutter_test.dart';
+import 'package:futuremint_app/auth/auth_models.dart';
 import 'package:futuremint_app/core/models.dart';
 import 'package:futuremint_app/data/guest_repository.dart';
 import 'package:futuremint_app/data/api_repository.dart';
@@ -32,6 +33,86 @@ void main() {
       expect(controller.mode, AppMode.guest);
     },
   );
+
+  test(
+    'authenticated users without consent never call AI repository methods',
+    () async {
+      var requests = 0;
+      final protected = AppController(
+        repository: ApiRepository(
+          baseUri: Uri.parse('https://example.test/api/'),
+          client: MockClient((_) async {
+            requests += 1;
+            return http.Response('{}', 500);
+          }),
+        ),
+        mode: AppMode.authenticated,
+      );
+
+      await protected.parseCapture('今天買珍奶 75');
+      await protected.loadLesson();
+      await protected.loadLearningPlan();
+      await protected.askCoach(topic: 'saving', question: '怎麼開始？');
+      await protected.askLearningCoach(topic: 'budget', question: '如何分配？');
+
+      expect(requests, 0);
+      expect(protected.errorMessage, contains('尚未啟用 AI'));
+    },
+  );
+
+  test(
+    'revoking AI consent clears AI-only state and restores local block',
+    () async {
+      final consentController = AppController(
+        repository: await GuestRepository.create(),
+        mode: AppMode.authenticated,
+        aiConsent: AiConsentStatus(granted: true, policyVersion: '2026-08-30'),
+        onAiConsentChanged: (granted) async =>
+            AiConsentStatus(granted: granted, policyVersion: '2026-08-30'),
+      );
+      await consentController.initialize();
+      await consentController.loadLesson();
+      expect(consentController.lesson, isNotNull);
+
+      final revoked = await consentController.revokeAiConsent();
+
+      expect(revoked, isTrue);
+      expect(consentController.aiConsent.granted, isFalse);
+      expect(consentController.lesson, isNull);
+      await consentController.loadLesson();
+      expect(consentController.lesson, isNull);
+      expect(consentController.errorMessage, contains('尚未啟用 AI'));
+    },
+  );
+
+  test('server policy changes invalidate the local AI consent state', () async {
+    final protected = AppController(
+      repository: ApiRepository(
+        baseUri: Uri.parse('https://example.test/api/'),
+        client: MockClient(
+          (_) async => http.Response(
+            jsonEncode({
+              'code': 'ai_consent_required',
+              'message': '使用第三方 AI 前，請先同意資料處理說明。',
+              'retryable': false,
+            }),
+            403,
+            headers: {'content-type': 'application/json; charset=utf-8'},
+          ),
+        ),
+      ),
+      mode: AppMode.authenticated,
+      aiConsent: const AiConsentStatus(
+        granted: true,
+        policyVersion: 'outdated-policy',
+      ),
+    );
+
+    await protected.parseCapture('今天買珍奶 75');
+
+    expect(protected.aiConsent.granted, isFalse);
+    expect(protected.errorMessage, contains('請先同意'));
+  });
 
   test(
     'parse keeps the ledger unchanged and exposes confirmation drafts',
@@ -82,33 +163,39 @@ void main() {
     expect(controller.lastSavedEvent?.amountMinor, 75);
   });
 
-  test('records a repeated identical expense as a new confirmed event', () async {
-    await controller.initialize();
-    final initialEventCount = controller.events.length;
-    final initialExpense = controller.dashboard!.expenseMinor;
-    final initialAvailable = controller.dashboard!.availableMinor;
+  test(
+    'records a repeated identical expense as a new confirmed event',
+    () async {
+      await controller.initialize();
+      final initialEventCount = controller.events.length;
+      final initialExpense = controller.dashboard!.expenseMinor;
+      final initialAvailable = controller.dashboard!.availableMinor;
 
-    for (var index = 1; index <= 2; index += 1) {
-      await controller.parseCapture(
-        '今天買珍奶 75',
-        referenceTime: DateTime.now(),
-      );
-      await controller.saveDraft(controller.captureResult!.drafts.single);
+      for (var index = 1; index <= 2; index += 1) {
+        await controller.parseCapture(
+          '今天買珍奶 75',
+          referenceTime: DateTime.now(),
+        );
+        await controller.saveDraft(controller.captureResult!.drafts.single);
 
-      expect(controller.events, hasLength(initialEventCount + index));
-      expect(controller.dashboard?.expenseMinor, initialExpense + (75 * index));
+        expect(controller.events, hasLength(initialEventCount + index));
+        expect(
+          controller.dashboard?.expenseMinor,
+          initialExpense + (75 * index),
+        );
+        expect(
+          controller.dashboard?.availableMinor,
+          initialAvailable - (75 * index),
+        );
+      }
+
       expect(
-        controller.dashboard?.availableMinor,
-        initialAvailable - (75 * index),
+        controller.events.where((event) => event.idempotencyKey != null),
+        hasLength(2),
       );
-    }
-
-    expect(
-      controller.events.where((event) => event.idempotencyKey != null),
-      hasLength(2),
-    );
-    expect(controller.lastSavedEvent?.amountMinor, 75);
-  });
+      expect(controller.lastSavedEvent?.amountMinor, 75);
+    },
+  );
 
   test(
     'saving one draft keeps the remaining drafts in the same capture',
@@ -133,7 +220,7 @@ void main() {
       await controller.initialize();
       await controller.parseCapture(
         'Spotify 480 四人分',
-        referenceTime: DateTime.parse('2026-07-13T18:00:00+08:00'),
+        referenceTime: DateTime.now(),
       );
 
       await controller.saveDraft(controller.captureResult!.drafts.single);

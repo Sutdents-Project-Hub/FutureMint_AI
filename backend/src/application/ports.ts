@@ -1,5 +1,6 @@
 import type {
   Account,
+  AiConsent,
   CoachReply,
   CoachRequest,
   CaptureParseResult,
@@ -113,4 +114,7 @@ export interface AuthRepository {
   createSession(session: SessionRecord): Promise<void>;
   findSessionByTokenHash(tokenHash: string): Promise<SessionRecord | null>;
   revokeSession(tokenHash: string): Promise<void>;
+  getAiConsent(userId: string): Promise<AiConsent | null>;
+  saveAiConsent(userId: string, consent: AiConsent): Promise<AiConsent>;
+  deleteAccount(userId: string): Promise<void>;
 }

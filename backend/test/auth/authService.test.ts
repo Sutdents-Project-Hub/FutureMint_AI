@@ -1,7 +1,10 @@
 import { describe, expect, it } from "vitest";
 
 import { InMemoryRepository } from "../../src/adapters/inMemoryRepository";
-import { AuthService } from "../../src/auth/authService";
+import {
+  aiConsentPolicyVersion,
+  AuthService,
+} from "../../src/auth/authService";
 
 const createService = () => new AuthService(new InMemoryRepository());
 
@@ -81,5 +84,175 @@ describe("AuthService", () => {
       (attempt): attempt is PromiseRejectedResult => attempt.status === "rejected",
     );
     expect(rejected?.reason).toMatchObject({ code: "account_unavailable", status: 409 });
+  });
+
+  it("records the current third-party AI consent and withdrawal timestamps", async () => {
+    const repository = new InMemoryRepository();
+    let now = new Date("2026-08-30T01:00:00.000Z");
+    const service = new AuthService(repository, () => now);
+    const { account } = await service.register({
+      email: "student@example.com",
+      password: "futuremint2026",
+    });
+
+    await expect(service.getAiConsent(account.id)).resolves.toEqual({
+      granted: false,
+      policyVersion: aiConsentPolicyVersion,
+      grantedAt: null,
+      withdrawnAt: null,
+    });
+    await expect(service.setAiConsent(account.id, { granted: true })).resolves.toEqual({
+      granted: true,
+      policyVersion: aiConsentPolicyVersion,
+      grantedAt: "2026-08-30T01:00:00.000Z",
+      withdrawnAt: null,
+    });
+
+    now = new Date("2026-08-30T02:00:00.000Z");
+    await expect(service.setAiConsent(account.id, { granted: false })).resolves.toEqual({
+      granted: false,
+      policyVersion: aiConsentPolicyVersion,
+      grantedAt: "2026-08-30T01:00:00.000Z",
+      withdrawnAt: "2026-08-30T02:00:00.000Z",
+    });
+    await expect(service.requireAiConsent(account.id)).rejects.toMatchObject({
+      code: "ai_consent_required",
+      status: 403,
+    });
+  });
+
+  it("requires renewed consent when the stored policy version is stale", async () => {
+    const repository = new InMemoryRepository();
+    const service = new AuthService(repository);
+    const { account } = await service.register({
+      email: "student@example.com",
+      password: "futuremint2026",
+    });
+    await repository.saveAiConsent(account.id, {
+      granted: true,
+      policyVersion: "third-party-ai-v0",
+      grantedAt: "2026-08-01T00:00:00.000Z",
+      withdrawnAt: null,
+    });
+
+    await expect(service.getAiConsent(account.id)).resolves.toEqual({
+      granted: false,
+      policyVersion: aiConsentPolicyVersion,
+      grantedAt: null,
+      withdrawnAt: null,
+    });
+    await expect(service.requireAiConsent(account.id)).rejects.toMatchObject({
+      code: "ai_consent_required",
+      status: 403,
+    });
+  });
+
+  it("requires the current password and fully deletes only the requesting account", async () => {
+    const repository = new InMemoryRepository();
+    const service = new AuthService(repository);
+    const first = await service.register({
+      email: "first@example.com",
+      password: "futuremint2026",
+    });
+    const second = await service.register({
+      email: "second@example.com",
+      password: "futuremint2026",
+    });
+    await service.setAiConsent(first.account.id, { granted: true });
+
+    await expect(
+      service.deleteAccount(first.account.id, { password: "wrong-password2026" }),
+    ).rejects.toMatchObject({ code: "invalid_credentials", status: 401 });
+    await expect(service.authenticate(first.token)).resolves.toMatchObject({
+      id: first.account.id,
+    });
+
+    await service.deleteAccount(first.account.id, { password: "futuremint2026" });
+    await expect(service.authenticate(first.token)).rejects.toMatchObject({
+      code: "unauthorized",
+      status: 401,
+    });
+    await expect(service.getAiConsent(first.account.id)).resolves.toMatchObject({
+      granted: false,
+      grantedAt: null,
+      withdrawnAt: null,
+    });
+    await expect(service.authenticate(second.token)).resolves.toMatchObject({
+      id: second.account.id,
+    });
+    await expect(
+      service.register({
+        email: "first@example.com",
+        password: "futuremint2026",
+      }),
+    ).resolves.toMatchObject({ account: { email: "first@example.com" } });
+  });
+
+  it("mimics account-delete cascade semantics for family creators and members", async () => {
+    const repository = new InMemoryRepository();
+    const service = new AuthService(repository);
+    const creator = await service.register({
+      email: "creator@example.com",
+      password: "futuremint2026",
+    });
+    const child = await service.register({
+      email: "child@example.com",
+      password: "futuremint2026",
+    });
+    await repository.saveProfile({
+      userId: creator.account.id,
+      monthlyBudgetMinor: 6000,
+      goalName: "目標",
+      goalTargetMinor: 12000,
+      goalSavedMinor: 0,
+      goalDate: "2026-12-31",
+      preferredTone: "supportive",
+      accountRole: "parent",
+    });
+    await repository.saveProfile({
+      userId: child.account.id,
+      monthlyBudgetMinor: 6000,
+      goalName: "目標",
+      goalTargetMinor: 12000,
+      goalSavedMinor: 0,
+      goalDate: "2026-12-31",
+      preferredTone: "supportive",
+      accountRole: "child",
+    });
+    await repository.createFamilyGroup(creator.account.id, "family-a", "ABC12345");
+    await repository.addFamilyMember("family-a", child.account.id);
+
+    await service.deleteAccount(creator.account.id, {
+      password: "futuremint2026",
+    });
+    await expect(repository.getFamilyGroup("family-a")).resolves.toBeNull();
+    await expect(repository.getFamilyMembership(child.account.id)).resolves.toBeNull();
+    await expect(service.authenticate(child.token)).resolves.toMatchObject({
+      id: child.account.id,
+    });
+
+    const secondCreator = await service.register({
+      email: "creator-two@example.com",
+      password: "futuremint2026",
+    });
+    const member = await service.register({
+      email: "member@example.com",
+      password: "futuremint2026",
+    });
+    await repository.createFamilyGroup(
+      secondCreator.account.id,
+      "family-b",
+      "DEF67890",
+    );
+    await repository.addFamilyMember("family-b", member.account.id);
+    await service.deleteAccount(member.account.id, {
+      password: "futuremint2026",
+    });
+    await expect(repository.getFamilyGroup("family-b")).resolves.toMatchObject({
+      createdBy: secondCreator.account.id,
+    });
+    await expect(
+      repository.getFamilyMembership(secondCreator.account.id),
+    ).resolves.toMatchObject({ familyId: "family-b" });
   });
 });
