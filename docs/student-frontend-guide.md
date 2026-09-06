@@ -378,7 +378,7 @@ dart format lib/features/dashboard/dashboard_screen.dart
 本專案的正式 Web build 會把 `API_BASE_URL` 編進檔案。學生不需要自行做 production build；只有老師提供正式或測試 API URL 並要求你驗證 build 時，才用老師給的實際值執行：
 
 ```bash
-flutter build web --release --dart-define=API_BASE_URL=<老師提供且以 /api/ 結尾的 API 位址>
+flutter build web --release --dart-define=BUILD_ENV=validation --dart-define=API_BASE_URL=<老師提供且以 /api/ 結尾的 API 位址>
 ```
 
 產生的 `build/` 是工具輸出，不要加入 Git。

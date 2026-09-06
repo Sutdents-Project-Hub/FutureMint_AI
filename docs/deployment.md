@@ -206,3 +206,28 @@ curl -fsSI https://<frontend-domain>/capture
 - Production email verification、password reset、備份中帳號刪除 SLA、公開隱私／支援頁與未成年人法遵。
 
 參考官方文件：[Dockerfile Build Pack](https://coolify.io/docs/applications/build-packs/dockerfile)、[GitHub Auto Deploy](https://coolify.io/docs/applications/ci-cd/github/auto-deploy)、[Environment Variables](https://coolify.io/docs/knowledge-base/environment-variables)、[Database internal URL](https://coolify.io/docs/databases/)、[Backups](https://coolify.io/docs/databases/backups)。
+
+## 2026-09 正式產品新增發布條件
+
+API Runtime variables 除前述項目外，必須設定：
+
+| 變數 | 內容 |
+|---|---|
+| `TRUSTED_PROXY_CIDRS` | 實際連入 API 的 proxy IP／最小 CIDR；空值忽略 forwarding headers，不接受數字 hop count |
+| `MAIL_PROVIDER` | production 必須 `smtp` |
+| `SMTP_HOST`、`SMTP_PORT` | 郵件服務；只接受 465 或 587，強制 TLS 與憑證驗證 |
+| `SMTP_USER`、`SMTP_PASSWORD` | Runtime secrets；不得提供給前端或 build |
+| `SMTP_FROM` | 已驗證可寄送的寄件 Email |
+| `PUBLIC_BASE_URL` | API 的公開 HTTPS origin，不帶 path；需路由根目錄公開頁與 `/api/` |
+| `SERVICE_OPERATOR`、`SUPPORT_EMAIL` | 真實營運者名稱及公開客服 |
+| `PRIVACY_POLICY_VERSION` | 經營運者確認的政策版本 |
+| `DATA_REGION`、`BACKUP_RETENTION_DAYS` | 實際資料地區、備份最大保存天數（正整數） |
+| `MINIMUM_AGE`、`MINOR_CONSENT_DISCLOSURE` | 確認的最低年齡與未成年人／家長同意安排 |
+| `AI_DATA_TERMS_DISCLOSURE` | 經查核的量界及上游保留、訓練、地區、刪除等資料處理條款 |
+| `PRIVACY_POLICY_REVIEWED` | 只有完成上述內容的營運確認後才能設 `true` |
+
+Web Build variables：`BUILD_ENV=production`、`API_BASE_URL`、`PRIVACY_POLICY_URL`、`SUPPORT_URL`、`SUPPORT_EMAIL`、`SERVICE_OPERATOR`。政策／支援通常分別指向 API origin 的 `/privacy`、`/support`；不要指向會被 Flutter SPA fallback 吃掉的路徑。所有值均非秘密。
+
+本機 Compose 明確使用 `BUILD_ENV=validation`，不可部署該產物。Docker image、CI 與本機 build 通過只代表編譯與檢查可執行，沒有驗證 DNS、SMTP 送達或 Apple 接受。
+
+新增 migration 006／007 會停用舊短邀請碼並讓現有帳號補驗證 Email。先做備份、隔離 migration／還原演練，再部署；不要直接 rollback 到依賴明文邀請碼的舊版本。發版後以合成帳號驗收：註冊→收信驗證→profile→AI 同意→記錄→家庭加入／停用→密碼重設→舊 session 失效→帳號刪除。SMTP、AI 真實請求及遠端資源操作須另獲使用者授權。

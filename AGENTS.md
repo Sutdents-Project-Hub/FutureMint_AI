@@ -4,7 +4,7 @@
 
 - 本檔適用於整個 `FutureMint AI` repository；子目錄若有更具體的 `AGENTS.md`，只在該範圍內補充本檔。
 - 依序遵守使用者當次指示、本檔、根目錄 `README.md`、`docs/` 與元件 README；內容衝突時先停止並確認。
-- 目前階段：第六屆中學生黑客松決賽原型。主辦方 Azure 環境已關閉；目前目標是由私人 GitHub repository 自動部署到團隊 VPS 的 Coolify，尚未部署。
+- 目前階段：由第六屆中學生黑客松決賽原型轉為正式產品準備（使用者於 2026-09-06 核准）。主辦方 Azure 環境已關閉；目前目標是由私人 GitHub repository 自動部署到團隊 VPS 的 Coolify，尚未部署。
 - Git repository 名稱：`FutureMint_AI`。全新專案的初始 branch 為 `main`。
 - Project slug：`futuremint-ai`。
 - 本機 Docker Compose project：`futuremint_ai`；主要 `compose.yaml` 必須明確設定頂層 `name: futuremint_ai`。
@@ -23,15 +23,15 @@
 
 ### 專案限制
 
-- 優先完成一條可重複、可降級的 Demo 主流程。
+- 維持可重複、可降級的 Demo 主流程，並完成正式產品的帳號、安全與發布準備。
 - 不串接支付、銀行、電子發票、證券交易或真實未成年人金融服務。
 - 決賽只使用合成資料，或取得同意且完成去識別的資料。
 - 技術、操作與部署證據必須能由學生團隊自行維護及說明。
 
 ### 假設與未決事項
 
-- 主 Persona 是開始管理零用錢與數位消費的中學生；正式帳號與家長共管不在 MVP。
-- 主要 Demo 面為 Flutter Web 或 Android；iOS 簽章、展示裝置、網路備援、正式 domain 與 VPS 備份仍待確認。
+- 主 Persona 是開始管理零用錢與數位消費的中學生；已實作帳號與家庭摘要分享，正式未成年人營運條件仍待確認。
+- 主要 Demo 面保留 Flutter Web 或 Android；正式 iOS 僅支援 iPhone。Apple 簽章、正式 domain、SMTP 與 VPS 備份仍待確認。
 - 訂閱方案資料來源及青少年可用性測試的同意／去識別方式尚待團隊定案。
 
 ## 專案事實與邊界

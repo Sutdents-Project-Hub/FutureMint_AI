@@ -12,6 +12,7 @@ enum SessionStatus {
   loading,
   signedOut,
   restorationFailed,
+  verificationRequired,
   onboarding,
   authenticated,
   guest,
@@ -41,10 +42,48 @@ class SessionController extends ChangeNotifier {
   PublicAccount? account;
   AppController? app;
   String? message;
+  String? notice;
   String? _token;
   bool busy = false;
+  int _epoch = 0;
+  bool _disposed = false;
+  Future<void> _persistenceQueue = Future<void>.value();
+
+  // Serialize platform writes and check ownership when an operation starts.
+  Future<void> _persist(int epoch, Future<void> Function() action) {
+    final pending = _persistenceQueue.then((_) async {
+      if (_isCurrent(epoch)) await action();
+    });
+    _persistenceQueue = pending.then<void>((_) {}, onError: (Object _) {});
+    return pending;
+  }
 
   bool get isGuest => status == SessionStatus.guest;
+  bool get needsEmailVerification =>
+      account?.verificationRequired == true && account?.emailVerified != true;
+
+  bool _isCurrent(int epoch, [String? token]) =>
+      !_disposed && epoch == _epoch && (token == null || token == _token);
+
+  int _beginTransition() => ++_epoch;
+
+  void _notifyListeners() {
+    if (!_disposed) notifyListeners();
+  }
+
+  void _disposeApp() {
+    final previous = app;
+    app = null;
+    previous?.dispose();
+  }
+
+  @override
+  void dispose() {
+    _disposed = true;
+    _beginTransition();
+    _disposeApp();
+    super.dispose();
+  }
 
   String _messageFor(Object error) =>
       error is ApiException ? error.message : '目前無法完成操作，請稍後再試。';
@@ -53,27 +92,51 @@ class SessionController extends ChangeNotifier {
       error is ApiException && error.code == 'unauthorized';
 
   Future<void> start() async {
-    _token = await _store.readToken();
-    if (_token == null) {
+    final epoch = _beginTransition();
+    busy = true;
+    message = null;
+    _notifyListeners();
+    String? storedToken;
+    try {
+      await _persist(epoch, () async {
+        storedToken = await _store.readToken();
+      });
+    } catch (error) {
+      if (!_isCurrent(epoch)) return;
+      status = SessionStatus.restorationFailed;
+      busy = false;
+      message = '無法讀取裝置上的登入資訊，請重試。';
+      _notifyListeners();
+      return;
+    }
+    if (!_isCurrent(epoch)) return;
+    final token = storedToken;
+    _token = token;
+    if (token == null) {
+      busy = false;
       status = SessionStatus.signedOut;
-      notifyListeners();
+      _notifyListeners();
       return;
     }
     busy = true;
-    notifyListeners();
+    _notifyListeners();
     try {
-      final restored = await _auth.me(_token!);
-      await _activateAuthenticated(restored, _token!);
+      final restored = await _auth.me(token);
+      if (!_isCurrent(epoch, token)) return;
+      await _activateAuthenticated(restored, token, epoch);
     } catch (error) {
+      if (!_isCurrent(epoch, token)) return;
       if (_isExpiredSession(error)) {
-        await expireSession();
+        await _expireSessionFor(token, epoch);
       } else {
         status = SessionStatus.restorationFailed;
         message = _messageFor(error);
       }
     } finally {
-      busy = false;
-      notifyListeners();
+      if (_isCurrent(epoch, token)) {
+        busy = false;
+        _notifyListeners();
+      }
     }
   }
 
@@ -84,52 +147,85 @@ class SessionController extends ChangeNotifier {
       _beginAuth(() => _auth.login(email: email, password: password));
 
   Future<bool> _beginAuth(Future<AuthSession> Function() action) async {
+    final epoch = _beginTransition();
     busy = true;
     message = null;
-    notifyListeners();
+    notice = null;
+    _notifyListeners();
     try {
       final session = await action();
+      if (!_isCurrent(epoch)) return false;
       _token = session.token;
-      await _store.writeToken(session.token);
-      await _activateAuthenticated(session.account, session.token);
-      return true;
+      await _persist(epoch, () => _store.writeToken(session.token));
+      if (!_isCurrent(epoch, session.token)) return false;
+      await _activateAuthenticated(session.account, session.token, epoch);
+      if (_isCurrent(epoch, session.token) &&
+          status == SessionStatus.verificationRequired &&
+          session.emailDeliveryPending) {
+        message = '帳號已建立，但驗證信暫時無法寄出。請點「重新寄驗證信」再試一次。';
+      }
+      return _isCurrent(epoch, session.token) &&
+          (status == SessionStatus.verificationRequired ||
+              status == SessionStatus.onboarding ||
+              status == SessionStatus.authenticated);
     } catch (error) {
-      message = _messageFor(error);
+      if (!_isCurrent(epoch)) return false;
+      if (_isExpiredSession(error)) {
+        await _expireSessionFor(_token, epoch);
+      } else {
+        message = _messageFor(error);
+      }
       return false;
     } finally {
-      busy = false;
-      notifyListeners();
+      if (_isCurrent(epoch)) {
+        busy = false;
+        _notifyListeners();
+      }
     }
   }
 
   Future<void> _activateAuthenticated(
     PublicAccount nextAccount,
     String token,
+    int epoch,
   ) async {
+    if (!_isCurrent(epoch, token)) return;
     account = nextAccount;
+    if (nextAccount.verificationRequired && !nextAccount.emailVerified) {
+      _disposeApp();
+      status = SessionStatus.verificationRequired;
+      return;
+    }
     if (!nextAccount.profileComplete) {
-      app = null;
+      _disposeApp();
       status = SessionStatus.onboarding;
       return;
     }
     final aiConsent = await _loadAiConsent(token);
+    if (!_isCurrent(epoch, token)) return;
     final nextApp = AppController(
       repository: _authenticatedRepository(token),
       mode: AppMode.authenticated,
       accountEmail: nextAccount.email,
-      onExit: logout,
-      onUnauthorized: expireSession,
+      onExit: () => _logoutFor(token, epoch),
+      onUnauthorized: () => _expireSessionFor(token, epoch),
       aiConsent: aiConsent,
       onAiConsentChanged: (granted) =>
           _auth.updateAiConsent(token: token, granted: granted),
-      onDeleteAccount: deleteAccount,
+      onDeleteAccount: (password) => _deleteAccountFor(token, epoch, password),
     );
     await nextApp.initialize();
+    if (!_isCurrent(epoch, token)) {
+      nextApp.dispose();
+      return;
+    }
     if (!nextApp.initialized) {
+      nextApp.dispose();
       status = SessionStatus.restorationFailed;
       message = nextApp.errorMessage ?? '無法載入你的資料，請稍後再試。';
       return;
     }
+    _disposeApp();
     app = nextApp;
     status = SessionStatus.authenticated;
   }
@@ -137,76 +233,223 @@ class SessionController extends ChangeNotifier {
   Future<bool> completeOnboarding(UserProfile profile) async {
     final token = _token;
     if (token == null || account == null) return false;
+    final epoch = _epoch;
+    final nextAccount = account!;
     busy = true;
     message = null;
-    notifyListeners();
-    final nextApp = AppController(
-      repository: _authenticatedRepository(token),
-      mode: AppMode.authenticated,
-      accountEmail: account!.email,
-      onExit: logout,
-      onUnauthorized: expireSession,
-      aiConsent: await _loadAiConsent(token),
-      onAiConsentChanged: (granted) =>
-          _auth.updateAiConsent(token: token, granted: granted),
-      onDeleteAccount: deleteAccount,
-    );
-    final saved = await nextApp.updateProfile(profile);
-    busy = false;
-    if (!saved) {
-      message = nextApp.errorMessage ?? '預算與目標尚未保存。';
-      notifyListeners();
+    _notifyListeners();
+    AppController? nextApp;
+    try {
+      final aiConsent = await _loadAiConsent(token);
+      if (!_isCurrent(epoch, token)) return false;
+      nextApp = AppController(
+        repository: _authenticatedRepository(token),
+        mode: AppMode.authenticated,
+        accountEmail: nextAccount.email,
+        onExit: () => _logoutFor(token, epoch),
+        onUnauthorized: () => _expireSessionFor(token, epoch),
+        aiConsent: aiConsent,
+        onAiConsentChanged: (granted) =>
+            _auth.updateAiConsent(token: token, granted: granted),
+        onDeleteAccount: (password) =>
+            _deleteAccountFor(token, epoch, password),
+      );
+      final saved = await nextApp.updateProfile(profile);
+      if (!_isCurrent(epoch, token)) return false;
+      if (!saved) {
+        message = nextApp.errorMessage ?? '預算與目標尚未保存。';
+        return false;
+      }
+      _disposeApp();
+      app = nextApp;
+      nextApp = null;
+      account = nextAccount.copyWith(profileComplete: true);
+      status = SessionStatus.authenticated;
+      return true;
+    } catch (error) {
+      if (!_isCurrent(epoch, token)) return false;
+      if (_isExpiredSession(error)) {
+        await _expireSessionFor(token, epoch);
+      } else {
+        message = _messageFor(error);
+      }
       return false;
+    } finally {
+      nextApp?.dispose();
+      if (_isCurrent(epoch, token)) {
+        busy = false;
+        _notifyListeners();
+      }
     }
-    app = nextApp;
-    account = account!.copyWith(profileComplete: true);
-    status = SessionStatus.authenticated;
-    notifyListeners();
-    return true;
   }
 
   Future<void> continueAsGuest() async {
+    final epoch = _beginTransition();
     busy = true;
     message = null;
-    await _store.clearToken();
-    _token = null;
-    notifyListeners();
+    _notifyListeners();
     try {
+      await _persist(epoch, _store.clearToken);
+      if (!_isCurrent(epoch)) return;
+      _token = null;
       final nextApp = AppController(
         repository: await _guestRepository(),
         mode: AppMode.guest,
-        onExit: logout,
-        onUnauthorized: expireSession,
+        onExit: () => _logoutFor(null, epoch),
+        onUnauthorized: () => _expireSessionFor(null, epoch),
       );
       await nextApp.initialize();
+      if (!_isCurrent(epoch)) {
+        nextApp.dispose();
+        return;
+      }
+      if (!nextApp.initialized) {
+        nextApp.dispose();
+        status = SessionStatus.signedOut;
+        message = nextApp.errorMessage ?? '目前無法載入訪客模式。';
+        return;
+      }
+      _disposeApp();
       app = nextApp;
       account = null;
       status = SessionStatus.guest;
     } catch (error) {
+      if (!_isCurrent(epoch)) return;
       status = SessionStatus.signedOut;
       message = _messageFor(error);
     } finally {
-      busy = false;
-      notifyListeners();
+      if (_isCurrent(epoch)) {
+        busy = false;
+        _notifyListeners();
+      }
     }
   }
 
-  Future<void> logout() async {
+  Future<bool> requestEmailVerification() async {
     final token = _token;
+    final epoch = _epoch;
+    if (token == null || !needsEmailVerification) return false;
     busy = true;
-    notifyListeners();
+    message = null;
+    notice = null;
+    _notifyListeners();
+    try {
+      await _auth.requestEmailVerification(token);
+      if (!_isCurrent(epoch, token)) return false;
+      notice = '驗證信已寄出，請完成信件中的步驟後回到 App。';
+      return true;
+    } catch (error) {
+      if (!_isCurrent(epoch, token)) return false;
+      if (_isExpiredSession(error)) {
+        await _expireSessionFor(token, epoch);
+      } else {
+        message = _messageFor(error);
+      }
+      return false;
+    } finally {
+      if (_isCurrent(epoch, token)) {
+        busy = false;
+        _notifyListeners();
+      }
+    }
+  }
+
+  Future<bool> refreshEmailVerification() async {
+    final token = _token;
+    final epoch = _epoch;
+    if (token == null || !needsEmailVerification) return false;
+    busy = true;
+    message = null;
+    notice = null;
+    _notifyListeners();
+    try {
+      final refreshed = await _auth.me(token);
+      if (!_isCurrent(epoch, token)) return false;
+      if (refreshed.verificationRequired && !refreshed.emailVerified) {
+        account = refreshed;
+        notice = '尚未完成驗證，請先開啟驗證信中的連結。';
+        return false;
+      }
+      await _activateAuthenticated(refreshed, token, epoch);
+      return _isCurrent(epoch, token) &&
+          (status == SessionStatus.onboarding ||
+              status == SessionStatus.authenticated);
+    } catch (error) {
+      if (!_isCurrent(epoch, token)) return false;
+      if (_isExpiredSession(error)) {
+        await _expireSessionFor(token, epoch);
+      } else {
+        message = _messageFor(error);
+      }
+      return false;
+    } finally {
+      if (_isCurrent(epoch, token)) {
+        busy = false;
+        _notifyListeners();
+      }
+    }
+  }
+
+  Future<bool> requestPasswordReset(String email) async {
+    final normalizedEmail = email.trim();
+    if (busy) return false;
+    if (!normalizedEmail.contains('@') || !normalizedEmail.contains('.')) {
+      message = '請先輸入有效的電子郵件，再寄送重設說明。';
+      notice = null;
+      _notifyListeners();
+      return false;
+    }
+    final epoch = _epoch;
+    busy = true;
+    message = null;
+    notice = null;
+    _notifyListeners();
+    try {
+      await _auth.requestPasswordReset(email: normalizedEmail);
+      if (!_isCurrent(epoch)) return false;
+      notice = '若此電子郵件可用，我們已寄出重設密碼的說明。';
+      return true;
+    } catch (error) {
+      if (!_isCurrent(epoch)) return false;
+      message = _messageFor(error);
+      return false;
+    } finally {
+      if (_isCurrent(epoch)) {
+        busy = false;
+        _notifyListeners();
+      }
+    }
+  }
+
+  Future<void> logout() => _logoutFor(_token, _epoch);
+
+  Future<void> _logoutFor(String? token, int expectedEpoch) async {
+    if (!_isCurrent(expectedEpoch, token)) return;
+    final epoch = _beginTransition();
+    busy = true;
+    _notifyListeners();
     try {
       if (token != null) await _auth.logout(token);
     } catch (_) {
-      message = '已離開帳號；目前無法通知伺服器撤銷這次登入。';
+      if (_isCurrent(epoch)) {
+        message = '已離開帳號；目前無法通知伺服器撤銷這次登入。';
+      }
     } finally {
-      await _store.clearToken();
-      _token = null;
-      account = null;
-      app = null;
-      busy = false;
-      status = SessionStatus.signedOut;
-      notifyListeners();
+      if (_isCurrent(epoch)) {
+        try {
+          await _persist(epoch, _store.clearToken);
+        } catch (_) {
+          if (_isCurrent(epoch)) message = '已離開帳號，但裝置無法清除登入資訊，請重試。';
+        }
+        if (_isCurrent(epoch)) {
+          _token = null;
+          account = null;
+          _disposeApp();
+          busy = false;
+          status = SessionStatus.signedOut;
+          _notifyListeners();
+        }
+      }
     }
   }
 
@@ -221,53 +464,87 @@ class SessionController extends ChangeNotifier {
     }
   }
 
-  Future<void> deleteAccount(String password) async {
-    final token = _token;
-    if (token == null) {
+  Future<void> deleteAccount(String password) =>
+      _deleteAccountFor(_token, _epoch, password);
+
+  Future<void> _deleteAccountFor(
+    String? token,
+    int expectedEpoch,
+    String password,
+  ) async {
+    if (token == null || !_isCurrent(expectedEpoch, token)) {
       throw const ApiException(
         code: 'unauthorized',
         message: '登入已過期，請重新登入。',
         retryable: false,
       );
     }
+    final epoch = expectedEpoch;
     busy = true;
     message = null;
-    notifyListeners();
+    _notifyListeners();
     try {
       await _auth.deleteAccount(token: token, password: password);
-      await _store.clearToken();
+      if (!_isCurrent(epoch)) return;
+      String? storageWarning;
+      try {
+        await _persist(epoch, _store.clearToken);
+      } catch (_) {
+        storageWarning = '帳號已刪除，但裝置無法清除舊登入資訊，請重試。';
+      }
+      if (!_isCurrent(epoch)) return;
       _token = null;
       account = null;
-      app = null;
+      _disposeApp();
       status = SessionStatus.signedOut;
-      message = '帳號已刪除。';
+      message = storageWarning ?? '帳號已刪除。';
     } catch (error) {
-      message = _messageFor(error);
+      if (_isCurrent(epoch)) message = _messageFor(error);
       rethrow;
     } finally {
-      busy = false;
-      notifyListeners();
+      if (_isCurrent(epoch)) {
+        busy = false;
+        _notifyListeners();
+      }
     }
   }
 
-  Future<void> expireSession() async {
-    await _store.clearToken();
+  Future<void> expireSession() => _expireSessionFor(_token, _epoch);
+
+  Future<void> _expireSessionFor(String? token, int expectedEpoch) async {
+    if (!_isCurrent(expectedEpoch, token)) return;
+    final epoch = _beginTransition();
+    String? storageWarning;
+    try {
+      await _persist(epoch, _store.clearToken);
+    } catch (_) {
+      storageWarning = '裝置無法清除登入資訊，請重試。';
+    }
+    if (!_isCurrent(epoch)) return;
     _token = null;
     account = null;
-    app = null;
+    _disposeApp();
     busy = false;
     status = SessionStatus.signedOut;
-    message = '登入已過期，請重新登入。';
-    notifyListeners();
+    message = storageWarning ?? '登入已過期，請重新登入。';
+    _notifyListeners();
   }
 
   Future<void> discardStoredSession() async {
-    await _store.clearToken();
+    final epoch = _beginTransition();
+    String? storageWarning;
+    try {
+      await _persist(epoch, _store.clearToken);
+    } catch (_) {
+      storageWarning = '裝置無法清除登入資訊，請重試。';
+    }
+    if (!_isCurrent(epoch)) return;
     _token = null;
     account = null;
-    app = null;
-    message = null;
+    _disposeApp();
+    message = storageWarning;
+    busy = false;
     status = SessionStatus.signedOut;
-    notifyListeners();
+    _notifyListeners();
   }
 }

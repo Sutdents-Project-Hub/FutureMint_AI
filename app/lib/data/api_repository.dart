@@ -59,7 +59,7 @@ class ApiRepository implements FutureMintRepository {
     late http.Response response;
     try {
       final headers = <String, String>{
-        'content-type': 'application/json',
+        if (body != null) 'content-type': 'application/json',
         if (accessToken != null) 'authorization': 'Bearer $accessToken',
       };
       final encoded = body == null ? null : jsonEncode(body);
@@ -385,6 +385,16 @@ class ApiRepository implements FutureMintRepository {
   @override
   Future<FamilyOverview> createFamilyInvite() async => FamilyOverview.fromJson(
     await _send('POST', 'family/invite') as Map<String, dynamic>,
+  );
+
+  @override
+  Future<FamilyOverview> rotateFamilyInvite() async => FamilyOverview.fromJson(
+    await _send('POST', 'family/invite/rotate') as Map<String, dynamic>,
+  );
+
+  @override
+  Future<FamilyOverview> revokeFamilyInvite() async => FamilyOverview.fromJson(
+    await _send('DELETE', 'family/invite') as Map<String, dynamic>,
   );
 
   @override

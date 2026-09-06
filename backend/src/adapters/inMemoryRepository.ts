@@ -2,6 +2,7 @@ import { randomUUID } from "node:crypto";
 
 import type {
   Account,
+  AccountActionToken,
   AiConsent,
   FamilyGroupRecord,
   FamilyMemberRecord,
@@ -19,6 +20,7 @@ import type {
   ConfirmedMoneyEventInput,
   EditableMoneyEventInput,
   FutureMintRepository,
+  RateLimitStore,
 } from "../application/ports";
 
 const profileSeed = (): UserProfile => ({
@@ -96,7 +98,7 @@ const eventSeed = (): MoneyEvent[] => [
 ];
 
 export class InMemoryRepository
-  implements FutureMintRepository, AuthRepository
+  implements FutureMintRepository, AuthRepository, RateLimitStore
 {
   private profiles = new Map<string, UserProfile>();
   private events = new Map<string, MoneyEvent[]>();
@@ -108,7 +110,11 @@ export class InMemoryRepository
   private sessions = new Map<string, SessionRecord>();
   private aiConsents = new Map<string, AiConsent>();
   private familyGroups = new Map<string, FamilyGroupRecord>();
+  private familyInviteHashes = new Map<string, string>();
   private familyMembers = new Map<string, FamilyMemberRecord>();
+  private accountActionTokens = new Map<string, AccountActionToken>();
+  private rateLimits = new Map<string, { current: number; expiresAt: number }>();
+  private userLocks = new Map<string, Promise<void>>();
 
   constructor() {
     this.seed("demo-user");
@@ -124,6 +130,40 @@ export class InMemoryRepository
     this.investmentOrders.set(userId, []);
   }
 
+  private async withUserLock<T>(
+    userId: string,
+    operation: () => Promise<T>,
+  ): Promise<T> {
+    const previous = this.userLocks.get(userId) ?? Promise.resolve();
+    let release: (() => void) | undefined;
+    const current = previous.then(
+      () =>
+        new Promise<void>((resolve) => {
+          release = resolve;
+        }),
+    );
+    this.userLocks.set(userId, current);
+    await previous;
+    try {
+      return await operation();
+    } finally {
+      release?.();
+      if (this.userLocks.get(userId) === current) this.userLocks.delete(userId);
+    }
+  }
+
+  async withUsersTransaction<T>(
+    userIds: string[],
+    operation: (repository: FutureMintRepository) => Promise<T>,
+  ): Promise<T> {
+    const ordered = [...new Set(userIds)].sort();
+    const acquire = (index: number): Promise<T> =>
+      index >= ordered.length
+        ? operation(this)
+        : this.withUserLock(ordered[index], () => acquire(index + 1));
+    return acquire(0);
+  }
+
   async getProfile(userId: string): Promise<UserProfile> {
     const profile = this.profiles.get(userId);
     if (!profile) {
@@ -133,6 +173,14 @@ export class InMemoryRepository
   }
 
   async saveProfile(profile: UserProfile): Promise<UserProfile> {
+    const membership = this.familyMembers.get(profile.userId);
+    if (membership && membership.role !== profile.accountRole) {
+      throw new DomainError(
+        "family_role_locked",
+        "加入家庭後不能直接更換家長／孩子角色；請先離開家庭再修改。",
+        409,
+      );
+    }
     this.profiles.set(profile.userId, { ...profile });
     return { ...profile };
   }
@@ -296,9 +344,10 @@ export class InMemoryRepository
   async createFamilyGroup(
     userId: string,
     familyId: string,
-    inviteCode: string,
+    inviteCodeHash: string,
+    inviteCodeExpiresAt: string,
   ): Promise<FamilyGroupRecord> {
-    if ([...this.familyGroups.values()].some((item) => item.inviteCode === inviteCode)) {
+    if ([...this.familyInviteHashes.values()].includes(inviteCodeHash)) {
       throw new DomainError(
         "family_invite_unavailable",
         "家庭邀請碼剛好重複，請再建立一次。",
@@ -306,24 +355,97 @@ export class InMemoryRepository
         true,
       );
     }
-    const group = { familyId, inviteCode, createdBy: userId };
+    if (this.familyMembers.has(userId)) {
+      throw new DomainError(
+        "family_already_linked",
+        "這個帳號已經加入家庭。",
+        409,
+      );
+    }
+    if (this.profiles.get(userId)?.accountRole !== "parent") {
+      throw new DomainError(
+        "family_parent_required",
+        "只有家長帳號可以建立家庭邀請。",
+        403,
+      );
+    }
+    const group: FamilyGroupRecord = {
+      familyId,
+      createdBy: userId,
+      inviteCodeExpiresAt,
+      inviteActive: true,
+    };
     this.familyGroups.set(familyId, group);
+    this.familyInviteHashes.set(familyId, inviteCodeHash);
     this.familyMembers.set(userId, {
       familyId,
       userId,
       email: this.accountsById.get(userId)?.email ?? `${userId}@demo.local`,
-      role: this.profiles.get(userId)?.accountRole ?? "parent",
+      role: "parent",
       joinedAt: new Date().toISOString(),
     });
     return { ...group };
   }
 
-  async findFamilyByInviteCode(
-    inviteCode: string,
-  ): Promise<FamilyGroupRecord | null> {
-    const group = [...this.familyGroups.values()].find(
-      (item) => item.inviteCode === inviteCode,
+  async rotateFamilyInvite(
+    familyId: string,
+    inviteCodeHash: string,
+    inviteCodeExpiresAt: string,
+  ): Promise<FamilyGroupRecord> {
+    const group = this.familyGroups.get(familyId);
+    if (!group) {
+      throw new DomainError("family_not_found", "找不到家庭關聯。", 404);
+    }
+    const duplicate = [...this.familyInviteHashes.entries()].some(
+      ([id, hash]) => id !== familyId && hash === inviteCodeHash,
     );
+    if (duplicate) {
+      throw new DomainError(
+        "family_invite_unavailable",
+        "家庭邀請碼剛好重複，請再建立一次。",
+        409,
+        true,
+      );
+    }
+    const updated = {
+      ...group,
+      inviteCodeExpiresAt,
+      inviteActive: true,
+    };
+    this.familyGroups.set(familyId, updated);
+    this.familyInviteHashes.set(familyId, inviteCodeHash);
+    return { ...updated };
+  }
+
+  async revokeFamilyInvite(familyId: string): Promise<FamilyGroupRecord> {
+    const group = this.familyGroups.get(familyId);
+    if (!group) {
+      throw new DomainError("family_not_found", "找不到家庭關聯。", 404);
+    }
+    const updated: FamilyGroupRecord = {
+      familyId: group.familyId,
+      createdBy: group.createdBy,
+      inviteActive: false,
+    };
+    this.familyGroups.set(familyId, updated);
+    this.familyInviteHashes.delete(familyId);
+    return { ...updated };
+  }
+
+  async findFamilyByInviteCodeHash(
+    inviteCodeHash: string,
+  ): Promise<FamilyGroupRecord | null> {
+    const familyId = [...this.familyInviteHashes.entries()].find(
+      ([, hash]) => hash === inviteCodeHash,
+    )?.[0];
+    const group = familyId ? this.familyGroups.get(familyId) : undefined;
+    if (
+      !group?.inviteActive ||
+      !group.inviteCodeExpiresAt ||
+      new Date(group.inviteCodeExpiresAt).getTime() <= Date.now()
+    ) {
+      return null;
+    }
     return group ? { ...group } : null;
   }
 
@@ -345,11 +467,29 @@ export class InMemoryRepository
     if (!this.familyGroups.has(familyId)) {
       throw new DomainError("family_invite_not_found", "找不到家庭邀請碼。", 404);
     }
+    if (this.profiles.get(userId)?.accountRole !== "child") {
+      throw new DomainError(
+        "family_child_required",
+        "只有孩子帳號可以使用家長邀請碼加入家庭。",
+        403,
+      );
+    }
+    if (
+      ![...this.familyMembers.values()].some(
+        (member) => member.familyId === familyId && member.role === "parent",
+      )
+    ) {
+      throw new DomainError(
+        "family_parent_missing",
+        "這個家庭目前沒有可用的家長帳號。",
+        409,
+      );
+    }
     this.familyMembers.set(userId, {
       familyId,
       userId,
       email: this.accountsById.get(userId)?.email ?? `${userId}@demo.local`,
-      role: this.profiles.get(userId)?.accountRole ?? "child",
+      role: "child",
       joinedAt: new Date().toISOString(),
     });
   }
@@ -360,6 +500,7 @@ export class InMemoryRepository
 
   async deleteFamilyGroup(familyId: string): Promise<void> {
     this.familyGroups.delete(familyId);
+    this.familyInviteHashes.delete(familyId);
     for (const [userId, member] of this.familyMembers) {
       if (member.familyId === familyId) this.familyMembers.delete(userId);
     }
@@ -399,7 +540,10 @@ export class InMemoryRepository
     this.accountsByEmail.set(updated.email, updated);
   }
 
-  async createSession(session: SessionRecord): Promise<void> {
+  async createSession(session: SessionRecord, expectedPasswordHash?: string): Promise<void> {
+    if (expectedPasswordHash && this.accountsById.get(session.userId)?.passwordHash !== expectedPasswordHash) {
+      throw new DomainError("invalid_credentials", "電子郵件或密碼不正確。", 401);
+    }
     this.sessions.set(session.tokenHash, { ...session });
   }
 
@@ -419,6 +563,130 @@ export class InMemoryRepository
     });
   }
 
+  async deleteExpiredOrRevokedSessions(
+    cutoff: string,
+    limit = 1000,
+  ): Promise<number> {
+    const cutoffMs = new Date(cutoff).getTime();
+    let deleted = 0;
+    for (const [tokenHash, session] of this.sessions) {
+      if (deleted >= limit) break;
+      if (
+        new Date(session.expiresAt).getTime() <= cutoffMs ||
+        (session.revokedAt && new Date(session.revokedAt).getTime() <= cutoffMs)
+      ) {
+        this.sessions.delete(tokenHash);
+        deleted += 1;
+      }
+    }
+    return deleted;
+  }
+
+  async saveAccountActionToken(record: AccountActionToken): Promise<void> {
+    for (const [hash, token] of this.accountActionTokens) {
+      if (token.userId === record.userId && token.purpose === record.purpose) {
+        this.accountActionTokens.delete(hash);
+      }
+    }
+    this.accountActionTokens.set(record.tokenHash, { ...record });
+  }
+
+  async consumeEmailVerification(tokenHash: string, now: string): Promise<boolean> {
+    const token = this.accountActionTokens.get(tokenHash);
+    if (
+      !token ||
+      token.purpose !== "verify-email" ||
+      new Date(token.expiresAt).getTime() <= new Date(now).getTime()
+    ) {
+      return false;
+    }
+    const account = this.accountsById.get(token.userId);
+    if (!account) return false;
+    this.accountActionTokens.delete(tokenHash);
+    const updated = { ...account, emailVerifiedAt: now };
+    this.accountsById.set(updated.userId, updated);
+    this.accountsByEmail.set(updated.email, updated);
+    return true;
+  }
+
+  async consumePasswordReset(
+    tokenHash: string,
+    now: string,
+    password: { passwordHash: string; passwordSalt: string },
+  ): Promise<boolean> {
+    const token = this.accountActionTokens.get(tokenHash);
+    if (
+      !token ||
+      token.purpose !== "reset-password" ||
+      new Date(token.expiresAt).getTime() <= new Date(now).getTime()
+    ) {
+      return false;
+    }
+    const account = this.accountsById.get(token.userId);
+    if (!account) return false;
+    this.accountActionTokens.delete(tokenHash);
+    const updated = { ...account, ...password };
+    this.accountsById.set(updated.userId, updated);
+    this.accountsByEmail.set(updated.email, updated);
+    for (const [hash, session] of this.sessions) {
+      if (session.userId === updated.userId) {
+        this.sessions.set(hash, { ...session, revokedAt: now });
+      }
+    }
+    return true;
+  }
+
+  async deleteAccountActionToken(tokenHash: string): Promise<void> {
+    this.accountActionTokens.delete(tokenHash);
+  }
+
+  async deleteExpiredAccountActionTokens(
+    cutoff: string,
+    limit = 1000,
+  ): Promise<number> {
+    const cutoffMs = new Date(cutoff).getTime();
+    let deleted = 0;
+    for (const [hash, token] of this.accountActionTokens) {
+      if (deleted >= limit) break;
+      if (new Date(token.expiresAt).getTime() <= cutoffMs) {
+        this.accountActionTokens.delete(hash);
+        deleted += 1;
+      }
+    }
+    return deleted;
+  }
+
+  async consumeRateLimit(
+    key: string,
+    windowMs: number,
+  ): Promise<{ current: number; ttl: number }> {
+    const now = Date.now();
+    const existing = this.rateLimits.get(key);
+    const entry =
+      existing && existing.expiresAt > now
+        ? { current: existing.current + 1, expiresAt: existing.expiresAt }
+        : { current: 1, expiresAt: now + windowMs };
+    this.rateLimits.set(key, entry);
+    return { current: entry.current, ttl: Math.max(0, entry.expiresAt - now) };
+  }
+
+  async clearRateLimit(key: string): Promise<void> {
+    this.rateLimits.delete(key);
+  }
+
+  async deleteExpiredRateLimits(cutoff: string, limit = 1000): Promise<number> {
+    const cutoffMs = new Date(cutoff).getTime();
+    let deleted = 0;
+    for (const [key, counter] of this.rateLimits) {
+      if (deleted >= limit) break;
+      if (counter.expiresAt <= cutoffMs) {
+        this.rateLimits.delete(key);
+        deleted += 1;
+      }
+    }
+    return deleted;
+  }
+
   async getAiConsent(userId: string): Promise<AiConsent | null> {
     const consent = this.aiConsents.get(userId);
     return consent ? { ...consent } : null;
@@ -430,7 +698,16 @@ export class InMemoryRepository
     return { ...copy };
   }
 
-  async deleteAccount(userId: string): Promise<void> {
+  async deleteAccount(userId: string, expectedPasswordHash?: string): Promise<void> {
+    const membership = this.familyMembers.get(userId);
+    const parentId = membership && this.familyGroups.get(membership.familyId)?.createdBy;
+    return this.withUsersTransaction([userId, ...(parentId ? [parentId] : [])], () => this.deleteAccountLocked(userId, expectedPasswordHash));
+  }
+
+  private async deleteAccountLocked(userId: string, expectedPasswordHash?: string): Promise<void> {
+    if (expectedPasswordHash && this.accountsById.get(userId)?.passwordHash !== expectedPasswordHash) {
+      throw new DomainError("invalid_credentials", "電子郵件或密碼不正確。", 401);
+    }
     const account = this.accountsById.get(userId);
     if (!account) return;
 
@@ -447,6 +724,9 @@ export class InMemoryRepository
     this.investmentAccounts.delete(userId);
     this.investmentOrders.delete(userId);
     this.aiConsents.delete(userId);
+    for (const [hash, token] of this.accountActionTokens) {
+      if (token.userId === userId) this.accountActionTokens.delete(hash);
+    }
     for (const [tokenHash, session] of this.sessions) {
       if (session.userId === userId) this.sessions.delete(tokenHash);
     }

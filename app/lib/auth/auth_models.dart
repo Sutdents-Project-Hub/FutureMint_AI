@@ -4,36 +4,54 @@ class PublicAccount {
     required this.email,
     required this.profileComplete,
     required this.createdAt,
+    this.emailVerified = false,
+    this.verificationRequired = false,
   });
 
   final String id;
   final String email;
   final bool profileComplete;
   final DateTime createdAt;
+  final bool emailVerified;
+  final bool verificationRequired;
 
   factory PublicAccount.fromJson(Map<String, dynamic> json) => PublicAccount(
     id: json['id'] as String,
     email: json['email'] as String,
-    profileComplete: json['profileComplete'] as bool,
+    profileComplete: json['profileComplete'] as bool? ?? false,
     createdAt: DateTime.parse(json['createdAt'] as String),
+    emailVerified: json['emailVerified'] as bool? ?? false,
+    verificationRequired: json['verificationRequired'] as bool? ?? false,
   );
 
-  PublicAccount copyWith({bool? profileComplete}) => PublicAccount(
+  PublicAccount copyWith({
+    bool? profileComplete,
+    bool? emailVerified,
+    bool? verificationRequired,
+  }) => PublicAccount(
     id: id,
     email: email,
     profileComplete: profileComplete ?? this.profileComplete,
     createdAt: createdAt,
+    emailVerified: emailVerified ?? this.emailVerified,
+    verificationRequired: verificationRequired ?? this.verificationRequired,
   );
 }
 
 class AuthSession {
-  const AuthSession({required this.token, required this.account});
+  const AuthSession({
+    required this.token,
+    required this.account,
+    this.emailDeliveryPending = false,
+  });
 
   final String token;
   final PublicAccount account;
+  final bool emailDeliveryPending;
 
   factory AuthSession.fromJson(Map<String, dynamic> json) => AuthSession(
     token: json['token'] as String,
+    emailDeliveryPending: json['emailDeliveryPending'] as bool? ?? false,
     account: PublicAccount.fromJson(json['account'] as Map<String, dynamic>),
   );
 }

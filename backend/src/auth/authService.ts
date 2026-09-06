@@ -7,6 +7,8 @@ import {
 } from "node:crypto";
 import { promisify } from "node:util";
 
+import type { AccountMailer, AccountMailPurpose } from "./accountMailer";
+
 import type { AuthRepository } from "../application/ports";
 import { DomainError } from "../contracts/errors";
 import type {
@@ -33,6 +35,7 @@ export interface AuthCredentials {
 export interface AuthResult {
   account: PublicAccount;
   token: string;
+  emailDeliveryPending?: boolean;
 }
 
 const invalidCredentials = () =>
@@ -47,11 +50,13 @@ const unauthorized = () =>
 
 const normalizeEmail = (email: string) => email.trim().toLowerCase();
 
-const toPublicAccount = (account: Account): PublicAccount => ({
+const toPublicAccount = (account: Account, requireVerification = false): PublicAccount => ({
   id: account.id,
   email: account.email,
   profileComplete: account.profileComplete,
   createdAt: account.createdAt,
+  emailVerified: Boolean(account.emailVerifiedAt),
+  verificationRequired: requireVerification && !account.emailVerifiedAt,
 });
 
 const hashToken = (token: string) =>
@@ -76,7 +81,12 @@ export class AuthService {
   constructor(
     private readonly repository: AuthRepository,
     private readonly now: () => Date = () => new Date(),
-  ) {}
+    private readonly options: { mailer?: AccountMailer; requireEmailVerification?: boolean } = {},
+  ) {
+    if (options.requireEmailVerification && !options.mailer) {
+      throw new Error("Email verification requires an account mailer");
+    }
+  }
 
   async register(input: AuthCredentials): Promise<AuthResult> {
     const parsed = authCredentialsSchema.parse(input);
@@ -102,7 +112,15 @@ export class AuthService {
     };
     account.userId = account.id;
     await this.repository.createAccount(account);
-    return this.createSession(account);
+    const session = await this.createSession(account);
+    if (this.options.mailer) {
+      try {
+        await this.requestEmailVerification(account.id);
+      } catch {
+        return { ...session, emailDeliveryPending: true };
+      }
+    }
+    return session;
   }
 
   async login(input: AuthCredentials): Promise<AuthResult> {
@@ -116,6 +134,65 @@ export class AuthService {
     return this.createSession(account);
   }
 
+  async requestEmailVerification(userId: string): Promise<{ accepted: true }> {
+    const account = await this.repository.findAccountById(userId);
+    if (!account) throw unauthorized();
+    if (!account.emailVerifiedAt) await this.sendAccountAction(account, "verify-email");
+    return { accepted: true };
+  }
+
+  async requestPasswordReset(input: { email: string }): Promise<{ accepted: true }> {
+    const email = authCredentialsSchema.shape.email.parse(input.email);
+    const account = await this.repository.findAccountByEmail(normalizeEmail(email));
+    // Both delivery failures and unknown addresses have the same public result.
+    if (account) {
+      try { await this.sendAccountAction(account, "reset-password"); } catch { /* no account enumeration */ }
+    }
+    return { accepted: true };
+  }
+
+  async verifyEmail(token: string): Promise<{ verified: true }> {
+    if (!this.isActionToken(token) || !(await this.repository.consumeEmailVerification(hashToken(token), this.now().toISOString()))) {
+      throw this.invalidActionToken();
+    }
+    return { verified: true };
+  }
+
+  async resetPassword(token: string, password: string): Promise<{ reset: true }> {
+    const parsed = authCredentialsSchema.shape.password.parse(password);
+    if (!this.isActionToken(token)) throw this.invalidActionToken();
+    const passwordSalt = randomBytes(16).toString("base64url");
+    const passwordHash = await hashPassword(parsed, passwordSalt);
+    if (!(await this.repository.consumePasswordReset(hashToken(token), this.now().toISOString(), { passwordSalt, passwordHash }))) {
+      throw this.invalidActionToken();
+    }
+    return { reset: true };
+  }
+
+  private isActionToken(token: string): boolean {
+    return typeof token === "string" && /^[A-Za-z0-9_-]{43}$/.test(token);
+  }
+
+  private invalidActionToken(): DomainError {
+    return new DomainError("invalid_action_token", "連結已失效或已使用，請重新提出要求。", 400);
+  }
+
+  private async sendAccountAction(account: Account, purpose: AccountMailPurpose): Promise<void> {
+    if (!this.options.mailer) {
+      throw new DomainError("mail_unavailable", "郵件服務暫時無法使用，請稍後再試。", 503, true);
+    }
+    const token = randomBytes(32).toString("base64url");
+    const tokenHash = hashToken(token);
+    await this.repository.saveAccountActionToken({ tokenHash, userId: account.id, purpose,
+      expiresAt: new Date(this.now().getTime() + 30 * 60 * 1000).toISOString() });
+    try {
+      await this.options.mailer.send(account.email, purpose, token);
+    } catch {
+      await this.repository.deleteAccountActionToken(tokenHash);
+      throw new DomainError("mail_unavailable", "郵件服務暫時無法使用，請稍後再試。", 503, true);
+    }
+  }
+
   async authenticate(token: string): Promise<PublicAccount> {
     const session = await this.repository.findSessionByTokenHash(hashToken(token));
     if (
@@ -127,7 +204,7 @@ export class AuthService {
     }
     const account = await this.repository.findAccountById(session.userId);
     if (!account) throw unauthorized();
-    return toPublicAccount(account);
+    return toPublicAccount(account, this.options.requireEmailVerification);
   }
 
   async logout(token: string): Promise<void> {
@@ -187,7 +264,7 @@ export class AuthService {
     if (!account || !(await passwordsMatch(parsed.password, account))) {
       throw invalidCredentials();
     }
-    await this.repository.deleteAccount(userId);
+    await this.repository.deleteAccount(userId, account.passwordHash);
   }
 
   async markProfileComplete(userId: string): Promise<void> {
@@ -204,7 +281,7 @@ export class AuthService {
       createdAt: createdAt.toISOString(),
       expiresAt: new Date(createdAt.getTime() + sessionDurationMs).toISOString(),
     };
-    await this.repository.createSession(session);
-    return { account: toPublicAccount(account), token };
+    await this.repository.createSession(session, account.passwordHash);
+    return { account: toPublicAccount(account, this.options.requireEmailVerification), token };
   }
 }

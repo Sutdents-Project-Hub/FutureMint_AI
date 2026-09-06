@@ -62,3 +62,7 @@
 - [ ] Repository 與 bundle 完成 secret／個資／合約掃描。
 
 操作台詞見 [Demo 腳本](demo-script.md)，部署見 [Coolify 部署說明](deployment.md)，實測見 [測試與證據](testing-and-evidence.md)。
+
+## 產品化後的主張界線
+
+2026-09 使用者已核准正式產品準備與 iPhone-only 上架範圍；競賽材料是歷史來源。Email 驗證／重設、邀請更新／停用與發布檢查已納入實作；SMTP 真實送達、未成年人營運條件與 App Store 接受未完成。AI 教育內容主張改為「選題與受控教材」，不得再宣稱自由生成任意投資解答。最新驗證以 [測試證據](testing-and-evidence.md) 為準。

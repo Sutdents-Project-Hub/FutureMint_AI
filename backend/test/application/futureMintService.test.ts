@@ -301,7 +301,7 @@ describe("FutureMintService decisions", () => {
     await repository.saveProfile({ ...child, accountRole: "child" });
 
     const invited = await service.createFamilyInvite("parent-user");
-    expect(invited.inviteCode).toMatch(/^[A-Z0-9]{8}$/u);
+    expect(invited.inviteCode).toMatch(/^[A-Za-z0-9_-]{24}$/u);
     expect(invited.members).toHaveLength(1);
 
     const childView = await service.joinFamily("child-user", {

@@ -1,5 +1,6 @@
 import type {
   Account,
+  AccountActionToken,
   AiConsent,
   CoachReply,
   CoachRequest,
@@ -66,6 +67,10 @@ export type EditableMoneyEventInput = Omit<
 >;
 
 export interface FutureMintRepository {
+  withUsersTransaction<T>(
+    userIds: string[],
+    operation: (repository: FutureMintRepository) => Promise<T>,
+  ): Promise<T>;
   getProfile(userId: string): Promise<UserProfile>;
   saveProfile(profile: UserProfile): Promise<UserProfile>;
   listMoneyEvents(userId: string): Promise<MoneyEvent[]>;
@@ -97,9 +102,18 @@ export interface FutureMintRepository {
   createFamilyGroup(
     userId: string,
     familyId: string,
-    inviteCode: string,
+    inviteCodeHash: string,
+    inviteCodeExpiresAt: string,
   ): Promise<FamilyGroupRecord>;
-  findFamilyByInviteCode(inviteCode: string): Promise<FamilyGroupRecord | null>;
+  rotateFamilyInvite(
+    familyId: string,
+    inviteCodeHash: string,
+    inviteCodeExpiresAt: string,
+  ): Promise<FamilyGroupRecord>;
+  revokeFamilyInvite(familyId: string): Promise<FamilyGroupRecord>;
+  findFamilyByInviteCodeHash(
+    inviteCodeHash: string,
+  ): Promise<FamilyGroupRecord | null>;
   listFamilyMembers(familyId: string): Promise<FamilyMemberRecord[]>;
   addFamilyMember(familyId: string, userId: string): Promise<void>;
   removeFamilyMember(userId: string): Promise<void>;
@@ -111,10 +125,32 @@ export interface AuthRepository {
   findAccountById(userId: string): Promise<Account | null>;
   createAccount(account: Account): Promise<Account>;
   setProfileComplete(userId: string): Promise<void>;
-  createSession(session: SessionRecord): Promise<void>;
+  createSession(session: SessionRecord, expectedPasswordHash?: string): Promise<void>;
   findSessionByTokenHash(tokenHash: string): Promise<SessionRecord | null>;
   revokeSession(tokenHash: string): Promise<void>;
+  deleteExpiredOrRevokedSessions(cutoff: string, limit?: number): Promise<number>;
+  saveAccountActionToken(record: AccountActionToken): Promise<void>;
+  consumeEmailVerification(tokenHash: string, now: string): Promise<boolean>;
+  consumePasswordReset(
+    tokenHash: string,
+    now: string,
+    password: { passwordHash: string; passwordSalt: string },
+  ): Promise<boolean>;
+  deleteAccountActionToken(tokenHash: string): Promise<void>;
+  deleteExpiredAccountActionTokens(
+    cutoff: string,
+    limit?: number,
+  ): Promise<number>;
   getAiConsent(userId: string): Promise<AiConsent | null>;
   saveAiConsent(userId: string, consent: AiConsent): Promise<AiConsent>;
-  deleteAccount(userId: string): Promise<void>;
+  deleteAccount(userId: string, expectedPasswordHash?: string): Promise<void>;
+}
+
+export interface RateLimitStore {
+  consumeRateLimit(
+    key: string,
+    windowMs: number,
+  ): Promise<{ current: number; ttl: number }>;
+  clearRateLimit(key: string): Promise<void>;
+  deleteExpiredRateLimits(cutoff: string, limit?: number): Promise<number>;
 }

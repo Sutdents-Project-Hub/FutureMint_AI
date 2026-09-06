@@ -39,6 +39,8 @@ abstract interface class FutureMintRepository {
   });
   Future<FamilyOverview?> getFamilyOverview();
   Future<FamilyOverview> createFamilyInvite();
+  Future<FamilyOverview> rotateFamilyInvite();
+  Future<FamilyOverview> revokeFamilyInvite();
   Future<FamilyOverview> joinFamily(String inviteCode);
   Future<void> leaveFamily();
   Future<MarketSnapshot> getMarketSnapshot();

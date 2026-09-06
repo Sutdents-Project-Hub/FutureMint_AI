@@ -1,4 +1,4 @@
-import { randomBytes, randomUUID } from "node:crypto";
+import { createHash, randomBytes, randomUUID } from "node:crypto";
 
 import type {
   AiProvider,
@@ -50,8 +50,6 @@ import { compareSubscription } from "../domain/subscriptions";
 import { DomainError } from "../contracts/errors";
 
 export class FutureMintService {
-  private readonly investmentOrderLocks = new Map<string, Promise<void>>();
-
   constructor(
     private readonly repository: FutureMintRepository,
     private readonly aiProvider: AiProvider,
@@ -68,30 +66,6 @@ export class FutureMintService {
       .slice(-5);
   }
 
-  private async withInvestmentOrderLock<T>(
-    userId: string,
-    operation: () => Promise<T>,
-  ): Promise<T> {
-    const previous = this.investmentOrderLocks.get(userId) ?? Promise.resolve();
-    let release: (() => void) | undefined;
-    const current = previous.then(
-      () =>
-        new Promise<void>((resolve) => {
-          release = resolve;
-        }),
-    );
-    this.investmentOrderLocks.set(userId, current);
-    await previous;
-    try {
-      return await operation();
-    } finally {
-      release?.();
-      if (this.investmentOrderLocks.get(userId) === current) {
-        this.investmentOrderLocks.delete(userId);
-      }
-    }
-  }
-
   getProfile(userId: string): Promise<UserProfile> {
     return this.repository.getProfile(userId);
   }
@@ -101,15 +75,17 @@ export class FutureMintService {
     input: Omit<UserProfile, "userId">,
   ): Promise<UserProfile> {
     const parsed = profileInputSchema.parse(input);
-    const membership = await this.repository.getFamilyMembership(userId);
-    if (membership && membership.role !== parsed.accountRole) {
-      throw new DomainError(
-        "family_role_locked",
-        "加入家庭後不能直接更換家長／孩子角色；請先離開家庭再修改。",
-        409,
-      );
-    }
-    return this.repository.saveProfile({ userId, ...parsed });
+    return this.repository.withUsersTransaction([userId], async (repository) => {
+      const membership = await repository.getFamilyMembership(userId);
+      if (membership && membership.role !== parsed.accountRole) {
+        throw new DomainError(
+          "family_role_locked",
+          "加入家庭後不能直接更換家長／孩子角色；請先離開家庭再修改。",
+          409,
+        );
+      }
+      return repository.saveProfile({ userId, ...parsed });
+    });
   }
 
   async parseCapture(userId: string, input: CaptureInput) {
@@ -326,11 +302,28 @@ export class FutureMintService {
   }
 
   async getFamilyOverview(userId: string): Promise<FamilyOverview | null> {
-    const membership = await this.repository.getFamilyMembership(userId);
+    const initial = await this.repository.getFamilyMembership(userId);
+    if (!initial) return null;
+    const members = await this.repository.listFamilyMembers(initial.familyId);
+    return this.repository.withUsersTransaction([userId, ...members.map((member) => member.userId)], async (repository) => {
+      const current = await repository.getFamilyMembership(userId);
+      if (!current) return null;
+      if (current.familyId !== initial.familyId) {
+        throw new DomainError("family_changed", "家庭關聯已更新，請重新載入。", 409, true);
+      }
+      return this.getFamilyOverviewFromRepository(userId, repository);
+    });
+  }
+
+  private async getFamilyOverviewFromRepository(
+    userId: string,
+    repository: FutureMintRepository,
+  ): Promise<FamilyOverview | null> {
+    const membership = await repository.getFamilyMembership(userId);
     if (!membership) return null;
     const [group, records] = await Promise.all([
-      this.repository.getFamilyGroup(membership.familyId),
-      this.repository.listFamilyMembers(membership.familyId),
+      repository.getFamilyGroup(membership.familyId),
+      repository.listFamilyMembers(membership.familyId),
     ]);
     if (!group) {
       throw new DomainError(
@@ -354,13 +347,14 @@ export class FutureMintService {
     const children = records.filter(
       (record) => record.role === "child" && record.userId !== userId,
     );
+    const scopedService = new FutureMintService(repository, this.aiProvider, this.subscriptionCatalog, this.marketDataProvider);
     const childSummaries =
       membership.role === "parent"
         ? await Promise.all(
             children.map(async (child, index) => {
               const [dashboard, insights] = await Promise.all([
-                this.getDashboard(child.userId),
-                this.getInsights(child.userId),
+                scopedService.getDashboard(child.userId),
+                scopedService.getInsights(child.userId),
               ]);
               return {
                 userId: child.userId,
@@ -380,30 +374,54 @@ export class FutureMintService {
 
     return {
       familyId: membership.familyId,
-      ...(membership.role === "parent" ? { inviteCode: group.inviteCode } : {}),
+      inviteActive: membership.role === "parent" && group.inviteActive &&
+        Boolean(group.inviteCodeExpiresAt && new Date(group.inviteCodeExpiresAt).getTime() > Date.now()),
+      ...(membership.role === "parent" && group.inviteCodeExpiresAt
+        ? { inviteCodeExpiresAt: group.inviteCodeExpiresAt }
+        : {}),
       members,
       childSummaries,
     };
   }
 
   async createFamilyInvite(userId: string): Promise<FamilyOverview> {
-    const profile = await this.repository.getProfile(userId);
-    if (profile.accountRole !== "parent") {
-      throw new DomainError(
-        "family_parent_required",
-        "只有家長帳號可以建立家庭邀請。",
-        403,
+    const inviteCode = randomBytes(18).toString("base64url");
+    const inviteCodeHash = createHash("sha256").update(inviteCode).digest("hex");
+    const inviteCodeExpiresAt = new Date(
+      Date.now() + 24 * 60 * 60 * 1000,
+    ).toISOString();
+    await this.repository.withUsersTransaction([userId], async (repository) => {
+      const profile = await repository.getProfile(userId);
+      if (profile.accountRole !== "parent") {
+        throw new DomainError(
+          "family_parent_required",
+          "只有家長帳號可以建立家庭邀請。",
+          403,
+        );
+      }
+      const existing = await repository.getFamilyMembership(userId);
+      if (!existing) {
+        await repository.createFamilyGroup(
+          userId,
+          randomUUID(),
+          inviteCodeHash,
+          inviteCodeExpiresAt,
+        );
+        return;
+      }
+      if (existing.role !== "parent") {
+        throw new DomainError(
+          "family_parent_required",
+          "只有家長帳號可以建立家庭邀請。",
+          403,
+        );
+      }
+      await repository.rotateFamilyInvite(
+        existing.familyId,
+        inviteCodeHash,
+        inviteCodeExpiresAt,
       );
-    }
-    const existing = await this.repository.getFamilyMembership(userId);
-    if (!existing) {
-      const inviteCode = randomBytes(5).toString("hex").slice(0, 8).toUpperCase();
-      await this.repository.createFamilyGroup(
-        userId,
-        randomUUID(),
-        inviteCode,
-      );
-    }
+    });
     const overview = await this.getFamilyOverview(userId);
     if (!overview) {
       throw new DomainError(
@@ -413,6 +431,29 @@ export class FutureMintService {
         true,
       );
     }
+    return { ...overview, inviteCode, inviteCodeExpiresAt, inviteActive: true };
+  }
+
+  rotateFamilyInvite(userId: string): Promise<FamilyOverview> {
+    return this.createFamilyInvite(userId);
+  }
+
+  async revokeFamilyInvite(userId: string): Promise<FamilyOverview> {
+    await this.repository.withUsersTransaction([userId], async (repository) => {
+      const membership = await repository.getFamilyMembership(userId);
+      if (!membership || membership.role !== "parent") {
+        throw new DomainError(
+          "family_parent_required",
+          "只有家長帳號可以撤銷家庭邀請。",
+          403,
+        );
+      }
+      await repository.revokeFamilyInvite(membership.familyId);
+    });
+    const overview = await this.getFamilyOverview(userId);
+    if (!overview) {
+      throw new DomainError("family_not_found", "找不到家庭關聯。", 404);
+    }
     return overview;
   }
 
@@ -421,36 +462,53 @@ export class FutureMintService {
     input: { inviteCode: string },
   ): Promise<FamilyOverview> {
     const parsed = familyJoinInputSchema.parse(input);
-    const profile = await this.repository.getProfile(userId);
-    if (profile.accountRole !== "child") {
-      throw new DomainError(
-        "family_child_required",
-        "只有孩子帳號可以使用家長邀請碼加入家庭。",
-        403,
-      );
-    }
-    if (await this.repository.getFamilyMembership(userId)) {
-      throw new DomainError(
-        "family_already_linked",
-        "這個孩子帳號已經加入家庭。",
-        409,
-      );
-    }
-    const group = await this.repository.findFamilyByInviteCode(
-      parsed.inviteCode,
-    );
+    const inviteCodeHash = createHash("sha256")
+      .update(parsed.inviteCode)
+      .digest("hex");
+    const group = await this.repository.findFamilyByInviteCodeHash(inviteCodeHash);
     if (!group) {
       throw new DomainError("family_invite_not_found", "找不到家庭邀請碼。", 404);
     }
-    const members = await this.repository.listFamilyMembers(group.familyId);
-    if (!members.some((member) => member.role === "parent")) {
-      throw new DomainError(
-        "family_parent_missing",
-        "這個家庭目前沒有可用的家長帳號。",
-        409,
-      );
-    }
-    await this.repository.addFamilyMember(group.familyId, userId);
+    await this.repository.withUsersTransaction(
+      [userId, group.createdBy],
+      async (repository) => {
+        const [profile, existing, currentGroup] = await Promise.all([
+          repository.getProfile(userId),
+          repository.getFamilyMembership(userId),
+          repository.findFamilyByInviteCodeHash(inviteCodeHash),
+        ]);
+        if (profile.accountRole !== "child") {
+          throw new DomainError(
+            "family_child_required",
+            "只有孩子帳號可以使用家長邀請碼加入家庭。",
+            403,
+          );
+        }
+        if (existing) {
+          throw new DomainError(
+            "family_already_linked",
+            "這個孩子帳號已經加入家庭。",
+            409,
+          );
+        }
+        if (!currentGroup || currentGroup.familyId !== group.familyId) {
+          throw new DomainError(
+            "family_invite_not_found",
+            "找不到家庭邀請碼。",
+            404,
+          );
+        }
+        const members = await repository.listFamilyMembers(group.familyId);
+        if (!members.some((member) => member.role === "parent")) {
+          throw new DomainError(
+            "family_parent_missing",
+            "這個家庭目前沒有可用的家長帳號。",
+            409,
+          );
+        }
+        await repository.addFamilyMember(group.familyId, userId);
+      },
+    );
     const overview = await this.getFamilyOverview(userId);
     if (!overview) {
       throw new DomainError(
@@ -467,17 +525,27 @@ export class FutureMintService {
     const membership = await this.repository.getFamilyMembership(userId);
     if (!membership) return;
     const members = await this.repository.listFamilyMembers(membership.familyId);
-    if (membership.role === "parent" && members.length > 1) {
-      throw new DomainError(
-        "family_parent_has_children",
-        "家長帳號仍有孩子關聯，請先由孩子離開家庭或重新安排關聯。",
-        409,
-      );
-    }
-    await this.repository.removeFamilyMember(userId);
-    if (members.length <= 1) {
-      await this.repository.deleteFamilyGroup(membership.familyId);
-    }
+    await this.repository.withUsersTransaction(
+      members.map((member) => member.userId),
+      async (repository) => {
+        const currentMembership = await repository.getFamilyMembership(userId);
+        if (!currentMembership) return;
+        const currentMembers = await repository.listFamilyMembers(
+          currentMembership.familyId,
+        );
+        if (currentMembership.role === "parent" && currentMembers.length > 1) {
+          throw new DomainError(
+            "family_parent_has_children",
+            "家長帳號仍有孩子關聯，請先由孩子離開家庭或重新安排關聯。",
+            409,
+          );
+        }
+        await repository.removeFamilyMember(userId);
+        if (currentMembers.length <= 1) {
+          await repository.deleteFamilyGroup(currentMembership.familyId);
+        }
+      },
+    );
   }
 
   getMarketSnapshot() {
@@ -498,17 +566,15 @@ export class FutureMintService {
   }
 
   async placeInvestmentOrder(userId: string, input: InvestmentOrderInput) {
-    return this.withInvestmentOrderLock(userId, async () => {
-      const parsed = investmentOrderInputSchema.parse(input);
-      const [profile, market, existingOrders] = await Promise.all([
-        this.repository.getProfile(userId),
-        this.marketDataProvider.getSnapshot(),
-        this.repository.listInvestmentOrders(userId),
-      ]);
-      const account = await this.repository.getOrCreateInvestmentAccount(
+    const parsed = investmentOrderInputSchema.parse(input);
+    const market = await this.marketDataProvider.getSnapshot();
+    return this.repository.withUsersTransaction([userId], async (repository) => {
+      const profile = await repository.getProfile(userId);
+      const account = await repository.getOrCreateInvestmentAccount(
         userId,
         profile.goalSavedMinor > 0 ? profile.goalSavedMinor : 1000,
       );
+      const existingOrders = await repository.listInvestmentOrders(userId);
       if (
         existingOrders.some(
           (order) => order.idempotencyKey === parsed.idempotencyKey,
@@ -535,7 +601,7 @@ export class FutureMintService {
         parsed.quantity,
         totalMinor,
       );
-      await this.repository.saveInvestmentOrder(userId, {
+      await repository.saveInvestmentOrder(userId, {
         ...parsed,
         name: quote.name,
         unitPrice: quote.price,
@@ -545,7 +611,7 @@ export class FutureMintService {
       });
       return buildInvestmentLab(
         account,
-        await this.repository.listInvestmentOrders(userId),
+        await repository.listInvestmentOrders(userId),
         market,
       );
     });

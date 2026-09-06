@@ -1,6 +1,6 @@
 # FutureMint AI
 
-> 第六屆中學生黑客松決賽原型｜Flutter Web + Fastify + PostgreSQL｜目標由私人 GitHub repository 自動部署到 Coolify
+> 由黑客松原型轉為正式產品準備｜iPhone App Store 上架準備｜Flutter Web + Fastify + PostgreSQL｜目標由私人 GitHub repository 自動部署到 Coolify
 
 FutureMint AI 是青少年的 AI 金錢決策教練。使用者以繁體中文主動輸入收入、支出或訂閱（目前只接受文字／貼上，不提供圖片上傳或 OCR），系統先整理成可修改草稿與「需要／想要」建議；只有確認後才保存，並以確定性程式更新收支分析、訂閱提醒、個人學習規劃、FutureSeed 複利比較與延遲行情投資練習場。
 
@@ -22,12 +22,12 @@ FutureMint AI 是青少年的 AI 金錢決策教練。使用者以繁體中文�
 - 用繁體中文輸入「今天買珍奶 75」、「打工薪水 1500」或「Netflix 390 四個人分」。
 - 查看量界智算或 deterministic demo 的解析來源，修正金額／項目／分類／需要或想要後再確認保存。
 - 在紀錄頁編輯或刪除自己已保存的收入、支出與訂閱；預算、分析與訂閱比較會立即重算。
-- 用電子郵件與密碼註冊、登入、登出，並完成首次預算與目標設定。
+- 用電子郵件與密碼註冊、登入、登出；正式環境先驗證 Email，再完成首次預算與目標設定，並可申請密碼重設。
 - 在第三方 AI 功能啟用前查看量界智算的資料類別與用途，可選擇不啟用或日後撤回；未同意時 Client 與 API 都會擋住量界請求。
 - 已登入帳號可在 App 內輸入目前密碼並二次確認，刪除帳號及其預算、紀錄、課程、虛擬投資與家庭關聯。
 - 每個帳號只能讀寫自己的 PostgreSQL profile、事件與課程資料；重啟 API 後資料仍保留。
 - 先看六個月收支、需要／想要比例與圖形化提醒，再查看長期交易明細。
-- 以 AI 摘要產生個人理財學習路線，並保留可完成的三分鐘微課。
+- 由 AI 依分類摘要選擇教材主題與順序，教學內容來自受控繁體中文教材，並保留可完成的三分鐘微課。
 - 在學習頁自由輸入問題，選擇「一句話重點／生活例子／一步一步」回答方式；學習規劃仍會依帳號摘要調整。
 - 在訂閱續訂前收到使用頻率檢查提醒；提醒不會直接把訂閱判定為浪費。
 - 以已省金額、每月投入與期間比較「穩穩存 1.5%」、「慢慢長 5%」與「高風險 8%」三條版本化合成路徑，並用 AI 陪讀員解釋回檔、分散與複利。
@@ -44,8 +44,8 @@ FutureMint AI 是青少年的 AI 金錢決策教練。使用者以繁體中文�
 
 | Resource | 專案路徑／映像 | 對外 port | 健康檢查 | 秘密 |
 |---|---|---:|---|---|
-| `futuremint-ai-web` Application | `app/Dockerfile` | 3000 | `/` | 無；只有 build-time `API_BASE_URL` |
-| `futuremint-ai-api` Application | `backend/Dockerfile` | 3000 | `/api/health` | `DATABASE_URL`、`LIANGJIE_API_KEY` |
+| `futuremint-ai-web` Application | `app/Dockerfile` | 3000 | `/` | 無；只有公開 URL／營運資料 build variables |
+| `futuremint-ai-api` Application | `backend/Dockerfile` | 3000 | `/api/health` | `DATABASE_URL`、`LIANGJIE_API_KEY`、SMTP credentials |
 | `futuremint-ai-postgres` Database | Coolify PostgreSQL 17 Resource | 不公開 | Coolify 管理 | 使用 Coolify 產生的 credentials |
 
 ```mermaid
@@ -157,7 +157,12 @@ cp .env.appstore.example .env.appstore.local
 docker build -t futuremint-ai-api backend
 
 docker build \
-  --build-arg API_BASE_URL=https://api.example.com/api/ \
+  --build-arg BUILD_ENV=validation \
+  --build-arg API_BASE_URL=http://localhost:13000/api/ \
+  --build-arg PRIVACY_POLICY_URL=http://localhost:13000/privacy \
+  --build-arg SUPPORT_URL=http://localhost:13000/support \
+  --build-arg SUPPORT_EMAIL=local-validation@example.invalid \
+  --build-arg SERVICE_OPERATOR=FutureMint-local-validation \
   -t futuremint-ai-web app
 ```
 
@@ -186,7 +191,8 @@ dart format --output=none --set-exit-if-changed lib test integration_test
 flutter analyze
 flutter test
 flutter build web --release \
-  --dart-define=API_BASE_URL=https://api.example.com/api/
+  --dart-define=BUILD_ENV=validation \
+  --dart-define=API_BASE_URL=http://localhost:3000/api/
 ```
 
 根目錄 [.env.example](.env.example) 只包含本機 Web／API port 與公開 API URL 的安全 placeholder；可複製為 `.env` 調整 Compose 啟動位置。量界 API key 與 PostgreSQL connection string 仍只放 `backend/.env` 或 Coolify runtime secret。
@@ -253,3 +259,13 @@ API 變數名稱索引在 `backend/.env.example`。Coolify production 至少需�
 - AI provider、資料庫、環境變數或部署狀態改變時，同步更新整合、資料、安全與部署文件。
 - 所有 commit／push 都必須先依 [AGENTS.md](AGENTS.md) 掃描 staged、unstaged、untracked 與 diff；本次遷移未執行版本控制或外部發布。
 - 新增套件、模型、資料或素材時仍需逐項確認來源、競賽規則與 attribution。
+
+## 2026-09 正式產品準備
+
+本次為缺陷修正與使用者核准的正式產品範圍調整。iOS 只支援 iPhone；Web／Android 的既有程式保留。新增 Email 驗證、一次性密碼重設、家庭邀請更新／停用、原生安全憑證儲存、公開隱私／支援頁及發布前設定檢查。
+
+正式發布需要真實 `PUBLIC_BASE_URL`、`SERVICE_OPERATOR`、`SUPPORT_EMAIL`、SMTP 與經營運者確認的隱私揭露；完整變數在 `backend/.env.example` 與 [部署文件](docs/deployment.md)。設定缺少時 production 拒絕啟動，不能拿測試資料替代。公開政策與支援頁由 API Resource 的 `/privacy`、`/support` 提供；它們不在 `/api/` 下，反向代理需轉送這些路徑。
+
+前端 production build 必須提供 `BUILD_ENV=production`、API／隱私／支援 HTTPS URL、客服 Email 及營運者名稱。`BUILD_ENV=validation` 僅供本機／CI 驗證，允許本機 HTTP，禁止拿該產物發布。iOS 本機未簽章驗證使用 `bash app/tool/build_ios_validation.sh`；經確認 Apple Team 與上架設定後才使用 `bash app/tool/build_ios_release.sh`。兩者以隔離暫存副本排除測試插件，產物在 `app/build/release-ios/`。
+
+本次未 commit、push、部署、登入 Apple 或送審；本機檢查及剩餘驗收見 [測試證據](docs/testing-and-evidence.md)。

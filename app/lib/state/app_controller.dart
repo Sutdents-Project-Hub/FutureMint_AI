@@ -49,6 +49,17 @@ class AppController extends ChangeNotifier {
   CoachReply? learningCoachReply;
   FamilyOverview? familyOverview;
   AiConsentStatus aiConsent;
+  bool _disposed = false;
+
+  void _notifyListeners() {
+    if (!_disposed) notifyListeners();
+  }
+
+  @override
+  void dispose() {
+    _disposed = true;
+    super.dispose();
+  }
 
   bool get isAiEnabled => mode != AppMode.authenticated || aiConsent.granted;
   bool get canManageAiConsent =>
@@ -59,7 +70,7 @@ class AppController extends ChangeNotifier {
   bool _blockAiWhenDisabled() {
     if (isAiEnabled) return false;
     errorMessage = '尚未啟用 AI。你仍可使用非 AI 功能，請在設定查看資料用途後再決定。';
-    notifyListeners();
+    _notifyListeners();
     return true;
   }
 
@@ -75,7 +86,7 @@ class AppController extends ChangeNotifier {
     if (busy) return false;
     busy = true;
     errorMessage = null;
-    notifyListeners();
+    _notifyListeners();
     try {
       await operation();
       return true;
@@ -96,7 +107,7 @@ class AppController extends ChangeNotifier {
       return false;
     } finally {
       busy = false;
-      notifyListeners();
+      _notifyListeners();
     }
   }
 
@@ -127,7 +138,7 @@ class AppController extends ChangeNotifier {
     dashboard = results[2] as DashboardSummary;
     insights = results[3] as FinancialInsights;
     initialized = true;
-    notifyListeners();
+    _notifyListeners();
     unawaited(_loadSubscriptionComparison());
   });
 
@@ -153,7 +164,7 @@ class AppController extends ChangeNotifier {
         notice: unavailableMessage ?? '訂閱比較暫時無法載入，其他資料仍可使用。',
       );
     } finally {
-      notifyListeners();
+      _notifyListeners();
     }
   }
 
@@ -327,6 +338,14 @@ class AppController extends ChangeNotifier {
     familyOverview = await repository.createFamilyInvite();
   });
 
+  Future<void> rotateFamilyInvite() => _run(() async {
+    familyOverview = await repository.rotateFamilyInvite();
+  });
+
+  Future<void> revokeFamilyInvite() => _run(() async {
+    familyOverview = await repository.revokeFamilyInvite();
+  });
+
   Future<void> joinFamily(String inviteCode) => _run(() async {
     familyOverview = await repository.joinFamily(inviteCode);
   });
@@ -376,7 +395,7 @@ class AppController extends ChangeNotifier {
 
   void setThemeMode(ThemeMode value) {
     themeMode = value;
-    notifyListeners();
+    _notifyListeners();
   }
 
   Future<bool> updateAiConsent(bool granted) async {
@@ -401,6 +420,6 @@ class AppController extends ChangeNotifier {
   void clearMessages() {
     errorMessage = null;
     noticeMessage = null;
-    notifyListeners();
+    _notifyListeners();
   }
 }

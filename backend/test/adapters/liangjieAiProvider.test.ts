@@ -259,13 +259,7 @@ describe("LiangjieAiProvider", () => {
     const create = vi.fn().mockResolvedValue(
       completion(
         JSON.stringify({
-          title: "固定支出，也能重新選擇",
-          concept: "先把固定支出換算成月成本，再比較使用頻率與方案資格。",
-          example: "把使用頻率與方案資格放在一起比較。",
-          question: "你會先檢查哪一項？",
-          options: ["使用頻率", "方案資格"],
-          action: "今天先檢查一項訂閱。",
-          disclaimer: "內容僅供金融教育。",
+          topic: "subscription",
         }),
       ),
     );
@@ -306,7 +300,7 @@ describe("LiangjieAiProvider", () => {
     expect(JSON.stringify(create.mock.calls[0])).not.toContain("userId");
     expect(JSON.stringify(create.mock.calls[0])).not.toContain("amountMinor");
     expect(JSON.stringify(create.mock.calls[0])).toContain(
-      "options 的每個元素都是可單獨閱讀的繁體中文選項",
+      "subscription",
     );
   });
 
@@ -346,14 +340,11 @@ describe("LiangjieAiProvider", () => {
     ).rejects.toMatchObject({ code: "ai_invalid_output", status: 503 });
   });
 
-  it("accepts a safe coach disclaimer that says it does not recommend assets", async () => {
+  it("renders only catalog prose from a validated topic selection", async () => {
     const create = vi.fn().mockResolvedValue(
       completion(
         JSON.stringify({
-          answer: "分散可以降低單一來源的集中風險，但不能保證不虧損。",
-          takeaway: "先理解波動，再比較自己能承受的風險。",
-          suggestions: ["比較最大回落", "觀察持續投入"],
-          disclaimer: "只供教育解釋，不推薦投資標的。",
+          topic: "risk",
         }),
       ),
     );
@@ -412,4 +403,16 @@ describe("LiangjieAiProvider", () => {
       retryable: true,
     });
   });
+  it.each([
+    { topic: "risk", answer: "把全部資金集中在單一股票", suggestions: ["立即買入"] },
+    { topic: "buy-stock" },
+    { answer: "集中持有就能賺更多", takeaway: "不要分散", suggestions: ["投入全部存款"] },
+  ])("rejects arbitrary model advice even when a valid topic is included: %j", async (output) => {
+    const provider = new LiangjieAiProvider({ client: { chat: { completions: {
+      create: vi.fn().mockResolvedValue(completion(JSON.stringify(output))),
+    } } }, model: "test-model" });
+    await expect(provider.coach({ topic: "risk", question: "如何看風險？" }))
+      .rejects.toMatchObject({ code: "ai_invalid_output" });
+  });
+
 });

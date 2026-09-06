@@ -2,7 +2,7 @@
 
 ## 資料原則
 
-- 正式帳號資料保存於 Coolify PostgreSQL 17；Client 不直接連資料庫。
+- 正式帳號資料目標保存於 Coolify PostgreSQL 17（production 尚未驗收）；Client 不直接連資料庫。
 - 自然語言原文只存在於單次 parse request 生命週期，不寫入 PostgreSQL、MoneyEvent、SharedPreferences 或一般 log。
 - API 從 Bearer session 推導 `user_id`；所有 profile、event、lesson query 都以該帳號篩選。MoneyEvent 的讀取、完整更新與刪除均以 `(user_id, event_id)` 篩選，跨帳號一律不透露是否存在。
 - 訪客模式只存在 Flutter process memory，重新整理、關閉或切換帳號後消失。
@@ -22,7 +22,7 @@ Schema 由 `backend/migrations/001_initial.sql`、`002_roles_and_intents.sql`、
 | `lessons` | 個人化課程、options、action、完成狀態、來源 | user FK；source 只允許量界或 demo |
 | `virtual_investment_accounts` | 每個登入帳號的起始虛擬現金 | 一個 user 一筆；起始金額不可為負 |
 | `virtual_investment_orders` | 教學標的、買賣方向、數量、成交快照價格／來源／日期 | `(user_id, idempotency_key)` unique；方向、數量與來源 checks |
-| `family_groups` | 家庭關聯與家長建立的 8 碼邀請碼 | invite code unique；建立者 FK；cascade delete |
+| `family_groups` | 家庭關聯、24 字元隨機邀請碼的 hash／到期／有效狀態 | hash unique；建立者 FK；cascade delete |
 | `family_members` | 家庭與帳號的關聯、加入時間 | 一個 user 只能加入一個 family；family／account cascade |
 | `schema_migrations` | 已套用 migration name 與 checksum | migration runner 管理 |
 
@@ -59,10 +59,16 @@ Pool 目前上限 10 connections，connection／idle timeout 由 repository 設�
 尚待決定：
 
 - 備份頻率、保留天數與異地儲存。
-- 備份中的帳號刪除保留／到期清理、資料匯出與 session 清理排程。
+- 備份中的帳號刪除保留／到期清理、資料匯出與清理排程容量監控。
 - Competition environment 結束後的整庫刪除日期。
 - 真實未成年人資料的同意、年齡、家長、存取與 incident response 流程。
 
 帳號刪除已有 App UI 與 API：使用者需再驗證目前密碼，成功後即時刪除 live PostgreSQL 中的 account 與 cascade 資料。這不等於備份已同步清除；backup retention、帳號刪除後備份排除／到期清除與實際回復流程仍待 production 治理定案。
 
-目前 MVP 仍沒有忘記密碼、email 驗證、自動 session cleanup 或 production retention；不可用於正式金融或未成年人服務。
+已實作忘記密碼、Email 驗證與自動 session cleanup。Production retention 需由營運者設定並實際落實備份清除；未成年人營運條件仍待確認，不提供真實金融服務。
+
+## 006／007 migration 與部署影響
+
+`006_concurrency_and_family_hardening.sql` 將既有短邀請碼停用並清除明文，保留家庭成員；家長必須更新新碼。依家庭建立者修正歷史角色（建立者為 parent，其餘成員為 child），並對齊 profile，避免保留過去角色競態造成的錯誤權限；新增邀請 hash／到期／有效狀態、成員角色快照與角色一致性 trigger，以及 `rate_limit_counters`。`007_auth_recovery.sql` 新增帳號 Email 驗證時間與 `account_action_tokens`（hash、用途、到期、account FK cascade）。舊帳號不會自動宣稱 Email 已驗證，啟用 SMTP 後需完成驗證。
+
+部署前先備份並在隔離 DB 跑 migration 與還原演練。不可直接切回依賴明文邀請碼的舊 API；應 forward-fix 或經核准還原完整備份。自動清理僅處理過期認證／限流資料，不刪除使用者帳務。

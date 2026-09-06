@@ -143,3 +143,7 @@ Every remote or persisted feature provides loading, success, empty, validation e
 - Touch targets meet 48dp and focus indicators remain visible on Web.
 - Verify 375px, 768px, 1024px, and 1440px widths, plus landscape.
 - Verify light/dark contrast, 200% text scale, keyboard navigation, reduced motion, and no content hidden behind navigation.
+
+## 正式產品流程補充（2026-09）
+
+iOS 只支援 iPhone。沿用既有設計，淺色／深色／系統主題需實際控制 MaterialApp，系統元件提供 zh_TW 語系。帳號驗證畫面需可重寄、重新確認、登出與刪除帳號；錯誤不能被持續顯示的同意對話框遮住。家庭邀請碼只在建立／更新時顯示，須標示有效期限並提供更新／停用操作。隱私與支援入口開啟經發布設定提供的公開 URL。AI 教育文字標明 AI 選題與受控教材來源。

@@ -4,10 +4,14 @@ import Fastify, {
   type FastifyReply,
   type FastifyRequest,
 } from "fastify";
-import { ZodError } from "zod";
+import { z, ZodError } from "zod";
 
+import { parseTrustedProxies } from "../config/publicConfig";
+import { sharedRateLimitStore, rateLimitKey } from "./sharedRateLimit";
+import { registerPublicPages } from "./publicPages";
 import { DomainError } from "../contracts/errors";
 import {
+  authCredentialsSchema,
   lessonCompletionInputSchema,
   moneyEventIdParamsSchema,
 } from "../contracts/schemas";
@@ -83,14 +87,13 @@ export const buildServer = async (
   const allowedOrigins = options.allowedOrigins ?? configuredOrigins();
   const app = Fastify({
     logger: options.logger ?? process.env.NODE_ENV !== "test",
-    // Coolify's reverse proxy is the sole trusted hop. Do not trust a client-
-    // supplied X-Forwarded-For chain when enforcing per-IP rate limits.
-    trustProxy: 1,
+    trustProxy: parseTrustedProxies(process.env.TRUSTED_PROXY_CIDRS),
     bodyLimit: 32 * 1024,
   });
 
   await app.register(rateLimit, {
     global: true,
+    ...(runtime.rateLimitStore ? { store: sharedRateLimitStore(runtime.rateLimitStore) } : {}),
     max: 120,
     timeWindow: "1 minute",
     errorResponseBuilder: (request, context) => ({
@@ -132,7 +135,9 @@ export const buildServer = async (
     reply.header("x-content-type-options", "nosniff");
     reply.header("x-frame-options", "DENY");
     reply.header("referrer-policy", "no-referrer");
-    reply.header("content-security-policy", "default-src 'none'; frame-ancestors 'none'");
+    if (!reply.hasHeader("content-security-policy")) {
+      reply.header("content-security-policy", "default-src 'none'; frame-ancestors 'none'");
+    }
     return payload;
   });
 
@@ -209,7 +214,7 @@ export const buildServer = async (
     }),
   );
 
-  app.get("/api/health", async (request, reply) => {
+  app.get("/api/health", { config: { rateLimit: false } }, async (request, reply) => {
     try {
       await runtime.healthCheck();
       return reply.code(200).send({
@@ -234,9 +239,25 @@ export const buildServer = async (
   });
 
   const authRateLimit = {
+    preHandler: async (request: FastifyRequest) => {
+      if (!runtime.rateLimitStore) return;
+      const body = request.body as { email?: unknown } | undefined;
+      const identity = typeof body?.email === "string"
+        ? body.email.trim().toLowerCase()
+        : request.headers.authorization;
+      if (!identity) return;
+      const result = await runtime.rateLimitStore.consumeRateLimit(rateLimitKey("auth-account", identity), 60000);
+      if (result.current > 10) throw new DomainError("rate_limited", "請求過於頻繁，請稍後再試。", 429, true);
+    },
     config: { rateLimit: { max: 10, timeWindow: "1 minute" } },
   };
   const aiRateLimit = {
+    preHandler: async (request: FastifyRequest) => {
+      const account = await requireAuthenticatedUser(request, runtime);
+      if (!runtime.rateLimitStore) return;
+      const result = await runtime.rateLimitStore.consumeRateLimit(rateLimitKey("ai-account", account.id), 60000);
+      if (result.current > 20) throw new DomainError("rate_limited", "請求過於頻繁，請稍後再試。", 429, true);
+    },
     config: { rateLimit: { max: 20, timeWindow: "1 minute" } },
   };
   const marketRateLimit = {
@@ -262,7 +283,7 @@ export const buildServer = async (
     success(
       request,
       reply,
-      await requireAuthenticatedUser(request, runtime),
+      await requireAuthenticatedUser(request, runtime, true),
     ),
   );
   app.post("/api/auth/logout", async (request, reply) => {
@@ -270,10 +291,32 @@ export const buildServer = async (
     return success(request, reply, { loggedOut: true });
   });
   app.delete("/api/auth/account", authRateLimit, async (request, reply) => {
-    const account = await requireAuthenticatedUser(request, runtime);
+    const account = await requireAuthenticatedUser(request, runtime, true);
     await runtime.authService.deleteAccount(account.id, request.body as never);
     return success(request, reply, { deleted: true });
   });
+
+  app.post("/api/auth/email-verification/request", authRateLimit, async (request, reply) => {
+    const account = await requireAuthenticatedUser(request, runtime, true);
+    await runtime.authService.requestEmailVerification(account.id);
+    return success(request, reply, { accepted: true });
+  });
+  app.post("/api/auth/email-verification/confirm", authRateLimit, async (request, reply) => {
+    const body = z.object({ token: z.string().regex(/^[A-Za-z0-9_-]{43}$/) }).parse(request.body);
+    await runtime.authService.verifyEmail(body.token);
+    return success(request, reply, { verified: true });
+  });
+  app.post("/api/auth/password-reset/request", authRateLimit, async (request, reply) => {
+    const body = z.object({ email: z.string().trim().email().max(254) }).parse(request.body);
+    await runtime.authService.requestPasswordReset(body);
+    return success(request, reply, { accepted: true });
+  });
+  app.post("/api/auth/password-reset/confirm", authRateLimit, async (request, reply) => {
+    const body = z.object({ token: z.string().regex(/^[A-Za-z0-9_-]{43}$/), password: authCredentialsSchema.shape.password }).parse(request.body);
+    await runtime.authService.resetPassword(body.token, body.password);
+    return success(request, reply, { reset: true });
+  });
+  registerPublicPages(app, runtime.publicConfig);
 
   app.get("/api/privacy/ai-consent", async (request, reply) => {
     const account = await requireAuthenticatedUser(request, runtime);
@@ -322,6 +365,14 @@ export const buildServer = async (
       await runtime.service.createFamilyInvite(account.id),
       201,
     );
+  });
+  app.post("/api/family/invite/rotate", authRateLimit, async (request, reply) => {
+    const account = await requireAuthenticatedUser(request, runtime);
+    return success(request, reply, await runtime.service.rotateFamilyInvite(account.id));
+  });
+  app.delete("/api/family/invite", authRateLimit, async (request, reply) => {
+    const account = await requireAuthenticatedUser(request, runtime);
+    return success(request, reply, await runtime.service.revokeFamilyInvite(account.id));
   });
   app.post("/api/family/join", async (request, reply) => {
     const account = await requireAuthenticatedUser(request, runtime);
@@ -533,6 +584,20 @@ export const buildServer = async (
     );
   });
 
-  app.addHook("onClose", async () => runtime.close());
+  let maintenanceTimer: ReturnType<typeof setInterval> | undefined;
+  app.addHook("onReady", async () => {
+    if (!runtime.maintenance) return;
+    const maintain = async () => {
+      try { await runtime.maintenance!(); }
+      catch { app.log.warn("FutureMint maintenance failed; will retry next interval"); }
+    };
+    await maintain();
+    maintenanceTimer = setInterval(() => void maintain(), 60 * 60 * 1000);
+    maintenanceTimer.unref();
+  });
+  app.addHook("onClose", async () => {
+    clearInterval(maintenanceTimer);
+    await runtime.close();
+  });
   return app;
 };

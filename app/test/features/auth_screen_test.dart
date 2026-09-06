@@ -19,7 +19,7 @@ class _Store implements SessionPersistence {
   Future<void> writeToken(String token) async {}
 }
 
-class _Auth implements AuthGateway {
+class _Auth extends AuthGateway {
   @override
   Future<AuthSession> login({
     required String email,

@@ -42,7 +42,7 @@ class _FutureSeedScreenState extends State<FutureSeedScreen> {
                 const PageHeading(
                   kicker: 'FutureSeed 教育模擬',
                   title: '讓省下來的錢，遇見時間、紀律與風險',
-                  description: '比較三條合成路徑的成長與下跌，再用 AI 陪讀員看懂現象。這不是報酬預測。',
+                  description: '比較三條合成路徑的成長與下跌，再用金融教育內容看懂現象。這不是報酬預測。',
                   accent: FutureMintTokens.teal,
                 ),
                 const _FutureSeedDecorationStrip(),
@@ -697,7 +697,7 @@ class _AiReadingCompanionState extends State<_AiReadingCompanion> {
             const SizedBox(width: FutureMintTokens.space2),
             Expanded(
               child: Text(
-                'AI 陪讀員',
+                'AI 選題・教學資料庫',
                 style: Theme.of(context).textTheme.titleLarge,
               ),
             ),
@@ -797,7 +797,7 @@ class _AiReadingCompanionState extends State<_AiReadingCompanion> {
             key: const Key('ask-future-seed-coach'),
             onPressed: widget.busy || value.text.trim().isEmpty ? null : _ask,
             icon: const Icon(Icons.auto_awesome_outlined),
-            label: const Text('請教 AI'),
+            label: const Text('依 AI 選題查看說明'),
           ),
         ),
         if (widget.busy) ...[

@@ -97,7 +97,7 @@ Runtime 要求明確設定 `AI_PROVIDER=demo|liangjie` 與 `DATA_PROVIDER=memory
 - API base path：`/api`；body 上限 32 KiB。
 - CORS 只允許 `ALLOWED_ORIGINS` 的完整 origin，不允許 `*`；production 缺少、帶 path／尾端 `/` 或非 HTTPS origin 時在 listen 前失敗，而不是 health 200 後才讓 Web 預檢失敗。
 - 全域 rate limit 為單 instance 每分鐘 120 requests；auth routes 每分鐘 10 requests；AI routes 每分鐘 20 requests。
-- API behind Coolify proxy 時只信任一跳 proxy，production client IP／HTTPS 由 Coolify reverse proxy 提供；VPS firewall 不得讓外部繞過 proxy 直接到 container port。
+- API 只信任 `TRUSTED_PROXY_CIDRS` 中實際連入的 proxy IP／CIDR（空值不信任 forwarded headers），production client IP／HTTPS 由設定正確的 Coolify reverse proxy 提供；VPS firewall 不得讓外部繞過 proxy 直接到 container port。
 - 所有動態回應設 `Cache-Control: no-store`，並送出 nosniff、frame deny、referrer 與 CSP headers。
 - AI output、database errors 與使用者輸入都不直接回傳 stack、SQL、prompt、key 或 SDK response。
 
@@ -117,3 +117,11 @@ Runtime 要求明確設定 `AI_PROVIDER=demo|liangjie` 與 `DATA_PROVIDER=memory
 ## 部署狀態
 
 Dockerfiles、Nginx、migration、health check 與本機容器流程已實作。尚未建立 Coolify resources、private GitHub integration、production domains、TLS、正式 PostgreSQL backup 或量界真實連線；不得描述成已上線。詳見 [部署說明](deployment.md)與[測試證據](testing-and-evidence.md)。
+
+## 正式產品安全與帳號恢復
+
+AuthService 管理 Email 驗證與密碼重設；SMTP adapter 只在 API 持有憑證。Public pages 同由 API 提供 `/privacy`、`/support`、`/account/verify`、`/account/reset-password` 及自有 CSS／JS，不新增 executable component。`PUBLIC_BASE_URL` 必須指向可路由這些根路徑的 API 公開 HTTPS origin。
+
+`withUsersTransaction` 以固定順序取得帳號鎖，並將 transaction-scoped repository 傳入 service；不得用 Pool.query 混用 transaction。家庭權限與虛擬交易依此保護跨 instance 並行操作。RateLimitStore 由相同 PostgreSQL resource 提供原子計數，沒有新增 Redis resource。
+
+量界的教育功能只選擇教材 ID／順序，正文由 `educationCatalog.ts` 提供；自由問題仍可作選題輸入，但不生成任意理財建議。實際資料類別及安全限制以 [安全與隱私](security-and-privacy.md) 為準。

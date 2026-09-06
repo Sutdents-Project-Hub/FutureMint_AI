@@ -2,6 +2,7 @@
     <uses-permission android:name="android.permission.INTERNET"/>
     <application
         android:label="FutureMint AI"
+        android:allowBackup="false"
         android:name="${applicationName}"
         android:icon="@drawable/futuremint_launcher">
         <activity

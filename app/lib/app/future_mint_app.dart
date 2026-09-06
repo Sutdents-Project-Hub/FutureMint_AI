@@ -1,8 +1,10 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_localizations/flutter_localizations.dart';
 import 'package:provider/provider.dart';
 
 import '../design/theme.dart';
 import '../features/auth/auth_screen.dart';
+import '../features/auth/email_verification_screen.dart';
 import '../features/auth/onboarding_screen.dart';
 import '../state/app_controller.dart';
 import '../state/session_controller.dart';
@@ -23,6 +25,13 @@ class FutureMintApp extends StatefulWidget {
 class _FutureMintAppState extends State<FutureMintApp> {
   late final router = createAppRouter();
 
+  static const _supportedLocales = [Locale('zh', 'TW')];
+  static const _localizationsDelegates = [
+    GlobalMaterialLocalizations.delegate,
+    GlobalWidgetsLocalizations.delegate,
+    GlobalCupertinoLocalizations.delegate,
+  ];
+
   ThemeData get _light => FutureMintTheme.light();
   ThemeData get _dark => FutureMintTheme.dark();
 
@@ -38,7 +47,10 @@ class _FutureMintAppState extends State<FutureMintApp> {
             debugShowCheckedModeBanner: false,
             theme: _light,
             darkTheme: _dark,
-            themeMode: ThemeMode.dark,
+            themeMode: controller.themeMode,
+            locale: const Locale('zh', 'TW'),
+            supportedLocales: _supportedLocales,
+            localizationsDelegates: _localizationsDelegates,
             routerConfig: router,
           ),
         ),
@@ -58,6 +70,8 @@ class _FutureMintAppState extends State<FutureMintApp> {
               onRetry: session.start,
               onUseAnotherAccount: session.discardStoredSession,
             ),
+            SessionStatus.verificationRequired =>
+              const EmailVerificationScreen(),
             SessionStatus.onboarding => const OnboardingScreen(),
             SessionStatus.authenticated || SessionStatus.guest => null,
           };
@@ -67,7 +81,10 @@ class _FutureMintAppState extends State<FutureMintApp> {
               debugShowCheckedModeBanner: false,
               theme: _light,
               darkTheme: _dark,
-              themeMode: ThemeMode.dark,
+              themeMode: ThemeMode.system,
+              locale: const Locale('zh', 'TW'),
+              supportedLocales: _supportedLocales,
+              localizationsDelegates: _localizationsDelegates,
               home: home,
             );
           }
@@ -80,7 +97,10 @@ class _FutureMintAppState extends State<FutureMintApp> {
                 debugShowCheckedModeBanner: false,
                 theme: _light,
                 darkTheme: _dark,
-                themeMode: ThemeMode.dark,
+                themeMode: controller.themeMode,
+                locale: const Locale('zh', 'TW'),
+                supportedLocales: _supportedLocales,
+                localizationsDelegates: _localizationsDelegates,
                 routerConfig: router,
               ),
             ),

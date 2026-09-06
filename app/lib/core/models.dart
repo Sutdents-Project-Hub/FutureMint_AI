@@ -975,16 +975,24 @@ class FamilyOverview {
     required this.inviteCode,
     required this.members,
     required this.childSummaries,
+    this.inviteActive = false,
+    this.inviteCodeExpiresAt,
   });
 
   final String familyId;
   final String? inviteCode;
+  final bool inviteActive;
+  final DateTime? inviteCodeExpiresAt;
   final List<FamilyMember> members;
   final List<FamilyChildSummary> childSummaries;
 
   factory FamilyOverview.fromJson(Map<String, dynamic> json) => FamilyOverview(
     familyId: json['familyId'] as String,
     inviteCode: json['inviteCode'] as String?,
+    inviteActive: json['inviteActive'] as bool? ?? false,
+    inviteCodeExpiresAt: json['inviteCodeExpiresAt'] is String
+        ? DateTime.tryParse(json['inviteCodeExpiresAt'] as String)
+        : null,
     members: (json['members'] as List<dynamic>)
         .map((item) => FamilyMember.fromJson(item as Map<String, dynamic>))
         .toList(),

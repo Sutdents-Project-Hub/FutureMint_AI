@@ -1,8 +1,31 @@
 # 測試與證據
 
-## 最新本機驗證
+## 2026-09-06 正式產品修正後驗證
 
-最新驗證日期：2026-08-30（Asia/Taipei）。以下只記錄實際執行結果，不代表 Coolify production、量界正式帳號、App Store Connect 或真實未成年人服務驗收。
+以下為本次未提交工作區的實際結果；不覆寫下方歷史證據。分類：缺陷修正、使用者核准的正式產品功能補齊，以及文件狀態釐清。
+
+| 項目 | 結果與界線 |
+|---|---|
+| Backend Node 22 | 18 test files、122 tests 全通過，包含 8 項隔離 PostgreSQL 17 整合；typecheck／build 通過 |
+| PostgreSQL 17 | 7 migrations；隨機 schema 的測試自動清除。涵蓋 family rollback、跨 Pool 角色競態、歷史角色修復、invite hash／到期／更新／停用、跨 instance 超支／idempotency、reset／session 並行與共享限流 |
+| 依賴安全 | `npm audit --json`：0 info／low／moderate／high／critical；當下 npm 公告狀態，不代表所有漏洞皆可排除 |
+| Capture regression | deterministic-demo 合成案例 30/30、schema 30/30、欄位 225/225；沒有呼叫量界真實模型 |
+| Flutter | `flutter analyze` 0 issues；完整 `flutter test` 116 項通過；包含 session epoch、儲存遷移、寄信失敗、主題／繁中、驗證／重設與邀請 UI |
+| iPhone unsigned Release | 最終 `build_ios_validation.sh` 通過，30.7 MB；root 檢查 `UIDeviceFamily=[1]`、SDK iphoneos26.4、bundle `tw.futuremint.futuremintApp`、4 個隱私 manifests，無 integration_test framework |
+| Web Release | 本機 `BUILD_ENV=validation` Web build 通過，使用 localhost API；不作正式環境驗收 |
+| API Docker | `futuremint-api:local-hardening` 本機重建成功，Node 22 image；未推送 |
+| Web Docker | `futuremint-web:local-hardening` 以完整 validation args 重建成功；不作正式發布產物 |
+| 瀏覽器實際操作 | 390×844 Web 的訪客首頁／設定／亮色切換／記帳確認通過；加入合成支出 75 後可用金額 5377→5302。另檢查恢復頁缺 token 時停用提交；不是原生 iPhone／VoiceOver 驗收 |
+| Packaging／配置 | bash syntax、staging isolation Python test、空 env 的 Compose config 與 diff whitespace 檢查通過 |
+| 秘密掃描 | 235 個 tracked／untracked 非忽略文字檔的高信心 private-key／token patterns 0 命中；未讀真實 .env，未掃完整 Git history |
+
+測試暫存紀錄：`/tmp/futuremint-backend-final-tests.log`、`/tmp/futuremint-backend-final-audit.json`、`/tmp/futuremint-app-analyze-final.log`、`/tmp/futuremint-app-tests-final.log`、`/tmp/futuremint-ios-validation-final.log`、`/tmp/futuremint-web-final-build.log`、`/tmp/futuremint-api-docker-hardening.log`、`/tmp/futuremint-web-docker-final.log`。iPhone 產物：`app/build/release-ios/futuremint-ios.vahF7U/iphoneos/Runner.app`（未簽章）。這些均是忽略的本機產物，可被系統清理。
+
+正式 SMTP 送達、AI 條款／真實模型、正式 DNS／TLS／DB／備份還原、Apple Team／signed archive／TestFlight／商店截圖與表單均未完成。本次專用 PostgreSQL 合成測試容器、API／靜態測試伺服器及瀏覽器分頁已清理；原有專案資料卷未變更。本次沒有 commit、push、PR、部署或送審。
+
+## 歷史本機驗證
+
+歷史基線驗證日期：2026-08-30（Asia/Taipei）；2026-09-06 修正後證據見下方最新章節。以下只記錄實際執行結果，不代表 Coolify production、量界正式帳號、App Store Connect 或真實未成年人服務驗收。
 
 ### App Store P0 本機收斂（2026-08-30，Asia/Taipei）
 
@@ -178,11 +201,11 @@ Fixture：`backend/test/fixtures/capture-evaluation.json`；報告：
 - Production log retention、磁碟告警與 server／Coolify 自身備份。
 - Flutter Web integration drive；Flutter CLI 的 Web integration test 仍需相容 ChromeDriver。等價主線已有 Widget／HTTP／container tests，不冒充 drive 通過。
 - Android 實機與 iOS signing／archive／TestFlight 尚未驗證；iOS 26.4 SDK 的 unsigned release build 已在本機通過，不代表可上傳。
-- iOS AppIcon 仍是 Flutter 預設圖標，LaunchImage 仍是 1×1 預設空白資產；需先確認正式品牌圖示，再產生完整 asset catalog 並做實機啟動畫面 QA。
-- iOS 目前支援 iPhone 與 iPad（`TARGETED_DEVICE_FAMILY="1,2"`）；需確認上架範圍。若保留 iPad，還需 iPad RWD 與 App Store 截圖驗收。
-- 目前 unsigned `Runner.app` 會內嵌 dev-only `integration_test.framework`；尚未證實會造成 Apple rejection，但正式 signed archive 前應將 integration-test harness 與 production target 隔離或移除。
+- iOS 已換用現有 FutureMint 品牌圖示及啟動畫面；真機呈現與品牌最終核定仍待驗收。
+- 使用者已確認 iPhone-only；`TARGETED_DEVICE_FAMILY=1`，仍需實機與正式商店截圖驗收。
+- 隔離建置腳本的 unsigned `Runner.app` 已排除 `integration_test.framework`；正式 signed archive／Apple validation 仍待執行。
 - 正式螢幕閱讀器、完整鍵盤、色覺與 reduced-motion 人工驗收。
-- Production identity/privacy hardening：email verification、password reset、MFA、session cleanup、shared rate limit、備份保留／刪除 SLA、公開隱私政策／支援 URL、量界與上游資料條款、正式未成年人法遵。
+- 已實作 Email verification、password reset、session cleanup、shared rate limit 及可設定的公開政策／支援頁；SMTP 真實送達、MFA、備份保留／刪除 SLA、真實公開 URL、量界與上游資料條款、正式未成年人營運條件仍待確認。
 
 ## 重現方式
 
@@ -208,10 +231,16 @@ dart format --output=none --set-exit-if-changed lib test integration_test
 flutter analyze
 flutter test
 flutter build web --release \
-  --dart-define=API_BASE_URL=https://api.example.com/api/
+  --dart-define=BUILD_ENV=validation \
+  --dart-define=API_BASE_URL=http://localhost:3000/api/
 flutter build apk --debug
 docker build \
-  --build-arg API_BASE_URL=https://api.example.com/api/ \
+  --build-arg BUILD_ENV=validation \
+  --build-arg API_BASE_URL=http://localhost:13000/api/ \
+  --build-arg PRIVACY_POLICY_URL=http://localhost:13000/privacy \
+  --build-arg SUPPORT_URL=http://localhost:13000/support \
+  --build-arg SUPPORT_EMAIL=local-validation@example.invalid \
+  --build-arg SERVICE_OPERATOR=FutureMint-local-validation \
   -t futuremint-web .
 ```
 

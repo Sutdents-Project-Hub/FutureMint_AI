@@ -47,7 +47,13 @@ services:
     build:
       context: ./app
       args:
+        # Explicit validation mode permits local HTTP; never use for publication.
+        BUILD_ENV: validation
         API_BASE_URL: ${PUBLIC_API_BASE_URL:-http://localhost:13000/api/}
+        PRIVACY_POLICY_URL: http://localhost:13000/privacy
+        SUPPORT_URL: http://localhost:13000/support
+        SUPPORT_EMAIL: release-validation@example.invalid
+        SERVICE_OPERATOR: FutureMint-local-validation
     restart: unless-stopped
     ports:
       - "${WEB_PORT:-14173}:3000"

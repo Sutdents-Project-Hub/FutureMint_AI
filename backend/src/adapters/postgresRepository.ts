@@ -7,10 +7,12 @@ import type {
   ConfirmedMoneyEventInput,
   EditableMoneyEventInput,
   FutureMintRepository,
+  RateLimitStore,
 } from "../application/ports";
 import { DomainError } from "../contracts/errors";
 import type {
   Account,
+  AccountActionToken,
   AiConsent,
   FamilyGroupRecord,
   FamilyMemberRecord,
@@ -38,6 +40,7 @@ interface AccountRow extends Record<string, unknown> {
   password_salt: string;
   password_algorithm: "scrypt-v1";
   profile_complete: boolean;
+  email_verified_at: Date | string | null;
   created_at: Date | string;
 }
 
@@ -133,6 +136,17 @@ interface FamilyMemberRow extends Record<string, unknown> {
   joined_at: Date | string;
 }
 
+interface FamilyGroupRow extends Record<string, unknown> {
+  id: string;
+  created_by: string;
+  invite_code_expires_at: Date | string | null;
+  invite_active: boolean;
+}
+
+export interface TransactionSqlClient extends SqlClient {
+  release(): void;
+}
+
 const isoDateTime = (value: Date | string): string =>
   value instanceof Date ? value.toISOString() : new Date(value).toISOString();
 
@@ -149,6 +163,9 @@ const accountFromRow = (row: AccountRow): Account => ({
   passwordSalt: row.password_salt,
   passwordAlgorithm: row.password_algorithm,
   profileComplete: row.profile_complete,
+  ...(row.email_verified_at
+    ? { emailVerifiedAt: isoDateTime(row.email_verified_at) }
+    : {}),
   createdAt: isoDateTime(row.created_at),
 });
 
@@ -255,12 +272,54 @@ const familyMemberFromRow = (row: FamilyMemberRow): FamilyMemberRecord => ({
 });
 
 export class PostgresRepository
-  implements FutureMintRepository, AuthRepository
+  implements FutureMintRepository, AuthRepository, RateLimitStore
 {
   constructor(
     private readonly client: SqlClient,
     private readonly closeClient: () => Promise<void> = async () => undefined,
+    private readonly acquireClient?: () => Promise<TransactionSqlClient>,
   ) {}
+
+  async withUsersTransaction<T>(
+    userIds: string[],
+    operation: (repository: FutureMintRepository) => Promise<T>,
+  ): Promise<T> {
+    const acquire = this.acquireClient ?? (this.client instanceof Pool
+      ? async () => (await (this.client as Pool).connect()) as unknown as TransactionSqlClient
+      : undefined);
+    const transactionClient = acquire ? await acquire() : this.client;
+    try {
+      await transactionClient.query("BEGIN");
+      for (const userId of [...new Set(userIds)].sort()) {
+        await transactionClient.query(
+          "SELECT pg_advisory_xact_lock(hashtextextended($1, 0))",
+          [`futuremint:user:${userId}`],
+        );
+      }
+      // Scoped callers may use Promise.all; serialize queries on the pinned
+      // connection so transaction boundaries never race queued reads or writes.
+      let pending: Promise<unknown> = Promise.resolve();
+      const scoped = new PostgresRepository({
+        query: <R extends Record<string, unknown>>(text: string, values?: unknown[]) => {
+          const result = pending.then(() => transactionClient.query<R>(text, values));
+          pending = result.catch(() => undefined);
+          return result;
+        },
+      });
+      let result: T;
+      try { result = await operation(scoped); }
+      finally { await pending; }
+      await transactionClient.query("COMMIT");
+      return result;
+    } catch (error) {
+      await transactionClient.query("ROLLBACK");
+      throw error;
+    } finally {
+      if (acquire) {
+        (transactionClient as TransactionSqlClient).release();
+      }
+    }
+  }
 
   async ping(): Promise<void> {
     await this.client.query("SELECT 1 AS ok");
@@ -282,7 +341,8 @@ export class PostgresRepository
   }
 
   async saveProfile(profile: UserProfile): Promise<UserProfile> {
-    const { rows } = await this.client.query<ProfileRow>(
+    try {
+      const { rows } = await this.client.query<ProfileRow>(
       `INSERT INTO profiles (
         user_id, monthly_budget_minor, weekly_budget_minor, goal_name,
         goal_target_minor, goal_saved_minor, goal_date, preferred_tone,
@@ -310,7 +370,17 @@ export class PostgresRepository
         profile.accountRole,
       ],
     );
-    return profileFromRow(rows[0]);
+      return profileFromRow(rows[0]);
+    } catch (error) {
+      if ((error as { message?: string }).message?.includes("family_role_locked")) {
+        throw new DomainError(
+          "family_role_locked",
+          "加入家庭後不能直接更換家長／孩子角色；請先離開家庭再修改。",
+          409,
+        );
+      }
+      throw error;
+    }
   }
 
   async listMoneyEvents(userId: string): Promise<MoneyEvent[]> {
@@ -536,10 +606,9 @@ export class PostgresRepository
   ): Promise<FamilyMemberRecord | null> {
     const { rows } = await this.client.query<FamilyMemberRow>(
       `SELECT fm.family_id, fm.user_id, a.email,
-        COALESCE(p.account_role, 'child') AS account_role, fm.joined_at
+        fm.role AS account_role, fm.joined_at
       FROM family_members fm
       JOIN accounts a ON a.user_id = fm.user_id
-      LEFT JOIN profiles p ON p.user_id = fm.user_id
       WHERE fm.user_id = $1
       LIMIT 1`,
       [userId],
@@ -548,12 +617,8 @@ export class PostgresRepository
   }
 
   async getFamilyGroup(familyId: string): Promise<FamilyGroupRecord | null> {
-    const { rows } = await this.client.query<{
-      id: string;
-      invite_code: string;
-      created_by: string;
-    }>(
-      `SELECT id, invite_code, created_by
+    const { rows } = await this.client.query<FamilyGroupRow>(
+      `SELECT id, created_by, invite_code_expires_at, invite_active
       FROM family_groups
       WHERE id = $1
       LIMIT 1`,
@@ -563,8 +628,14 @@ export class PostgresRepository
     return row
       ? {
           familyId: row.id,
-          inviteCode: row.invite_code,
           createdBy: row.created_by,
+          ...(row.invite_code_expires_at
+            ? { inviteCodeExpiresAt: isoDateTime(row.invite_code_expires_at) }
+            : {}),
+          inviteActive:
+            row.invite_active &&
+            !!row.invite_code_expires_at &&
+            new Date(row.invite_code_expires_at).getTime() > Date.now(),
         }
       : null;
   }
@@ -572,26 +643,45 @@ export class PostgresRepository
   async createFamilyGroup(
     userId: string,
     familyId: string,
-    inviteCode: string,
+    inviteCodeHash: string,
+    inviteCodeExpiresAt: string,
   ): Promise<FamilyGroupRecord> {
-    await this.client.query(
-      "BEGIN",
-    );
     try {
-      await this.client.query(
-        `INSERT INTO family_groups (id, invite_code, created_by)
-        VALUES ($1, $2, $3)`,
-        [familyId, inviteCode, userId],
+      const { rows } = await this.client.query<FamilyGroupRow>(
+        `WITH inserted_group AS (
+          INSERT INTO family_groups (
+            id, invite_code_hash, invite_code_expires_at, invite_active,
+            created_by
+          ) SELECT $1, $2, $3, TRUE, $4
+            FROM profiles WHERE user_id = $4 AND account_role = 'parent'
+          RETURNING id, created_by, invite_code_expires_at, invite_active
+        ), inserted_member AS (
+          INSERT INTO family_members (family_id, user_id, role)
+          SELECT inserted_group.id, $4, 'parent'
+          FROM inserted_group
+          JOIN profiles ON profiles.user_id = $4
+          WHERE profiles.account_role = 'parent'
+          RETURNING family_id
+        )
+        SELECT inserted_group.*
+        FROM inserted_group
+        JOIN inserted_member ON inserted_member.family_id = inserted_group.id`,
+        [familyId, inviteCodeHash, inviteCodeExpiresAt, userId],
       );
-      await this.client.query(
-        `INSERT INTO family_members (family_id, user_id)
-        VALUES ($1, $2)`,
-        [familyId, userId],
-      );
-      await this.client.query("COMMIT");
-      return { familyId, inviteCode, createdBy: userId };
+      if (!rows[0]) {
+        throw new DomainError(
+          "family_parent_required",
+          "只有家長帳號可以建立家庭邀請。",
+          403,
+        );
+      }
+      return {
+        familyId: rows[0].id,
+        createdBy: rows[0].created_by,
+        inviteCodeExpiresAt: isoDateTime(rows[0].invite_code_expires_at!),
+        inviteActive: rows[0].invite_active,
+      };
     } catch (error) {
-      await this.client.query("ROLLBACK");
       if ((error as { code?: string }).code === "23505") {
         throw new DomainError(
           "family_invite_unavailable",
@@ -604,26 +694,80 @@ export class PostgresRepository
     }
   }
 
-  async findFamilyByInviteCode(
-    inviteCode: string,
+  async rotateFamilyInvite(
+    familyId: string,
+    inviteCodeHash: string,
+    inviteCodeExpiresAt: string,
+  ): Promise<FamilyGroupRecord> {
+    try {
+      const { rows } = await this.client.query<FamilyGroupRow>(
+        `UPDATE family_groups
+        SET invite_code_hash = $2, invite_code_expires_at = $3,
+          invite_active = TRUE
+        WHERE id = $1
+        RETURNING id, created_by, invite_code_expires_at, invite_active`,
+        [familyId, inviteCodeHash, inviteCodeExpiresAt],
+      );
+      if (!rows[0]) {
+        throw new DomainError("family_not_found", "找不到家庭關聯。", 404);
+      }
+      return {
+        familyId: rows[0].id,
+        createdBy: rows[0].created_by,
+        inviteCodeExpiresAt: isoDateTime(rows[0].invite_code_expires_at!),
+        inviteActive: rows[0].invite_active,
+      };
+    } catch (error) {
+      if ((error as { code?: string }).code === "23505") {
+        throw new DomainError(
+          "family_invite_unavailable",
+          "家庭邀請碼剛好重複，請再建立一次。",
+          409,
+          true,
+        );
+      }
+      throw error;
+    }
+  }
+
+  async revokeFamilyInvite(familyId: string): Promise<FamilyGroupRecord> {
+    const { rows } = await this.client.query<FamilyGroupRow>(
+      `UPDATE family_groups
+      SET invite_code_hash = NULL, invite_code_expires_at = NULL,
+        invite_active = FALSE
+      WHERE id = $1
+      RETURNING id, created_by, invite_code_expires_at, invite_active`,
+      [familyId],
+    );
+    if (!rows[0]) {
+      throw new DomainError("family_not_found", "找不到家庭關聯。", 404);
+    }
+    return {
+      familyId: rows[0].id,
+      createdBy: rows[0].created_by,
+      inviteActive: false,
+    };
+  }
+
+  async findFamilyByInviteCodeHash(
+    inviteCodeHash: string,
   ): Promise<FamilyGroupRecord | null> {
-    const { rows } = await this.client.query<{
-      id: string;
-      invite_code: string;
-      created_by: string;
-    }>(
-      `SELECT id, invite_code, created_by
+    const { rows } = await this.client.query<FamilyGroupRow>(
+      `SELECT id, created_by, invite_code_expires_at, invite_active
       FROM family_groups
-      WHERE invite_code = $1
+      WHERE invite_code_hash = $1
+        AND invite_active = TRUE
+        AND invite_code_expires_at > NOW()
       LIMIT 1`,
-      [inviteCode],
+      [inviteCodeHash],
     );
     const row = rows[0];
     return row
       ? {
           familyId: row.id,
-          inviteCode: row.invite_code,
           createdBy: row.created_by,
+          inviteCodeExpiresAt: isoDateTime(row.invite_code_expires_at!),
+          inviteActive: true,
         }
       : null;
   }
@@ -631,10 +775,9 @@ export class PostgresRepository
   async listFamilyMembers(familyId: string): Promise<FamilyMemberRecord[]> {
     const { rows } = await this.client.query<FamilyMemberRow>(
       `SELECT fm.family_id, fm.user_id, a.email,
-        COALESCE(p.account_role, 'child') AS account_role, fm.joined_at
+        fm.role AS account_role, fm.joined_at
       FROM family_members fm
       JOIN accounts a ON a.user_id = fm.user_id
-      LEFT JOIN profiles p ON p.user_id = fm.user_id
       WHERE fm.family_id = $1
       ORDER BY fm.joined_at ASC, fm.user_id ASC`,
       [familyId],
@@ -644,11 +787,20 @@ export class PostgresRepository
 
   async addFamilyMember(familyId: string, userId: string): Promise<void> {
     try {
-      await this.client.query(
-        `INSERT INTO family_members (family_id, user_id)
-        VALUES ($1, $2)`,
+      const { rowCount } = await this.client.query(
+        `INSERT INTO family_members (family_id, user_id, role)
+        SELECT $1, $2, 'child'
+        FROM profiles
+        WHERE user_id = $2 AND account_role = 'child'`,
         [familyId, userId],
       );
+      if (rowCount !== 1) {
+        throw new DomainError(
+          "family_child_required",
+          "只有孩子帳號可以使用家長邀請碼加入家庭。",
+          403,
+        );
+      }
     } catch (error) {
       if ((error as { code?: string }).code === "23505") {
         throw new DomainError(
@@ -731,7 +883,17 @@ export class PostgresRepository
     }
   }
 
-  async createSession(session: SessionRecord): Promise<void> {
+  async createSession(session: SessionRecord, expectedPasswordHash?: string): Promise<void> {
+    if (expectedPasswordHash) {
+      return this.withUsersTransaction([session.userId], async (repository) => {
+        const scoped = repository as PostgresRepository;
+        const account = await scoped.findAccountById(session.userId);
+        if (!account || account.passwordHash !== expectedPasswordHash) {
+          throw new DomainError("invalid_credentials", "電子郵件或密碼不正確。", 401);
+        }
+        await scoped.createSession(session);
+      });
+    }
     await this.client.query<SessionRow>(
       `INSERT INTO sessions (
         id, user_id, token_hash, created_at, expires_at, revoked_at
@@ -766,6 +928,181 @@ export class PostgresRepository
     );
   }
 
+  async deleteExpiredOrRevokedSessions(
+    cutoff: string,
+    limit = 1000,
+  ): Promise<number> {
+    const { rowCount } = await this.client.query(
+      `DELETE FROM sessions
+      WHERE id IN (
+        SELECT id FROM sessions
+        WHERE expires_at <= $1
+          OR (revoked_at IS NOT NULL AND revoked_at <= $1)
+        ORDER BY expires_at ASC
+        LIMIT $2
+        FOR UPDATE SKIP LOCKED
+      )`,
+      [cutoff, limit],
+    );
+    return rowCount ?? 0;
+  }
+
+  async saveAccountActionToken(record: AccountActionToken): Promise<void> {
+    await this.client.query(
+      `INSERT INTO account_action_tokens (
+        token_hash, user_id, purpose, expires_at
+      ) VALUES ($1, $2, $3, $4)
+      ON CONFLICT (user_id, purpose) DO UPDATE SET
+        token_hash = EXCLUDED.token_hash,
+        expires_at = EXCLUDED.expires_at,
+        created_at = NOW()`,
+      [record.tokenHash, record.userId, record.purpose, record.expiresAt],
+    );
+  }
+
+  async consumeEmailVerification(tokenHash: string, now: string): Promise<boolean> {
+    const { rows } = await this.client.query<{ consumed: boolean }>(
+      `WITH consumed AS (
+        DELETE FROM account_action_tokens
+        WHERE token_hash = $1
+          AND purpose = 'verify-email'
+          AND expires_at > $2
+        RETURNING user_id
+      ), verified AS (
+        UPDATE accounts
+        SET email_verified_at = COALESCE(email_verified_at, $2)
+        FROM consumed
+        WHERE accounts.user_id = consumed.user_id
+        RETURNING accounts.user_id
+      )
+      SELECT EXISTS(SELECT 1 FROM verified) AS consumed`,
+      [tokenHash, now],
+    );
+    return rows[0]?.consumed ?? false;
+  }
+
+  async consumePasswordReset(
+    tokenHash: string,
+    now: string,
+    password: { passwordHash: string; passwordSalt: string },
+  ): Promise<boolean> {
+    const { rows } = await this.client.query<{ user_id: string }>(
+      "SELECT user_id FROM account_action_tokens WHERE token_hash = $1 AND purpose = 'reset-password'", [tokenHash]);
+    if (!rows[0]) return false;
+    return this.withUsersTransaction([rows[0].user_id], (repository) =>
+      (repository as PostgresRepository).consumePasswordResetLocked(tokenHash, now, password));
+  }
+
+  private async consumePasswordResetLocked(
+    tokenHash: string, now: string,
+    password: { passwordHash: string; passwordSalt: string },
+  ): Promise<boolean> {
+    const { rows } = await this.client.query<{ consumed: boolean }>(
+      `WITH consumed AS (
+        DELETE FROM account_action_tokens
+        WHERE token_hash = $1
+          AND purpose = 'reset-password'
+          AND expires_at > $2
+        RETURNING user_id
+      ), updated AS (
+        UPDATE accounts
+        SET password_hash = $3, password_salt = $4
+        FROM consumed
+        WHERE accounts.user_id = consumed.user_id
+        RETURNING accounts.user_id
+      ), revoked AS (
+        UPDATE sessions
+        SET revoked_at = COALESCE(revoked_at, $2)
+        WHERE user_id IN (SELECT user_id FROM updated)
+        RETURNING user_id
+      )
+      SELECT EXISTS(SELECT 1 FROM updated) AS consumed`,
+      [tokenHash, now, password.passwordHash, password.passwordSalt],
+    );
+    return rows[0]?.consumed ?? false;
+  }
+
+  async deleteAccountActionToken(tokenHash: string): Promise<void> {
+    await this.client.query(
+      "DELETE FROM account_action_tokens WHERE token_hash = $1",
+      [tokenHash],
+    );
+  }
+
+  async deleteExpiredAccountActionTokens(
+    cutoff: string,
+    limit = 1000,
+  ): Promise<number> {
+    const { rowCount } = await this.client.query(
+      `DELETE FROM account_action_tokens
+      WHERE token_hash IN (
+        SELECT token_hash FROM account_action_tokens
+        WHERE expires_at <= $1
+        ORDER BY expires_at ASC
+        LIMIT $2
+        FOR UPDATE SKIP LOCKED
+      )`,
+      [cutoff, limit],
+    );
+    return rowCount ?? 0;
+  }
+
+  async consumeRateLimit(
+    key: string,
+    windowMs: number,
+  ): Promise<{ current: number; ttl: number }> {
+    const keyHash = createHash("sha256").update(key).digest("hex");
+    const { rows } = await this.client.query<{
+      current: number;
+      ttl: number | string;
+    }>(
+      `INSERT INTO rate_limit_counters (
+        key_hash, current_count, expires_at
+      ) VALUES (
+        $1, 1, clock_timestamp() + ($2 * interval '1 millisecond')
+      )
+      ON CONFLICT (key_hash) DO UPDATE SET
+        current_count = CASE
+          WHEN rate_limit_counters.expires_at <= clock_timestamp() THEN 1
+          ELSE rate_limit_counters.current_count + 1
+        END,
+        expires_at = CASE
+          WHEN rate_limit_counters.expires_at <= clock_timestamp()
+            THEN clock_timestamp() + ($2 * interval '1 millisecond')
+          ELSE rate_limit_counters.expires_at
+        END
+      RETURNING current_count AS current,
+        GREATEST(
+          0,
+          CEIL(EXTRACT(EPOCH FROM (expires_at - clock_timestamp())) * 1000)
+        )::bigint AS ttl`,
+      [keyHash, windowMs],
+    );
+    return { current: rows[0].current, ttl: Number(rows[0].ttl) };
+  }
+
+  async clearRateLimit(key: string): Promise<void> {
+    const keyHash = createHash("sha256").update(key).digest("hex");
+    await this.client.query("DELETE FROM rate_limit_counters WHERE key_hash = $1", [
+      keyHash,
+    ]);
+  }
+
+  async deleteExpiredRateLimits(cutoff: string, limit = 1000): Promise<number> {
+    const { rowCount } = await this.client.query(
+      `DELETE FROM rate_limit_counters
+      WHERE key_hash IN (
+        SELECT key_hash FROM rate_limit_counters
+        WHERE expires_at <= $1
+        ORDER BY expires_at ASC
+        LIMIT $2
+        FOR UPDATE SKIP LOCKED
+      )`,
+      [cutoff, limit],
+    );
+    return rowCount ?? 0;
+  }
+
   async getAiConsent(userId: string): Promise<AiConsent | null> {
     const { rows } = await this.client.query<AiConsentRow>(
       `SELECT granted, policy_version, granted_at, withdrawn_at
@@ -798,8 +1135,16 @@ export class PostgresRepository
     return aiConsentFromRow(rows[0]);
   }
 
-  async deleteAccount(userId: string): Promise<void> {
-    await this.client.query("DELETE FROM accounts WHERE user_id = $1", [userId]);
+  async deleteAccount(userId: string, expectedPasswordHash?: string): Promise<void> {
+    const membership = await this.getFamilyMembership(userId);
+    const group = membership ? await this.getFamilyGroup(membership.familyId) : null;
+    return this.withUsersTransaction([userId, ...(group ? [group.createdBy] : [])], async (repository) => {
+      const scoped = repository as PostgresRepository;
+      if (expectedPasswordHash && (await scoped.findAccountById(userId))?.passwordHash !== expectedPasswordHash) {
+        throw new DomainError("invalid_credentials", "電子郵件或密碼不正確。", 401);
+      }
+      await scoped.client.query("DELETE FROM accounts WHERE user_id = $1", [userId]);
+    });
   }
 }
 
@@ -822,5 +1167,9 @@ export const createPostgresPoolFromEnvironment = (): Pool => {
 
 export const createPostgresRepositoryFromEnvironment = (): PostgresRepository => {
   const pool = createPostgresPoolFromEnvironment();
-  return new PostgresRepository(pool, () => pool.end());
+  return new PostgresRepository(
+    pool,
+    () => pool.end(),
+    async () => (await pool.connect()) as unknown as TransactionSqlClient,
+  );
 };

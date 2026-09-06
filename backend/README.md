@@ -6,10 +6,10 @@ Node.js 22／TypeScript 後端，提供帳號與 session、Zod 契約、確定�
 
 - Node.js 22.x，Fastify 5，TypeScript，Zod，Vitest。
 - PostgreSQL 17 透過 `pg` 連線；SQL migration 位於 `migrations/`。
-- 量界智算由 OpenAI SDK 透過 OpenAI-compatible base URL 呼叫；瀏覽器不會取得 API key。使用者可見文字會經 Zod 驗證，必須包含繁體中文並拒絕常見簡體字；不符合時回傳可重試錯誤。
+- 量界智算由 OpenAI SDK 透過 OpenAI-compatible base URL 呼叫；瀏覽器不會取得 API key。解析結構經 Zod 驗證；教育功能只讓模型選擇教材主題，正文由受控繁體中文教材提供。
 - 量界 runtime 會在 parse、lesson generate、learning plan 與 coach 四個入口檢查當前 `third-party-ai-v1` 同意；未同意或 policy version 已過期時於 provider 呼叫前回 `403 ai_consent_required`。
 - API base path 是 `/api`，預設監聽 `0.0.0.0:3000`。
-- 全域限制每個來源每分鐘 120 requests；register／login 每分鐘 10 requests；會呼叫 AI 的 parse、lesson generate、learning plan 與 coach routes 每分鐘 20 requests。限制器是單一 API instance 的記憶體狀態。
+- 全域限制每個來源每分鐘 120 requests；register／login 每分鐘 10 requests；會呼叫 AI 的 parse、lesson generate、learning plan 與 coach routes 每分鐘 20 requests。PostgreSQL runtime 的限制器使用資料庫原子計數，跨 API instances 共用；demo memory runtime 僅在該程序內共用。
 
 ## 本機執行
 
@@ -51,7 +51,7 @@ curl http://localhost:3000/api/health
 | `DATA_PROVIDER` | 必填：`memory` 或 `postgres` |
 | `DATABASE_URL` | PostgreSQL connection URL；`postgres` 模式必填 |
 | `DATABASE_SSL` | Coolify private network 使用 `false`；外部 TLS database 才設 `true` |
-| `LIANGJIE_BASE_URL` | 建議 `https://liangjiewis.com/v1` |
+| `LIANGJIE_BASE_URL` | 僅允許 `https://liangjiewis.com/v1`，拒絕 HTTP、任意主機及 URL credentials |
 | `LIANGJIE_MODEL` | 量界帳號實際可用的 model id |
 | `LIANGJIE_API_KEY` | 只放 runtime secret |
 | `ALLOWED_ORIGINS` | 允許的完整 Web origins，以逗號分隔；production 必填且只接受不帶 path／尾端 `/` 的 HTTPS origin，不接受萬用 `*` |
@@ -98,7 +98,7 @@ curl http://localhost:3000/api/health
 
 `/api/coach/chat` 可帶 `style=brief|example|steps`，讓學習頁與 FutureSeed 自訂回答方式。`/api/privacy/ai-consent` 保存當前同意狀態與最近授權／撤回時間；目前不是 append-only 事件帳本。帳號刪除成功後，PostgreSQL FK cascade 會移除 session、profile、events、lessons、虛擬投資、AI consent 與家庭關聯；email 可再註冊。
 
-家庭關聯使用 8 碼邀請碼；家長回傳的 `childSummaries` 只含預算、收支摘要、可用金額、目標進度與提醒數量，不回傳孩子的 `money_events`。
+家庭關聯使用 24 字元 base64url 邀請碼（144-bit 隨機、24 小時到期）；家長回傳的 `childSummaries` 只含預算、收支摘要、可用金額、目標進度與提醒數量，不回傳孩子的 `money_events`。
 
 `/api/market/quotes` 使用不需金鑰的證交所 OpenAPI 每日成交資料，server 端快取 15 分鐘，且同一個 cache miss 只會共用一個上游請求。來源逾時或格式異常時會回明確標示的教育快照，不會把 fallback 冒充即時行情。投資練習場只接受內建教學標的與虛擬買賣，不連券商或交易所下單；同一 API process 會序列化同帳號的下單，若未來改為多個 API replicas，需以資料庫 transaction／lock 延伸這項保護。
 
@@ -133,7 +133,7 @@ Coolify Application 設定：
 - Runtime variables：依上表設定；`DATABASE_URL` 使用 PostgreSQL Resource 的 internal URL
 - 不公開 PostgreSQL port，不把秘密設成 build arguments
 
-production 啟動會驗證 `AI_PROVIDER=liangjie`、`DATA_PROVIDER=postgres` 與至少一個合法 HTTPS `ALLOWED_ORIGINS`；任何一項不符會在 listen 前退出，不能以 health 200 掩蓋錯誤設定。API 只信任 Coolify reverse proxy 的一跳 forwarded header，VPS firewall 不得讓使用者直接繞過 proxy 連 API container。
+production 啟動會驗證 `AI_PROVIDER=liangjie`、`DATA_PROVIDER=postgres` 與至少一個合法 HTTPS `ALLOWED_ORIGINS`；任何一項不符會在 listen 前退出，不能以 health 200 掩蓋錯誤設定。API 只信任 `TRUSTED_PROXY_CIDRS` 指定的 proxy IP／CIDR，VPS firewall 不得讓使用者直接繞過 proxy 連 API container。
 
 完整部署順序與 private GitHub 自動部署見 [部署說明](../docs/deployment.md)。
 
@@ -148,3 +148,11 @@ npm audit --omit=dev
 ```
 
 `evaluate:captures` 使用 deterministic provider 驗證 30 筆合成繁中案例；結果不是量界真實模型準確率。即時量界模型、帳號額度與 production latency 必須在取得正式 secret 後另行驗證。
+
+## 正式環境與帳號恢復
+
+Production 除原有 provider／CORS 外，還需 SMTP 與完整公開政策設定。變數名稱見 `.env.example`，設定方式見 [部署文件](../docs/deployment.md)。`MAIL_PROVIDER=smtp` 啟用 Email 驗證門檻；本機 demo 的 `disabled` 不送信、不要求驗證，不能當成 production 驗收。
+
+新增 API：`POST /api/auth/email-verification/request`（Bearer）、`POST /api/auth/email-verification/confirm`（token）、`POST /api/auth/password-reset/request`（email）、`POST /api/auth/password-reset/confirm`（token/password）。密碼沿用 12–128 字元、英文字母及數字規則。家庭邀請可用 `POST /api/family/invite/rotate` 更新、`DELETE /api/family/invite` 停用。
+
+公開路徑 `/privacy`、`/support`、`/account/verify`、`/account/reset-password`、`/public.css`、`/account-actions.js` 均由此 API Resource 服務。公開政策未確認時前兩頁回 503。未驗證帳號的 `/api/auth/me`、重寄驗證、登出及刪除仍可使用；業務資料 API 回 `email_verification_required`。

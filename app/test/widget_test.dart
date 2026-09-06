@@ -29,6 +29,25 @@ Future<AppController> createController({
 }
 
 void main() {
+  testWidgets(
+    'appearance settings change the rendered theme and localize controls',
+    (tester) async {
+      final controller = await createController();
+      controller.setThemeMode(ThemeMode.light);
+      await tester.pumpWidget(FutureMintApp(controller: controller));
+      await tester.pumpAndSettle();
+      final context = tester.element(find.byType(Scaffold).first);
+      expect(Theme.of(context).brightness, Brightness.light);
+      expect(Localizations.localeOf(context), const Locale('zh', 'TW'));
+      controller.setThemeMode(ThemeMode.dark);
+      await tester.pumpAndSettle();
+      expect(Theme.of(context).brightness, Brightness.dark);
+      controller.setThemeMode(ThemeMode.light);
+      await tester.pumpAndSettle();
+      expect(Theme.of(context).brightness, Brightness.light);
+    },
+  );
+
   testWidgets('shows the competition dashboard and guest disclosure', (
     tester,
   ) async {

@@ -6,6 +6,9 @@ import { InMemoryRepository } from "../adapters/inMemoryRepository";
 import { createLiangjieAiProviderFromEnvironment } from "../adapters/liangjieAiProvider";
 import { createPostgresRepositoryFromEnvironment } from "../adapters/postgresRepository";
 import { TwseMarketDataProvider } from "../adapters/twseMarketDataProvider";
+import type { RateLimitStore } from "../application/ports";
+import { createAccountMailer } from "../auth/accountMailer";
+import { readPublicConfig, type PublicConfig } from "../config/publicConfig";
 import { AuthService } from "../auth/authService";
 
 export interface Runtime {
@@ -14,6 +17,9 @@ export interface Runtime {
   dataProvider: "memory" | "postgres";
   service: FutureMintService;
   authService: AuthService;
+  publicConfig?: PublicConfig;
+  rateLimitStore?: RateLimitStore;
+  maintenance?: () => Promise<void>;
   healthCheck: () => Promise<void>;
   close: () => Promise<void>;
 }
@@ -63,6 +69,8 @@ export const parseRuntimeConfig = (
 
 export const createRuntime = (): Runtime => {
   const config = parseRuntimeConfig(process.env);
+  const publicConfig = readPublicConfig();
+  const mailer = createAccountMailer();
   const postgresRepository =
     config.dataProvider === "postgres"
       ? createPostgresRepositoryFromEnvironment()
@@ -73,21 +81,37 @@ export const createRuntime = (): Runtime => {
       ? createLiangjieAiProviderFromEnvironment()
       : new DemoAiProvider();
   const marketDataProvider = new TwseMarketDataProvider();
+  let pendingMaintenance: Promise<void> | undefined;
+  const maintenance = (): Promise<void> => {
+    if (pendingMaintenance) return pendingMaintenance;
+    pendingMaintenance = (async () => {
+      const cutoff = new Date().toISOString();
+      await repository.deleteExpiredOrRevokedSessions(cutoff, 1000);
+      await repository.deleteExpiredAccountActionTokens(cutoff, 1000);
+      await repository.deleteExpiredRateLimits(cutoff, 1000);
+    })().finally(() => { pendingMaintenance = undefined; });
+    return pendingMaintenance;
+  };
   return {
     ...config,
+    publicConfig,
+    rateLimitStore: repository,
+    maintenance,
     service: new Service(
       repository,
       aiProvider,
       demoCatalog,
       marketDataProvider,
     ),
-    authService: new AuthService(repository),
+    authService: new AuthService(repository, undefined, { mailer, requireEmailVerification: Boolean(mailer) }),
     healthCheck: postgresRepository
       ? () => postgresRepository.ping()
       : async () => undefined,
-    close: postgresRepository
-      ? () => postgresRepository.close()
-      : async () => undefined,
+    close: async () => {
+      await pendingMaintenance?.catch(() => undefined);
+      mailer?.close?.();
+      await postgresRepository?.close();
+    },
   };
 };
 

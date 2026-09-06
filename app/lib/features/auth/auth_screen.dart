@@ -3,6 +3,7 @@ import 'package:provider/provider.dart';
 
 import '../../design/soft_components.dart';
 import '../../design/tokens.dart';
+import '../../shared/public_links.dart';
 import '../../state/session_controller.dart';
 
 class AuthScreen extends StatefulWidget {
@@ -292,6 +293,18 @@ class _AuthScreenState extends State<AuthScreen> {
                                         ),
                                       ),
                                     ],
+                                    if (session.notice != null) ...[
+                                      const SizedBox(
+                                        height: FutureMintTokens.space4,
+                                      ),
+                                      Semantics(
+                                        liveRegion: true,
+                                        child: Text(
+                                          session.notice!,
+                                          style: theme.textTheme.bodyMedium,
+                                        ),
+                                      ),
+                                    ],
                                     const SizedBox(
                                       height: FutureMintTokens.space5,
                                     ),
@@ -312,6 +325,20 @@ class _AuthScreenState extends State<AuthScreen> {
                                             : '登入',
                                       ),
                                     ),
+                                    if (!_registering) ...[
+                                      const SizedBox(
+                                        height: FutureMintTokens.space2,
+                                      ),
+                                      TextButton(
+                                        onPressed: session.busy
+                                            ? null
+                                            : () =>
+                                                  session.requestPasswordReset(
+                                                    _email.text,
+                                                  ),
+                                        child: const Text('忘記密碼？寄送重設說明'),
+                                      ),
+                                    ],
                                   ],
                                 ),
                               ),
@@ -320,6 +347,8 @@ class _AuthScreenState extends State<AuthScreen> {
                               const SizedBox(height: FutureMintTokens.space5),
                               guestEntry,
                             ],
+                            const SizedBox(height: FutureMintTokens.space3),
+                            const PrivacySupportLinks(centered: true),
                           ],
                         ),
                       ),

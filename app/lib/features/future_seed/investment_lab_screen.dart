@@ -880,7 +880,7 @@ class _PracticeEventCard extends StatelessWidget {
           OutlinedButton.icon(
             onPressed: busy ? null : onAsk,
             icon: const Icon(Icons.auto_awesome_outlined),
-            label: const Text('請 AI 陪讀員解釋'),
+            label: const Text('依 AI 選題查看說明'),
           ),
           if (reply != null) ...[
             const SizedBox(height: FutureMintTokens.space4),
@@ -896,7 +896,7 @@ class _PracticeEventCard extends StatelessWidget {
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
                   Text(
-                    'AI 陪讀員',
+                    'AI 選題・教學資料庫',
                     style: Theme.of(context).textTheme.titleMedium?.copyWith(
                       fontWeight: FontWeight.w700,
                     ),

@@ -18,4 +18,11 @@ export const bearerToken = (request: HeaderRequest): string => {
 export const requireAuthenticatedUser = async (
   request: HeaderRequest,
   runtime: Runtime = getRuntime(),
-): Promise<PublicAccount> => runtime.authService.authenticate(bearerToken(request));
+  allowUnverified = false,
+): Promise<PublicAccount> => {
+  const account = await runtime.authService.authenticate(bearerToken(request));
+  if (!allowUnverified && account.verificationRequired && !account.emailVerified) {
+    throw new DomainError("email_verification_required", "請先驗證電子郵件，再使用帳號功能。", 403);
+  }
+  return account;
+};

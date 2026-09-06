@@ -871,6 +871,14 @@ class GuestRepository implements FutureMintRepository {
       throw const FormatException('訪客模式無法建立家庭關聯，請先登入。');
 
   @override
+  Future<FamilyOverview> rotateFamilyInvite() async =>
+      throw const FormatException('訪客模式無法輪替家庭邀請碼，請先登入。');
+
+  @override
+  Future<FamilyOverview> revokeFamilyInvite() async =>
+      throw const FormatException('訪客模式沒有可撤銷的家庭邀請碼。');
+
+  @override
   Future<FamilyOverview> joinFamily(String inviteCode) async =>
       throw const FormatException('訪客模式無法加入家庭，請先登入。');
 

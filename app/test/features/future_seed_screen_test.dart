@@ -57,7 +57,7 @@ void main() {
     expect(find.text('穩穩存'), findsWidgets);
     expect(find.text('慢慢長'), findsWidgets);
     expect(find.text('高風險資產'), findsWidgets);
-    expect(find.text('AI 陪讀員'), findsOneWidget);
+    expect(find.text('AI 選題・教學資料庫'), findsOneWidget);
     expect(controller.investmentSimulation?.scenarios, hasLength(3));
     expect(controller.futureSeedPreview, isNull);
     expect(tester.takeException(), isNull);

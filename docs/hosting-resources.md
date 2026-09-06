@@ -68,3 +68,7 @@ Competition prototype 建議先單一 API instance，因目前 rate limit 是 in
 - 網路或量界中斷時只切換明確訪客／deterministic demo 流程，不偽裝成正式 AI／database 成功。
 
 逐欄設定見 [部署說明](deployment.md)，資料與秘密邊界見 [資料與儲存](data-and-storage.md)及[安全與隱私](security-and-privacy.md)。
+
+## 正式產品新增公開入口
+
+架構仍為三個 Coolify Resources。API Resource 額外服務根路徑 `/privacy`、`/support`、`/account/verify`、`/account/reset-password`、`/public.css`、`/account-actions.js`；`PUBLIC_BASE_URL` 指向該公開 origin。新增 SMTP outbound TLS 465／587，認證只放 API runtime secret，不新增自架郵件 resource。PostgreSQL 也保存一次性 token hash 與共享限流 counters，需包含於 migration／容量監控；完整變數見 [部署文件](deployment.md)。

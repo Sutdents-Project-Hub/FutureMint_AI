@@ -296,7 +296,7 @@ class _LearningPlanCard extends StatelessWidget {
         MediaQuery.textScalerOf(context).scale(1) >= 1.3;
     final sourceChip = Chip(
       avatar: const Icon(Icons.auto_awesome_outlined, size: 16),
-      label: Text(plan.source == CaptureSource.liangjieAi ? 'AI 規劃' : '離線規劃'),
+      label: Text(plan.source == CaptureSource.liangjieAi ? 'AI 選題' : '離線規劃'),
     );
 
     if (compact) {
@@ -489,7 +489,7 @@ class _LessonContent extends StatelessWidget {
                         avatar: const Icon(Icons.school_outlined, size: 16),
                         label: Text(
                           lesson.source == CaptureSource.liangjieAi
-                              ? 'AI 個人化內容'
+                              ? 'AI 選題・教學資料庫'
                               : '離線示範內容',
                         ),
                       ),

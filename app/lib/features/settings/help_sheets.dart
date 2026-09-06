@@ -47,7 +47,7 @@ class _WalkthroughSheet extends StatelessWidget {
         index: 4,
         icon: Icons.trending_up_rounded,
         title: '把省下的錢放進時間',
-        body: '比較三種合成風險路徑，讓 AI 陪讀員解釋曲線。',
+        body: '比較三種合成風險路徑，由 AI 選題，搭配教育內容解釋曲線。',
       ),
     ],
   );

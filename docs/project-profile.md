@@ -8,9 +8,9 @@
 - Repository name：`FutureMint_AI`
 - Project slug：`futuremint-ai`
 - Local Docker Compose project：`futuremint_ai`
-- Coolify project：目標命名為 `futuremint-ai`；目前實際部署於團隊既有的 `Student Project / production` environment，待團隊決定是否遷移到專屬 Coolify project。
+- Coolify project：目標命名為 `futuremint-ai`；先前文件曾稱位於 `Student Project / production`，但沒有本輪平台證據，現況統一標為尚未部署與驗收。
 - Coolify services：`futuremint-ai-web`、`futuremint-ai-api`、`futuremint-ai-postgres`
-- Stage：`competition`
+- Stage：正式產品準備（2026-09-06 使用者核准）；競賽原型為既有來源
 - Product type：`hybrid`
 - Bootstrap mode：`executable`
 - Deployment：`other (self-hosted Coolify)`
@@ -44,7 +44,7 @@
 
 ## 技術與資料邊界
 
-- Flutter Web／Android 是主要 Demo 面；Web 只有公開 `API_BASE_URL`。
+- Flutter Web／Android 保留 Demo；正式 iOS 只支援 iPhone。前端僅持有公開 API／隱私／支援與營運設定。
 - Fastify 是唯一可接觸量界 API key 與 PostgreSQL URL 的 component。
 - PostgreSQL 是帳號資料 source of truth；訪客模式只用 Client memory。
 - 量界 AI output 一律重新驗證；金額、期限與複利由 deterministic code 計算。
@@ -63,6 +63,6 @@
 - 正式 domains、VPS sizing、監控、磁碟與現場網路備援。
 - 量界 model、quota、費率、資料處理與比賽規則確認。
 - PostgreSQL backup retention 與 restore rehearsal。
-- 青少年測試同意／去識別與 production identity hardening。
+- 青少年使用年齡、同意政策、資料地區及供應商條款的營運確認；Email／SMTP 實際送達驗收。
 - 訂閱方案資料授權。
 - Android 實機與 iOS signing。

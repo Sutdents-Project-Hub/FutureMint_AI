@@ -21,11 +21,31 @@ RUN git init /opt/flutter \
 
 WORKDIR /app
 ARG API_BASE_URL
-RUN test -n "$API_BASE_URL"
+ARG PRIVACY_POLICY_URL
+ARG SUPPORT_URL
+ARG SUPPORT_EMAIL
+ARG SERVICE_OPERATOR
+ARG BUILD_ENV=production
+RUN test -n "$API_BASE_URL" \
+    && test -n "$PRIVACY_POLICY_URL" \
+    && test -n "$SUPPORT_URL" \
+    && test -n "$SUPPORT_EMAIL" \
+    && test -n "$SERVICE_OPERATOR" \
+    && { test "$BUILD_ENV" = "production" || test "$BUILD_ENV" = "validation"; }
 COPY pubspec.yaml pubspec.lock ./
 RUN flutter pub get
-COPY . .
-RUN flutter build web --release --dart-define=API_BASE_URL="$API_BASE_URL"
+COPY lib ./lib
+COPY tool/validate_release_config.dart ./tool/validate_release_config.dart
+RUN dart run tool/validate_release_config.dart
+COPY assets ./assets
+COPY web ./web
+RUN flutter build web --release \
+    --dart-define=BUILD_ENV="$BUILD_ENV" \
+    --dart-define=API_BASE_URL="$API_BASE_URL" \
+    --dart-define=PRIVACY_POLICY_URL="$PRIVACY_POLICY_URL" \
+    --dart-define=SUPPORT_URL="$SUPPORT_URL" \
+    --dart-define=SUPPORT_EMAIL="$SUPPORT_EMAIL" \
+    --dart-define=SERVICE_OPERATOR="$SERVICE_OPERATOR"
 
 FROM nginx:1.28.0-alpine AS runtime
 COPY nginx.conf /etc/nginx/conf.d/default.conf

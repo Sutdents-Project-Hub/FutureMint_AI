@@ -8,7 +8,7 @@
 | PostgreSQL | accounts／sessions／profiles／events／lessons repository、migration、idempotency | PostgreSQL 17 本機容器與 API 重啟持久化 | Coolify internal URL、backup／restore、production capacity |
 | Coolify | 兩個 Dockerfile、ports、health checks、三 Resource 設定文件 | 本機 image／container 驗證 | Private GitHub App、webhook、domains、TLS、rollback |
 | GitHub | private repository `main`、`.github/workflows/ci.yml` CI | workflow 已加入 repository；本機可執行相同檢查 | 尚未在 GitHub hosted runner 執行，也尚未連 Coolify 或驗證 Auto Deploy |
-| 家庭帳號 | PostgreSQL family groups／members、邀請碼與摘要權限 | InMemory／PostgreSQL repository 契約與 service tests | 尚未做 production 多帳號實機驗收與邀請撤銷／轉移 |
+| 家庭帳號 | PostgreSQL family groups／members、邀請碼與摘要權限 | InMemory／PostgreSQL repository 契約與 service tests | 尚未做 production 多帳號實機驗收；已實作更新／停用，未提供家庭所有權轉移 |
 | 第三方 AI 同意 | App 內 disclosure、啟用／撤回、versioned PostgreSQL state、量界 route server gate | Auth／HTTP／Flutter unit 與 widget tests | 量界／上游條款、retention、training、subprocessors 與 production E2E |
 | TWSE 市場資料 | 官方 OpenAPI adapter、timeout、schema、15 分鐘 cache、明確 fallback | 本機實際取得 2026-07-14 每日成交快照 | Coolify outbound HTTPS、上游可用性與長期欄位穩定性 |
 | 虛擬投資 | 教學標的、虛擬買賣、持倉／成本／配置／訂單、事件骰子 | API／Flutter tests、PostgreSQL 重啟持久化 | 不含即時行情、配息、手續費、公司行動或真實成交撮合 |
@@ -65,3 +65,9 @@ Coolify 應以 GitHub App（只授權 `FutureMint_AI` private repository）或�
 ## 明確不整合
 
 不整合支付、銀行、電子發票、證券下單、Apple Pay、LINE Pay、Email、SMS、圖片上傳／OCR 或真實未成年人金融服務。TWSE OpenAPI 只提供公開延遲行情，不會建立真實證券帳戶或交易。主辦方 Azure 關閉後，runtime 也不再依賴任何 Azure service。
+
+## SMTP 與教育選題更新
+
+SMTP adapter 已實作 TLS、一次性驗證／密碼重設信與 sanitized error；只以 fake mailer 測試，沒有寄出真實信件。正式 mail host／sender、DNS SPF／DKIM／DMARC、送達率、帳號權限及費用仍待確認。
+
+量界教育功能改為 strict topic ID selection，教學內容來自受控教材；parse 仍抽取事件結構，金額需使用者確認。公開 `/privacy` 由營運設定提供第三方資料條款，未確認不得發布。

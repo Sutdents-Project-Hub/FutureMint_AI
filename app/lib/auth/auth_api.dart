@@ -6,7 +6,7 @@ import 'package:http/http.dart' as http;
 import '../data/api_repository.dart';
 import 'auth_models.dart';
 
-abstract interface class AuthGateway {
+abstract class AuthGateway {
   Future<AuthSession> register({
     required String email,
     required String password,
@@ -20,6 +20,12 @@ abstract interface class AuthGateway {
     required bool granted,
   });
   Future<void> deleteAccount({required String token, required String password});
+
+  Future<void> requestEmailVerification(String token) async =>
+      throw UnimplementedError();
+
+  Future<void> requestPasswordReset({required String email}) async =>
+      throw UnimplementedError();
 }
 
 class AuthApi implements AuthGateway {
@@ -53,7 +59,7 @@ class AuthApi implements AuthGateway {
     late http.Response response;
     try {
       final headers = <String, String>{
-        'content-type': 'application/json',
+        if (body != null) 'content-type': 'application/json',
         if (token != null) 'authorization': 'Bearer $token',
       };
       final encoded = body == null ? null : jsonEncode(body);
@@ -176,5 +182,15 @@ class AuthApi implements AuthGateway {
       token: token,
       body: {'password': password},
     );
+  }
+
+  @override
+  Future<void> requestEmailVerification(String token) async {
+    await _send('POST', 'auth/email-verification/request', token: token);
+  }
+
+  @override
+  Future<void> requestPasswordReset({required String email}) async {
+    await _send('POST', 'auth/password-reset/request', body: {'email': email});
   }
 }

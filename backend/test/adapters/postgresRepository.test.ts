@@ -338,7 +338,7 @@ describe("PostgresRepository", () => {
       text: expect.stringContaining("FROM ai_consents WHERE user_id = $1"),
       values: ["user-1"],
     });
-    expect(client.queries[1]).toEqual({
+    expect(client.queries.find((query) => query.text.startsWith("DELETE FROM accounts"))).toEqual({
       text: "DELETE FROM accounts WHERE user_id = $1",
       values: ["user-1"],
     });

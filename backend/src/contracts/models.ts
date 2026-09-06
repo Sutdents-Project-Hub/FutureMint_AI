@@ -21,8 +21,9 @@ export type AccountRole = (typeof accountRoles)[number];
 
 export interface FamilyGroupRecord {
   familyId: string;
-  inviteCode: string;
   createdBy: string;
+  inviteCodeExpiresAt?: string;
+  inviteActive: boolean;
 }
 
 export interface FamilyMemberRecord {
@@ -56,6 +57,8 @@ export interface FamilyChildSummary {
 export interface FamilyOverview {
   familyId: string;
   inviteCode?: string;
+  inviteCodeExpiresAt?: string;
+  inviteActive: boolean;
   members: FamilyMember[];
   childSummaries: FamilyChildSummary[];
 }
@@ -111,6 +114,7 @@ export interface Account {
   passwordSalt: string;
   passwordAlgorithm: "scrypt-v1";
   profileComplete: boolean;
+  emailVerifiedAt?: string;
   createdAt: string;
 }
 
@@ -118,7 +122,16 @@ export interface PublicAccount {
   id: string;
   email: string;
   profileComplete: boolean;
+  emailVerified?: boolean;
+  verificationRequired?: boolean;
   createdAt: string;
+}
+
+export interface AccountActionToken {
+  tokenHash: string;
+  userId: string;
+  purpose: "verify-email" | "reset-password";
+  expiresAt: string;
 }
 
 export interface SessionRecord {

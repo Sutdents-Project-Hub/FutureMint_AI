@@ -7,6 +7,7 @@ import '../../design/soft_components.dart';
 import '../../design/tokens.dart';
 import '../../shared/date_text.dart';
 import '../../shared/money_text.dart';
+import '../../shared/public_links.dart';
 import '../../state/app_controller.dart';
 import 'help_sheets.dart';
 
@@ -32,23 +33,36 @@ Future<void> showAiConsentDisclosure(BuildContext context) => showDialog<void>(
         content: ConstrainedBox(
           constraints: const BoxConstraints(maxWidth: 520),
           child: SingleChildScrollView(
-            child: const Column(
+            child: Column(
               mainAxisSize: MainAxisSize.min,
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                Text('第三方服務：量界智算。'),
-                SizedBox(height: FutureMintTokens.space2),
-                Text(
-                  '依使用的功能，後端會傳送你主動輸入的文字、財務事件的分類／金額摘要、儲蓄目標與角色，以及教練提問／所選情境。FutureMint 傳送這些資料的目的，是解析輸入與產生個人化金融教育回覆。',
+                const Text('第三方服務：量界智算。'),
+                const SizedBox(height: FutureMintTokens.space2),
+                const Text(
+                  '依使用的功能，後端會傳送你主動輸入的記帳文字、事件分類與是否設定目標等摘要，以及教練提問。AI 協助解析記帳與選擇金融教育主題；課程與教練回覆使用固定教育內容。請勿輸入帳號、聯絡方式或其他敏感資訊。',
                 ),
-                SizedBox(height: FutureMintTokens.space2),
-                Text(
-                  '量界可能以轉送服務連接上游模型；上游來源、資料保留／訓練、再委託與資料地區尚未完成正式確認。在公開政策完成前，只應用於不含個資的原型測試。',
+                const SizedBox(height: FutureMintTokens.space2),
+                const Text(
+                  '量界可能連接上游模型。服務供應商、資料保留與處理地區等條件，請先閱讀隱私權政策。啟用代表你同意依政策將上述資料傳送給第三方 AI 服務。',
                 ),
-                SizedBox(height: FutureMintTokens.space2),
-                Text(
+                const SizedBox(height: FutureMintTokens.space2),
+                const PrivacySupportLinks(),
+                const Text(
                   '不會傳送你的密碼。你可以拒絕，預算、紀錄、FutureSeed 與虛擬投資等非 AI 功能仍可使用；之後也可在設定隨時撤回。',
                 ),
+                if (controller.errorMessage != null) ...[
+                  const SizedBox(height: FutureMintTokens.space3),
+                  Semantics(
+                    liveRegion: true,
+                    child: Text(
+                      controller.errorMessage!,
+                      style: TextStyle(
+                        color: Theme.of(dialogContext).colorScheme.error,
+                      ),
+                    ),
+                  ),
+                ],
               ],
             ),
           ),
@@ -630,8 +644,10 @@ class _SettingsSheet extends StatelessWidget {
                       ),
                       const SizedBox(height: FutureMintTokens.space2),
                       const Text(
-                        '決賽展示與測試應只使用合成資料，或已取得同意且完成去識別的資料；系統不會自動判斷輸入是否含個資。使用量界 AI 模式時，輸入會經後端送往 AI provider 解析；原文不會寫入交易紀錄或一般 log。請勿輸入姓名、學校、帳號或卡號；訪客資料不會儲存。',
+                        '請只記錄自己的預算與消費，不要輸入姓名、學校、帳號或卡號；系統無法自動辨識所有個資。啟用 AI 後，記帳文字會經後端送往量界智算解析，原文不會寫入交易紀錄或一般日誌。資料的保存、刪除與第三方處理條件請閱讀隱私權政策；訪客資料不會儲存。',
                       ),
+                      const SizedBox(height: FutureMintTokens.space2),
+                      const PrivacySupportLinks(),
                     ],
                   ),
                 ),
@@ -678,13 +694,28 @@ class _FamilySectionState extends State<_FamilySection> {
   }
 
   Future<void> _joinFamily(AppController controller) async {
-    final code = _inviteController.text.trim().toUpperCase();
-    if (code.length != 8) {
-      setState(() => _actionError = '請輸入 8 碼家長邀請碼。');
+    final code = _inviteController.text.trim();
+    if (!RegExp(r'^[A-Za-z0-9_-]{24}$').hasMatch(code)) {
+      setState(() => _actionError = '請貼上完整的 24 碼家長邀請碼，並保留英文大小寫。');
       return;
     }
     setState(() => _actionError = null);
     await controller.joinFamily(code);
+    if (mounted && controller.errorMessage != null) {
+      setState(() => _actionError = controller.errorMessage);
+    }
+  }
+
+  Future<void> _updateInvite(
+    AppController controller, {
+    required bool revoke,
+  }) async {
+    setState(() => _actionError = null);
+    if (revoke) {
+      await controller.revokeFamilyInvite();
+    } else {
+      await controller.rotateFamilyInvite();
+    }
     if (mounted && controller.errorMessage != null) {
       setState(() => _actionError = controller.errorMessage);
     }
@@ -743,11 +774,13 @@ class _FamilySectionState extends State<_FamilySection> {
             TextField(
               key: const Key('family-invite-code'),
               controller: _inviteController,
-              maxLength: 8,
-              textCapitalization: TextCapitalization.characters,
+              maxLength: 24,
+              maxLengthEnforcement: MaxLengthEnforcement.none,
+              autocorrect: false,
+              enableSuggestions: false,
               decoration: const InputDecoration(
                 labelText: '家長邀請碼',
-                hintText: '輸入 8 碼英數字',
+                hintText: '貼上 24 碼邀請碼（區分大小寫）',
                 border: OutlineInputBorder(),
               ),
             ),
@@ -813,6 +846,32 @@ class _FamilySectionState extends State<_FamilySection> {
                   ],
                 ),
               ),
+            ],
+            if (isParent) ...[
+              const SizedBox(height: FutureMintTokens.space2),
+              Text(
+                family.inviteActive
+                    ? '邀請碼有效至 ${family.inviteCodeExpiresAt?.toLocal().toString().substring(0, 16) ?? "到期時間未提供"}。只在建立或更新時顯示，請妥善分享。'
+                    : '目前沒有有效邀請碼。',
+              ),
+              const SizedBox(height: FutureMintTokens.space2),
+              OutlinedButton.icon(
+                key: const Key('rotate-family-invite'),
+                onPressed: controller.busy
+                    ? null
+                    : () => _updateInvite(controller, revoke: false),
+                icon: const Icon(Icons.refresh),
+                label: const Text('產生新邀請碼'),
+              ),
+              if (family.inviteActive)
+                TextButton.icon(
+                  key: const Key('revoke-family-invite'),
+                  onPressed: controller.busy
+                      ? null
+                      : () => _updateInvite(controller, revoke: true),
+                  icon: const Icon(Icons.lock_outline),
+                  label: const Text('停用邀請碼'),
+                ),
             ],
             if (family.childSummaries.isNotEmpty) ...[
               const SizedBox(height: FutureMintTokens.space4),

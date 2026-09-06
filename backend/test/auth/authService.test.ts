@@ -219,7 +219,7 @@ describe("AuthService", () => {
       preferredTone: "supportive",
       accountRole: "child",
     });
-    await repository.createFamilyGroup(creator.account.id, "family-a", "ABC12345");
+    await repository.createFamilyGroup(creator.account.id, "family-a", "hash-a", "2099-01-01T00:00:00Z");
     await repository.addFamilyMember("family-a", child.account.id);
 
     await service.deleteAccount(creator.account.id, {
@@ -239,10 +239,16 @@ describe("AuthService", () => {
       email: "member@example.com",
       password: "futuremint2026",
     });
+    const parentProfile = await repository.getProfile(creator.account.id).catch(() => ({
+      monthlyBudgetMinor: 6000, goalName: "目標", goalTargetMinor: 12000,
+      goalSavedMinor: 0, goalDate: "2026-12-31", preferredTone: "supportive" as const,
+    }));
+    await repository.saveProfile({ ...parentProfile, userId: secondCreator.account.id, accountRole: "parent" });
+    await repository.saveProfile({ ...parentProfile, userId: member.account.id, accountRole: "child" });
     await repository.createFamilyGroup(
       secondCreator.account.id,
       "family-b",
-      "DEF67890",
+      "hash-b", "2099-01-01T00:00:00Z",
     );
     await repository.addFamilyMember("family-b", member.account.id);
     await service.deleteAccount(member.account.id, {

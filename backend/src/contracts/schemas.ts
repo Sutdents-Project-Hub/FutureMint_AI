@@ -175,8 +175,10 @@ export const familyJoinInputSchema = z.object({
   inviteCode: z
     .string()
     .trim()
-    .toUpperCase()
-    .regex(/^[A-Z0-9]{8}$/u, "邀請碼應為 8 碼英數字。"),
+    .regex(
+      /^[A-Za-z0-9_-]{24}$/u,
+      "邀請碼應為 24 碼安全英數字元。",
+    ),
 });
 
 export const lessonCompletionInputSchema = z.object({

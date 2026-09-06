@@ -13,6 +13,20 @@ jobs:
   api:
     name: API checks
     runs-on: ubuntu-latest
+    services:
+      postgres:
+        image: postgres:17-alpine
+        env:
+          POSTGRES_USER: futuremint_test
+          POSTGRES_PASSWORD: synthetic-ci-test-only
+          POSTGRES_DB: futuremint_test
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U futuremint_test -d futuremint_test"
+          --health-interval 5s --health-timeout 5s --health-retries 12
+    env:
+      FUTUREMINT_TEST_DATABASE_URL: postgresql://futuremint_test:synthetic-ci-test-only@127.0.0.1:5432/futuremint_test
     defaults:
       run:
         working-directory: backend
@@ -57,5 +71,54 @@ jobs:
         run: dart format --output=none --set-exit-if-changed lib test integration_test
       - name: Analyze Flutter app
         run: flutter analyze
+      - name: Verify release staging isolation
+        run: python3 tool/test_release_packaging.py
       - name: Run Flutter tests
         run: flutter test
+      - name: Build Flutter Web release bundle
+        run: >-
+          flutter build web --release
+          --dart-define=BUILD_ENV=validation
+          --dart-define=API_BASE_URL=https://api.example.invalid/api/
+          --dart-define=PRIVACY_POLICY_URL=https://futuremint.example.invalid/privacy
+          --dart-define=SUPPORT_URL=https://futuremint.example.invalid/support
+          --dart-define=SUPPORT_EMAIL=release-validation@example.invalid
+          --dart-define=SERVICE_OPERATOR=FutureMint-AI-CI
+
+  ios-unsigned:
+    name: iOS unsigned archive check
+    runs-on: macos-15
+    defaults:
+      run:
+        working-directory: app
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+      - name: Set up Flutter
+        uses: subosito/flutter-action@v2
+        with:
+          flutter-version: 3.41.9
+          channel: stable
+          cache: true
+      - name: Install Flutter dependencies
+        run: flutter pub get
+      - name: Build unsigned iPhone release without test plugins
+        run: bash tool/build_ios_validation.sh
+
+  docker:
+    name: Docker image build checks
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+      - name: Build API image
+        run: docker build --tag futuremint-api:ci backend
+      - name: Build Web image
+        run: >-
+          docker build --tag futuremint-web:ci app
+          --build-arg BUILD_ENV=validation
+          --build-arg API_BASE_URL=https://api.example.invalid/api/
+          --build-arg PRIVACY_POLICY_URL=https://futuremint.example.invalid/privacy
+          --build-arg SUPPORT_URL=https://futuremint.example.invalid/support
+          --build-arg SUPPORT_EMAIL=release-validation@example.invalid
+          --build-arg SERVICE_OPERATOR=FutureMint-AI-CI

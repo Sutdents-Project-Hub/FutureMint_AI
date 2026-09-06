@@ -9,6 +9,40 @@ import 'package:http/testing.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
 void main() {
+  test(
+    'verification resend and password reset use the expected request contract',
+    () async {
+      final paths = <String>[];
+      final api = AuthApi(
+        baseUri: Uri.parse('https://api.test/api/'),
+        client: MockClient((request) async {
+          paths.add(request.url.path);
+          expect(request.method, 'POST');
+          if (request.url.path.endsWith('email-verification/request')) {
+            expect(request.headers['authorization'], 'Bearer current-session');
+            expect(request.headers['content-type'], isNull);
+            expect(request.body, isEmpty);
+          } else {
+            expect(jsonDecode(request.body), {'email': 'student@example.com'});
+            expect(request.headers['authorization'], isNull);
+          }
+          return http.Response(
+            jsonEncode({
+              'data': {'accepted': true},
+            }),
+            200,
+          );
+        }),
+      );
+      await api.requestEmailVerification('current-session');
+      await api.requestPasswordReset(email: 'student@example.com');
+      expect(paths, [
+        '/api/auth/email-verification/request',
+        '/api/auth/password-reset/request',
+      ]);
+    },
+  );
+
   test('register sends credentials and returns an opaque session', () async {
     final api = AuthApi(
       baseUri: Uri.parse('https://example.test/api/'),
@@ -23,6 +57,7 @@ void main() {
             'requestId': 'register-request',
             'data': {
               'token': 'a' * 43,
+              'emailDeliveryPending': true,
               'account': {
                 'id': 'account-1',
                 'email': 'student@example.com',
@@ -43,12 +78,13 @@ void main() {
     );
 
     expect(session.token, 'a' * 43);
+    expect(session.emailDeliveryPending, isTrue);
     expect(session.account.email, 'student@example.com');
   });
 
-  test('session store persists only the token', () async {
+  test('web session store persists only the token', () async {
     SharedPreferences.setMockInitialValues({});
-    final store = await SessionStore.create();
+    final store = await SessionStore.create(useWebStorage: true);
 
     await store.writeToken('token-value');
 
