@@ -62,18 +62,18 @@ class _RecordsScreenState extends State<RecordsScreen> {
                     const _RecordsHeadingArtwork(),
                     const SizedBox(height: FutureMintTokens.space5),
                     if (controller.insights != null) ...[
-                      // Soft glow behind the cashflow card.
-                      Container(
+                      // Soft brand glow behind the analysis in the dark theme.
+                      DecoratedBox(
                         decoration: BoxDecoration(
                           borderRadius: BorderRadius.circular(20),
                           boxShadow: [
-                            BoxShadow(
-                              color: FutureMintTokens.skyInk.withValues(
-                                alpha: 0.35,
+                            if (FutureMintTokens.isDark(context))
+                              BoxShadow(
+                                color: FutureMintTokens.neonPurple.withValues(
+                                  alpha: .14,
+                                ),
+                                blurRadius: 36,
                               ),
-                              blurRadius: 40,
-                              spreadRadius: 2,
-                            ),
                           ],
                         ),
                         child: CashflowAnalysis(insights: controller.insights!),
@@ -133,9 +133,7 @@ class _RecordsScreenState extends State<RecordsScreen> {
                         );
                       },
                     ),
-                    const SizedBox(height: FutureMintTokens.space5),
-                    const _RecordsListArtwork(),
-                    const SizedBox(height: FutureMintTokens.space2),
+                    const SizedBox(height: FutureMintTokens.space4),
                     SoftCard(
                       key: const Key('records-list-surface'),
                       borderWidth: 1,
@@ -159,6 +157,10 @@ class _RecordsScreenState extends State<RecordsScreen> {
                               ],
                             ),
                     ),
+                    // The illustration band closes the list as a card footer,
+                    // so filters lead straight into the transactions.
+                    const SizedBox(height: FutureMintTokens.space4),
+                    const _RecordsListArtwork(),
                   ],
                 ),
               ],
@@ -176,15 +178,57 @@ class _RecordsHeadingArtwork extends StatelessWidget {
   @override
   Widget build(BuildContext context) => LayoutBuilder(
     builder: (context, constraints) {
-      final compact =
-          constraints.maxWidth < 520 ||
-          MediaQuery.textScalerOf(context).scale(1) >= 1.3;
+      final largeText = MediaQuery.textScalerOf(context).scale(1) >= 1.3;
+      final compact = constraints.maxWidth < 520 || largeText;
       const heading = PageHeading(
         kicker: '分析優先的金錢時間軸',
         title: '先看模式，再看每一筆',
         description: '收支、需要與想要會先整理成趨勢；下方仍保留所有確認紀錄。',
         accent: FutureMintTokens.skyInk,
       );
+      if (compact && !largeText) {
+        // Phone: mascot and coins share a column beside the heading.
+        return Row(
+          crossAxisAlignment: CrossAxisAlignment.center,
+          children: [
+            const Expanded(child: heading),
+            const SizedBox(width: FutureMintTokens.space2),
+            SizedBox(
+              width: 100,
+              height: 112,
+              child: Stack(
+                children: [
+                  Positioned(
+                    left: 0,
+                    top: 0,
+                    child: Image.asset(
+                      'assets/images/mascot_history_purple.png',
+                      width: 92,
+                      height: 92,
+                      fit: BoxFit.contain,
+                      excludeFromSemantics: true,
+                    ),
+                  ),
+                  Positioned(
+                    right: 0,
+                    bottom: 0,
+                    child: Transform.rotate(
+                      angle: -0.15,
+                      child: Image.asset(
+                        'assets/images/icon_coins_gold.png',
+                        width: 36,
+                        height: 36,
+                        fit: BoxFit.contain,
+                        excludeFromSemantics: true,
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ],
+        );
+      }
       final artwork = Row(
         mainAxisSize: MainAxisSize.min,
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -242,53 +286,36 @@ class _RecordsListArtwork extends StatelessWidget {
   const _RecordsListArtwork();
 
   @override
-  Widget build(BuildContext context) => Align(
-    alignment: Alignment.centerRight,
-    child: Wrap(
-      spacing: FutureMintTokens.space2,
-      runSpacing: FutureMintTokens.space2,
-      crossAxisAlignment: WrapCrossAlignment.center,
-      children: [
+  Widget build(BuildContext context) {
+    final phone =
+        MediaQuery.sizeOf(context).width < FutureMintTokens.railBreakpoint;
+    final scale = phone ? .72 : 1.0;
+    Widget art(String name, double size, [double angle = 0]) =>
         Transform.rotate(
-          angle: -0.18,
+          angle: angle,
           child: Image.asset(
-            'assets/images/icon_coins_gold.png',
-            width: 54,
-            height: 54,
+            'assets/images/$name.png',
+            width: size * scale,
+            height: size * scale,
             fit: BoxFit.contain,
             excludeFromSemantics: true,
           ),
-        ),
-        Image.asset(
-          'assets/images/mascot_history_green.png',
-          width: 152,
-          height: 152,
-          fit: BoxFit.contain,
-          excludeFromSemantics: true,
-        ),
-        Transform.rotate(
-          angle: 0.1,
-          child: Image.asset(
-            'assets/images/icon_moneybag_gold.png',
-            width: 74,
-            height: 74,
-            fit: BoxFit.contain,
-            excludeFromSemantics: true,
-          ),
-        ),
-        Transform.rotate(
-          angle: 0.25,
-          child: Image.asset(
-            'assets/images/icon_bill_gold.png',
-            width: 54,
-            height: 54,
-            fit: BoxFit.contain,
-            excludeFromSemantics: true,
-          ),
-        ),
-      ],
-    ),
-  );
+        );
+    return Align(
+      alignment: phone ? Alignment.center : Alignment.centerRight,
+      child: Wrap(
+        spacing: FutureMintTokens.space2,
+        runSpacing: FutureMintTokens.space2,
+        crossAxisAlignment: WrapCrossAlignment.center,
+        children: [
+          art('icon_coins_gold', 54, -0.18),
+          art('mascot_history_green', 152),
+          art('icon_moneybag_gold', 74, 0.1),
+          art('icon_bill_gold', 54, 0.25),
+        ],
+      ),
+    );
+  }
 }
 
 class _RecordsSparkleStrip extends StatelessWidget {
@@ -319,38 +346,97 @@ class _RecordRow extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    final dark = FutureMintTokens.isDark(context);
     final income = event.type == MoneyEventType.income;
     final title = event.merchant ?? categoryLabel(event.category);
-    return ListTile(
-      contentPadding: const EdgeInsets.symmetric(
-        horizontal: FutureMintTokens.space4,
-        vertical: FutureMintTokens.space2,
+    final accent = income
+        ? FutureMintTokens.mint
+        : event.type == MoneyEventType.subscription
+        ? FutureMintTokens.lavender
+        : FutureMintTokens.coral;
+    final largeText = MediaQuery.textScalerOf(context).scale(1) >= 1.3;
+    final titleText = Text(
+      title,
+      maxLines: largeText ? 2 : 1,
+      overflow: TextOverflow.ellipsis,
+      style: theme.textTheme.titleMedium?.copyWith(fontWeight: FontWeight.w700),
+    );
+    final amountText = MoneyText(
+      income ? event.effectiveAmountMinor : -event.effectiveAmountMinor,
+      style: theme.textTheme.titleMedium?.copyWith(
+        fontWeight: FontWeight.w800,
+        color: income ? FutureMintTokens.brandInk(context) : null,
       ),
-      leading: CircleAvatar(
-        backgroundColor: income
-            ? FutureMintTokens.mintSoft
-            : event.type == MoneyEventType.subscription
-            ? FutureMintTokens.lavenderSoft
-            : FutureMintTokens.coralSoft,
-        foregroundColor: FutureMintTokens.ink,
-        child: Icon(_categoryIcon(event)),
+    );
+    final meta = [
+      categoryLabel(event.category),
+      if (event.spendingIntent != null) _intentLabel(event.spendingIntent!),
+      if (event.split != null) '${event.split!.participants} 人分帳',
+    ].join(' · ');
+    return Padding(
+      padding: const EdgeInsets.fromLTRB(
+        FutureMintTokens.space4,
+        FutureMintTokens.space3,
+        FutureMintTokens.space1,
+        FutureMintTokens.space3,
       ),
-      title: Text(title, style: const TextStyle(fontWeight: FontWeight.w700)),
-      subtitle: Text(
-        '${categoryLabel(event.category)}${event.spendingIntent == null ? '' : ' · ${_intentLabel(event.spendingIntent!)}'} · ${formatTaipeiDateTime(event.occurredAt, includeYear: true)}${event.split == null ? '' : ' · ${event.split!.participants} 人分帳'}',
-      ),
-      trailing: Row(
-        mainAxisSize: MainAxisSize.min,
+      child: Row(
+        crossAxisAlignment: CrossAxisAlignment.center,
         children: [
-          MoneyText(
-            income ? event.effectiveAmountMinor : -event.effectiveAmountMinor,
-            style: TextStyle(
-              fontWeight: FontWeight.w700,
-              color: income ? FutureMintTokens.teal : null,
+          CircleAvatar(
+            radius: 22,
+            backgroundColor: dark
+                ? accent.withValues(alpha: .22)
+                : income
+                ? FutureMintTokens.mintSoft
+                : event.type == MoneyEventType.subscription
+                ? FutureMintTokens.lavenderSoft
+                : FutureMintTokens.coralSoft,
+            foregroundColor: dark
+                ? Color.lerp(accent, Colors.white, .35)
+                : FutureMintTokens.ink,
+            child: Icon(_categoryIcon(event), size: 22),
+          ),
+          const SizedBox(width: FutureMintTokens.space3),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                // Large text stacks the amount under the title instead of
+                // squeezing both into one line.
+                if (largeText) ...[
+                  titleText,
+                  amountText,
+                ] else
+                  Row(
+                    crossAxisAlignment: CrossAxisAlignment.baseline,
+                    textBaseline: TextBaseline.alphabetic,
+                    children: [
+                      Expanded(child: titleText),
+                      const SizedBox(width: FutureMintTokens.space2),
+                      amountText,
+                    ],
+                  ),
+                const SizedBox(height: FutureMintTokens.space1),
+                Text(
+                  meta,
+                  style: theme.textTheme.bodyMedium?.copyWith(
+                    color: theme.colorScheme.onSurfaceVariant,
+                  ),
+                ),
+                Text(
+                  formatTaipeiDateTime(event.occurredAt, includeYear: true),
+                  style: theme.textTheme.bodySmall?.copyWith(
+                    color: theme.colorScheme.onSurfaceVariant,
+                  ),
+                ),
+              ],
             ),
           ),
           PopupMenuButton<_RecordAction>(
             tooltip: '交易操作：$title',
+            icon: const Icon(Icons.more_vert_rounded),
             onSelected: (action) => switch (action) {
               _RecordAction.edit => _showEditEventSheet(context, event),
               _RecordAction.delete => _showDeleteEventDialog(context, event),
@@ -400,6 +486,7 @@ Future<void> _showEditEventSheet(BuildContext context, MoneyEvent event) =>
     showModalBottomSheet<void>(
       context: context,
       isScrollControlled: true,
+      useSafeArea: true,
       showDragHandle: true,
       builder: (_) => ChangeNotifierProvider.value(
         value: context.read<AppController>(),

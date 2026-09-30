@@ -92,8 +92,11 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
                                   runSpacing: FutureMintTokens.space2,
                                   children: [
                                     ChoiceChip(
-                                      avatar: const Icon(
-                                        Icons.face_outlined,
+                                      showCheckmark: false,
+                                      avatar: Icon(
+                                        _accountRole == AccountRole.child
+                                            ? Icons.check_circle_rounded
+                                            : Icons.face_outlined,
                                         size: 18,
                                       ),
                                       label: const Text('孩子使用'),
@@ -104,8 +107,11 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
                                       ),
                                     ),
                                     ChoiceChip(
-                                      avatar: const Icon(
-                                        Icons.family_restroom_outlined,
+                                      showCheckmark: false,
+                                      avatar: Icon(
+                                        _accountRole == AccountRole.parent
+                                            ? Icons.check_circle_rounded
+                                            : Icons.family_restroom_outlined,
                                         size: 18,
                                       ),
                                       label: const Text('家長陪伴'),

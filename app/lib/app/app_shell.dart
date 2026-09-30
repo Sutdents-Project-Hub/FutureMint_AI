@@ -308,14 +308,20 @@ class _MobileNavigation extends StatelessWidget {
                   if (states.contains(WidgetState.selected)) {
                     return const IconThemeData(color: FutureMintTokens.ink);
                   }
-                  return IconThemeData(color: foreground);
+                  return IconThemeData(
+                    color: foreground.withValues(alpha: .78),
+                  );
                 }),
+                // The label sits below the pill indicator on the dark shell, so
+                // it keeps the shell foreground; weight marks the selection.
                 labelTextStyle: WidgetStateProperty.resolveWith((states) {
                   final selected = states.contains(WidgetState.selected);
                   return TextStyle(
-                    color: selected ? FutureMintTokens.ink : foreground,
+                    color: selected
+                        ? foreground
+                        : foreground.withValues(alpha: .72),
                     fontSize: 12,
-                    fontWeight: selected ? FontWeight.w700 : FontWeight.w600,
+                    fontWeight: selected ? FontWeight.w800 : FontWeight.w600,
                   );
                 }),
               ),

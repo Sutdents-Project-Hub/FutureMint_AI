@@ -24,6 +24,14 @@ class InvestmentScenarioChart extends StatelessWidget {
     FutureMintTokens.coral,
   ];
 
+  /// The indigo series is too dark on the night canvas, so it switches to the
+  /// lighter brand ink while keeping the same series order and meaning.
+  static List<Color> colorsFor(BuildContext context) => [
+    FutureMintTokens.brandInk(context),
+    FutureMintTokens.sky,
+    FutureMintTokens.coral,
+  ];
+
   @override
   Widget build(BuildContext context) {
     final maxBalance = scenarios
@@ -95,7 +103,7 @@ class InvestmentScenarioChart extends StatelessWidget {
                       point.balanceMinor.toDouble(),
                     ),
                 ],
-                color: colors[index],
+                color: colorsFor(context)[index],
                 barWidth: scenarios[index].id == selectedId ? 5 : 3,
                 isCurved: true,
                 dotData: FlDotData(show: scenarios[index].id == selectedId),

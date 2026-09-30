@@ -131,6 +131,11 @@ abstract final class FutureMintTheme {
         ),
       ),
       chipTheme: base.chipTheme.copyWith(
+        // A lighter pill on phones; the padded tap target stays 48dp.
+        padding: const EdgeInsets.symmetric(
+          horizontal: FutureMintTokens.space2,
+          vertical: FutureMintTokens.space1,
+        ),
         backgroundColor: scheme.surface,
         selectedColor: scheme.primaryContainer,
         side: BorderSide(color: scheme.outlineVariant, width: 1),

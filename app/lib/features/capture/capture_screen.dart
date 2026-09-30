@@ -54,11 +54,26 @@ class _CaptureScreenState extends State<CaptureScreen> {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
-            const PageHeading(
-              kicker: '快速記一筆',
-              title: '用一句話，記下剛才發生的事',
-              description: 'FutureMint 先整理成草稿，只有你按下確認後才會保存。',
-              accent: FutureMintTokens.teal,
+            Row(
+              crossAxisAlignment: CrossAxisAlignment.center,
+              children: [
+                const Expanded(
+                  child: PageHeading(
+                    kicker: '快速記一筆',
+                    title: '用一句話，記下剛才發生的事',
+                    description: 'FutureMint 先整理成草稿，只有你按下確認後才會保存。',
+                    accent: FutureMintTokens.teal,
+                  ),
+                ),
+                const SizedBox(width: FutureMintTokens.space2),
+                Image.asset(
+                  'assets/images/mascot_note_star.png',
+                  width: 72,
+                  height: 72,
+                  fit: BoxFit.contain,
+                  excludeFromSemantics: true,
+                ),
+              ],
             ),
             const SizedBox(height: FutureMintTokens.space5),
             SoftCard(
@@ -72,28 +87,40 @@ class _CaptureScreenState extends State<CaptureScreen> {
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.stretch,
                 children: [
-                  LayoutBuilder(
-                    builder: (context, constraints) {
-                      return Row(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          Image.asset(
-                            'assets/images/mascot_note_star.png',
-                            width: 56,
-                            height: 56,
-                            fit: BoxFit.contain,
-                            excludeFromSemantics: true,
-                          ),
-                          const SizedBox(width: FutureMintTokens.space3),
-                          Expanded(
-                            child: Text(
-                              '把日常語句交給 AI 整理，金額與內容仍由你最後確認。',
-                              style: Theme.of(context).textTheme.titleMedium,
+                  // The helper mascot shares the intro row; once drafts exist
+                  // it gets smaller so emphasis moves to the first draft.
+                  Row(
+                    crossAxisAlignment: CrossAxisAlignment.center,
+                    children: [
+                      Expanded(
+                        child: Text(
+                          '把日常語句交給 AI 整理，金額與內容仍由你最後確認。',
+                          style: Theme.of(context).textTheme.titleMedium,
+                        ),
+                      ),
+                      const SizedBox(width: FutureMintTokens.space3),
+                      DecoratedBox(
+                        decoration: BoxDecoration(
+                          shape: BoxShape.circle,
+                          boxShadow: [
+                            BoxShadow(
+                              color: FutureMintTokens.sun.withValues(
+                                alpha: hasDrafts ? .18 : .34,
+                              ),
+                              blurRadius: 26,
+                              spreadRadius: 2,
                             ),
-                          ),
-                        ],
-                      );
-                    },
+                          ],
+                        ),
+                        child: Image.asset(
+                          'assets/images/mascot_note_helper.png',
+                          width: hasDrafts ? 72 : 96,
+                          height: hasDrafts ? 72 : 96,
+                          fit: BoxFit.contain,
+                          excludeFromSemantics: true,
+                        ),
+                      ),
+                    ],
                   ),
                   const SizedBox(height: FutureMintTokens.space4),
                   TextField(
@@ -112,7 +139,7 @@ class _CaptureScreenState extends State<CaptureScreen> {
                       alignLabelWithHint: true,
                       hintText: '例如：今天買珍奶 75 元',
                       helperText: '請勿輸入姓名、帳號、卡號或其他個人資料。',
-                      helperMaxLines: 2,
+                      helperMaxLines: 3,
                     ),
                   ),
                   const SizedBox(height: FutureMintTokens.space3),
@@ -126,6 +153,7 @@ class _CaptureScreenState extends State<CaptureScreen> {
                         ('Netflix 390 四個人分', FutureMintTokens.lavenderSoft),
                       ])
                         ActionChip(
+                          visualDensity: VisualDensity.compact,
                           backgroundColor:
                               Theme.of(context).brightness == Brightness.dark
                               ? FutureMintTokens.darkSurface
@@ -151,29 +179,6 @@ class _CaptureScreenState extends State<CaptureScreen> {
                           )
                         : const Icon(Icons.auto_fix_high_rounded),
                     label: Text(controller.busy ? '正在整理…' : '幫我整理'),
-                  ),
-                  const SizedBox(height: FutureMintTokens.space2),
-                  Align(
-                    alignment: Alignment.centerRight,
-                    child: Container(
-                      decoration: BoxDecoration(
-                        shape: BoxShape.circle,
-                        boxShadow: [
-                          BoxShadow(
-                            color: FutureMintTokens.sun.withValues(alpha: .38),
-                            blurRadius: 28,
-                            spreadRadius: 3,
-                          ),
-                        ],
-                      ),
-                      child: Image.asset(
-                        'assets/images/mascot_note_helper.png',
-                        width: 132,
-                        height: 132,
-                        fit: BoxFit.contain,
-                        excludeFromSemantics: true,
-                      ),
-                    ),
                   ),
                 ],
               ),

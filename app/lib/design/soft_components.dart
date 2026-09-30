@@ -115,13 +115,20 @@ class PageHeading extends StatelessWidget {
         Text(
           kicker,
           style: theme.textTheme.labelLarge?.copyWith(
-            color: accent,
+            color: FutureMintTokens.accentInk(context, accent),
             fontWeight: FontWeight.w700,
             letterSpacing: .2,
           ),
         ),
         const SizedBox(height: FutureMintTokens.space2),
-        Text(title, style: theme.textTheme.headlineMedium),
+        Text(
+          title,
+          // Phones use the lower bound of the 26–32 headline scale so
+          // two-column headers keep short titles on fewer lines.
+          style: MediaQuery.sizeOf(context).width < 440
+              ? theme.textTheme.headlineMedium?.copyWith(fontSize: 26)
+              : theme.textTheme.headlineMedium,
+        ),
         if (description != null) ...[
           const SizedBox(height: FutureMintTokens.space2),
           Text(

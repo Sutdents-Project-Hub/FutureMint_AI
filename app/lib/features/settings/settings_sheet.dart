@@ -15,6 +15,7 @@ Future<void> showSettingsSheet(BuildContext context) =>
     showModalBottomSheet<void>(
       context: context,
       isScrollControlled: true,
+      useSafeArea: true,
       showDragHandle: true,
       builder: (_) => ChangeNotifierProvider.value(
         value: context.read<AppController>(),
@@ -248,7 +249,13 @@ class _SettingsSheet extends StatelessWidget {
                           runSpacing: FutureMintTokens.space2,
                           children: [
                             ChoiceChip(
-                              avatar: const Icon(Icons.face_outlined, size: 18),
+                              showCheckmark: false,
+                              avatar: Icon(
+                                accountRole == AccountRole.child
+                                    ? Icons.check_circle_rounded
+                                    : Icons.face_outlined,
+                                size: 18,
+                              ),
                               label: const Text('孩子'),
                               selected: accountRole == AccountRole.child,
                               onSelected: familyRoleLocked
@@ -258,8 +265,11 @@ class _SettingsSheet extends StatelessWidget {
                                     ),
                             ),
                             ChoiceChip(
-                              avatar: const Icon(
-                                Icons.family_restroom_outlined,
+                              showCheckmark: false,
+                              avatar: Icon(
+                                accountRole == AccountRole.parent
+                                    ? Icons.check_circle_rounded
+                                    : Icons.family_restroom_outlined,
                                 size: 18,
                               ),
                               label: const Text('家長'),
@@ -450,7 +460,9 @@ class _SettingsSheet extends StatelessWidget {
                     children: [
                       ListTile(
                         contentPadding: EdgeInsets.zero,
+                        titleTextStyle: Theme.of(context).textTheme.titleMedium,
                         leading: CircleAvatar(
+                          radius: 24,
                           backgroundColor: FutureMintTokens.sky,
                           foregroundColor: FutureMintTokens.ink,
                           child: Icon(
@@ -599,7 +611,13 @@ class _SettingsSheet extends StatelessWidget {
                                   ),
                                 ])
                                   ChoiceChip(
-                                    avatar: Icon(entry.$3, size: 18),
+                                    showCheckmark: false,
+                                    avatar: Icon(
+                                      controller.themeMode == entry.$1
+                                          ? Icons.check_circle_rounded
+                                          : entry.$3,
+                                      size: 18,
+                                    ),
                                     label: Text(entry.$2),
                                     selected: controller.themeMode == entry.$1,
                                     onSelected: (_) =>

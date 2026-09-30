@@ -182,6 +182,7 @@ class _DraftEditorState extends State<DraftEditor> {
               ),
               if (!widget.editing)
                 Chip(
+                  visualDensity: VisualDensity.compact,
                   avatar: const Icon(Icons.rule_rounded, size: 16),
                   label: Text(
                     widget.draft.source == CaptureSource.liangjieAi
@@ -237,62 +238,85 @@ class _DraftEditorState extends State<DraftEditor> {
             ),
           ),
           const SizedBox(height: 16),
-          DropdownButtonFormField<MoneyEventType>(
-            initialValue: eventType,
-            decoration: const InputDecoration(labelText: '交易類型'),
-            items: [
-              for (final item in MoneyEventType.values)
-                DropdownMenuItem(
-                  value: item,
-                  child: Text(_eventTypeLabel(item)),
-                ),
-            ],
-            onChanged: widget.busy
-                ? null
-                : (value) {
-                    if (value == null) return;
-                    setState(() {
-                      eventType = value;
-                      category = switch (value) {
-                        MoneyEventType.income => MoneyCategory.income,
-                        MoneyEventType.subscription =>
-                          MoneyCategory.subscription,
-                        MoneyEventType.expense =>
-                          category == MoneyCategory.income ||
-                                  category == MoneyCategory.subscription
-                              ? MoneyCategory.other
-                              : category,
-                      };
-                      if (value == MoneyEventType.income) splitEnabled = false;
-                    });
-                  },
+          LayoutBuilder(
+            builder: (context, constraints) {
+              final typeField = DropdownButtonFormField<MoneyEventType>(
+                initialValue: eventType,
+                decoration: const InputDecoration(labelText: '交易類型'),
+                items: [
+                  for (final item in MoneyEventType.values)
+                    DropdownMenuItem(
+                      value: item,
+                      child: Text(_eventTypeLabel(item)),
+                    ),
+                ],
+                onChanged: widget.busy
+                    ? null
+                    : (value) {
+                        if (value == null) return;
+                        setState(() {
+                          eventType = value;
+                          category = switch (value) {
+                            MoneyEventType.income => MoneyCategory.income,
+                            MoneyEventType.subscription =>
+                              MoneyCategory.subscription,
+                            MoneyEventType.expense =>
+                              category == MoneyCategory.income ||
+                                      category == MoneyCategory.subscription
+                                  ? MoneyCategory.other
+                                  : category,
+                          };
+                          if (value == MoneyEventType.income) {
+                            splitEnabled = false;
+                          }
+                        });
+                      },
+              );
+              final categoryField = DropdownButtonFormField<MoneyCategory>(
+                key: ValueKey(eventType),
+                initialValue: category,
+                decoration: const InputDecoration(labelText: '分類'),
+                items: [
+                  for (final item in availableCategories)
+                    DropdownMenuItem(
+                      value: item,
+                      child: Text(categoryLabel(item)),
+                    ),
+                ],
+                onChanged: widget.busy
+                    ? null
+                    : (value) {
+                        if (value != null) setState(() => category = value);
+                      },
+              );
+              // Two short dropdowns share one row on phones; large text or
+              // very narrow widths fall back to a stacked layout.
+              if (constraints.maxWidth >= 300 &&
+                  MediaQuery.textScalerOf(context).scale(1) < 1.3) {
+                return Row(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Expanded(child: typeField),
+                    const SizedBox(width: FutureMintTokens.space3),
+                    Expanded(child: categoryField),
+                  ],
+                );
+              }
+              return Column(
+                crossAxisAlignment: CrossAxisAlignment.stretch,
+                children: [
+                  typeField,
+                  const SizedBox(height: FutureMintTokens.space4),
+                  categoryField,
+                ],
+              );
+            },
           ),
           const SizedBox(height: 16),
-          DropdownButtonFormField<MoneyCategory>(
-            key: ValueKey(eventType),
-            initialValue: category,
-            decoration: const InputDecoration(labelText: '分類'),
-            items: [
-              for (final item in availableCategories)
-                DropdownMenuItem(value: item, child: Text(categoryLabel(item))),
-            ],
-            onChanged: widget.busy
-                ? null
-                : (value) {
-                    if (value != null) setState(() => category = value);
-                  },
-          ),
-          const SizedBox(height: 16),
-          ListTile(
+          _DateField(
             key: const Key('draft-date'),
-            contentPadding: const EdgeInsets.symmetric(horizontal: 12),
-            shape: RoundedRectangleBorder(
-              side: BorderSide(color: Theme.of(context).colorScheme.outline),
-              borderRadius: BorderRadius.circular(12),
-            ),
-            title: const Text('發生日期'),
-            subtitle: Text(formatTaipeiDateTime(occurredAt, includeYear: true)),
-            trailing: const Icon(Icons.calendar_month_outlined),
+            label: '發生日期',
+            value: formatTaipeiDateTime(occurredAt, includeYear: true),
             onTap: widget.busy ? null : _pickDate,
           ),
           if (eventType == MoneyEventType.subscription) ...[
@@ -316,20 +340,13 @@ class _DraftEditorState extends State<DraftEditor> {
                     },
             ),
             const SizedBox(height: 12),
-            ListTile(
-              contentPadding: const EdgeInsets.symmetric(horizontal: 12),
-              shape: RoundedRectangleBorder(
-                side: BorderSide(color: Theme.of(context).colorScheme.outline),
-                borderRadius: BorderRadius.circular(12),
-              ),
-              title: const Text('下次扣款日（可選）'),
-              subtitle: Text(
-                nextBillingAt == null
-                    ? '未提供'
-                    : formatTaipeiDateTime(nextBillingAt!, includeYear: true),
-              ),
+            _DateField(
+              label: '下次扣款日（可選）',
+              value: nextBillingAt == null
+                  ? '未提供'
+                  : formatTaipeiDateTime(nextBillingAt!, includeYear: true),
               trailing: nextBillingAt == null
-                  ? const Icon(Icons.calendar_month_outlined)
+                  ? null
                   : IconButton(
                       tooltip: '清除下次扣款日',
                       onPressed: widget.busy
@@ -362,11 +379,7 @@ class _DraftEditorState extends State<DraftEditor> {
                     runSpacing: FutureMintTokens.space2,
                     children: [
                       for (final entry in const [
-                        (
-                          SpendingIntent.need,
-                          '需要',
-                          Icons.check_circle_outline_rounded,
-                        ),
+                        (SpendingIntent.need, '需要', Icons.push_pin_outlined),
                         (
                           SpendingIntent.want,
                           '想要',
@@ -379,7 +392,13 @@ class _DraftEditorState extends State<DraftEditor> {
                         ),
                       ])
                         ChoiceChip(
-                          avatar: Icon(entry.$3, size: 18),
+                          showCheckmark: false,
+                          avatar: Icon(
+                            spendingIntent == entry.$1
+                                ? Icons.check_circle_rounded
+                                : entry.$3,
+                            size: 18,
+                          ),
                           label: Text(entry.$2),
                           selected: spendingIntent == entry.$1,
                           onSelected: widget.busy
@@ -395,7 +414,7 @@ class _DraftEditorState extends State<DraftEditor> {
                   segments: const [
                     ButtonSegment(
                       value: SpendingIntent.need,
-                      icon: Icon(Icons.check_circle_outline_rounded),
+                      icon: Icon(Icons.push_pin_outlined),
                       label: Text('需要'),
                     ),
                     ButtonSegment(
@@ -488,3 +507,37 @@ String _missingFieldLabel(String field) => switch (field) {
   'split' => '分帳',
   _ => '其他內容',
 };
+
+/// Read-only date value styled like the neighbouring outlined text fields.
+class _DateField extends StatelessWidget {
+  const _DateField({
+    super.key,
+    required this.label,
+    required this.value,
+    required this.onTap,
+    this.trailing,
+  });
+
+  final String label;
+  final String value;
+  final VoidCallback? onTap;
+  final Widget? trailing;
+
+  @override
+  Widget build(BuildContext context) => Semantics(
+    button: onTap != null,
+    child: InkWell(
+      onTap: onTap,
+      borderRadius: BorderRadius.circular(FutureMintTokens.radiusSmall),
+      child: InputDecorator(
+        isEmpty: false,
+        decoration: InputDecoration(
+          labelText: label,
+          enabled: onTap != null,
+          suffixIcon: trailing ?? const Icon(Icons.calendar_month_outlined),
+        ),
+        child: Text(value),
+      ),
+    ),
+  );
+}

@@ -49,44 +49,73 @@ class SubscriptionCoachScreen extends StatelessWidget {
                 child: Text('目前沒有可比較的訂閱情境。'),
               )
             else ...[
-              SoftCard(
+              Container(
                 key: const Key('subscription-current-card'),
-                color: FutureMintTokens.ink,
+                padding: FutureMintTokens.cardPadding(context),
+                decoration: BoxDecoration(
+                  color: FutureMintTokens.isDark(context)
+                      ? FutureMintTokens.darkSurface
+                      : FutureMintTokens.ink,
+                  borderRadius: BorderRadius.circular(
+                    FutureMintTokens.radiusLarge,
+                  ),
+                  border: Border.all(
+                    color: FutureMintTokens.isDark(context)
+                        ? FutureMintTokens.neonPurple.withValues(alpha: .35)
+                        : Colors.transparent,
+                    width: 1.5,
+                  ),
+                  boxShadow: [
+                    if (FutureMintTokens.isDark(context))
+                      BoxShadow(
+                        color: FutureMintTokens.neonPurple.withValues(
+                          alpha: .16,
+                        ),
+                        blurRadius: 28,
+                        offset: const Offset(0, 8),
+                      ),
+                  ],
+                ),
                 child: DefaultTextStyle.merge(
                   style: const TextStyle(color: FutureMintTokens.paper),
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
+                  child: Row(
                     children: [
-                      Row(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          const CircleAvatar(
-                            backgroundColor: FutureMintTokens.pink,
-                            foregroundColor: FutureMintTokens.ink,
-                            child: Icon(Icons.movie_outlined),
-                          ),
-                          const SizedBox(width: FutureMintTokens.space3),
-                          Expanded(
-                            child: Column(
-                              crossAxisAlignment: CrossAxisAlignment.start,
-                              children: [
-                                Text(
-                                  '目前：${comparison.currentName}',
-                                  style: const TextStyle(
-                                    fontWeight: FontWeight.w700,
-                                  ),
-                                ),
-                                const Text('每月等效成本'),
-                              ],
-                            ),
-                          ),
-                        ],
+                      const CircleAvatar(
+                        radius: 26,
+                        backgroundColor: FutureMintTokens.pink,
+                        foregroundColor: FutureMintTokens.ink,
+                        child: Icon(Icons.movie_outlined),
                       ),
-                      const SizedBox(height: FutureMintTokens.space4),
-                      MoneyText(
-                        comparison.currentMonthlyCostMinor,
-                        style: Theme.of(context).textTheme.headlineSmall
-                            ?.copyWith(color: FutureMintTokens.paper),
+                      const SizedBox(width: FutureMintTokens.space4),
+                      Expanded(
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Text(
+                              '目前：${comparison.currentName}',
+                              style: const TextStyle(
+                                fontWeight: FontWeight.w700,
+                              ),
+                            ),
+                            const SizedBox(height: FutureMintTokens.space1),
+                            MoneyText(
+                              comparison.currentMonthlyCostMinor,
+                              style: Theme.of(context).textTheme.headlineMedium
+                                  ?.copyWith(
+                                    color: FutureMintTokens.paper,
+                                    fontWeight: FontWeight.w800,
+                                  ),
+                            ),
+                            Text(
+                              '每月等效成本',
+                              style: TextStyle(
+                                color: FutureMintTokens.paper.withValues(
+                                  alpha: .78,
+                                ),
+                              ),
+                            ),
+                          ],
+                        ),
                       ),
                     ],
                   ),
@@ -132,57 +161,73 @@ class _OptionCard extends StatelessWidget {
     final accent = index.isEven
         ? FutureMintTokens.sky
         : FutureMintTokens.lavender;
+    final savings = option.monthlySavingsMinor;
+    final savingsColor = savings == null
+        ? null
+        : savings > 0
+        ? FutureMintTokens.positiveInk(context)
+        : FutureMintTokens.dangerInk(context);
     return SoftCard(
       color: Theme.of(context).brightness == Brightness.dark
           ? FutureMintTokens.darkSurfaceRaised
           : FutureMintTokens.paper,
       borderWidth: 1,
       child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
+        crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
           Row(
-            crossAxisAlignment: CrossAxisAlignment.start,
+            crossAxisAlignment: CrossAxisAlignment.center,
             children: [
               DecoratedBox(
                 decoration: BoxDecoration(
                   color: accent,
                   shape: BoxShape.circle,
                 ),
-                child: const SizedBox.square(dimension: 16),
+                child: const SizedBox.square(dimension: 12),
               ),
-              const SizedBox(width: FutureMintTokens.space2),
+              const SizedBox(width: FutureMintTokens.space3),
               Expanded(
                 child: Text(
                   option.name,
                   style: Theme.of(context).textTheme.titleLarge,
                 ),
               ),
+              const SizedBox(width: FutureMintTokens.space2),
+              Chip(
+                visualDensity: VisualDensity.compact,
+                label: Text(option.sourceType == 'synthetic' ? '合成方案' : '已知來源'),
+              ),
             ],
           ),
-          const SizedBox(height: FutureMintTokens.space2),
-          Chip(label: Text(option.sourceType == 'synthetic' ? '合成方案' : '已知來源')),
           const SizedBox(height: FutureMintTokens.space4),
-          Wrap(
-            spacing: FutureMintTokens.space6,
-            runSpacing: FutureMintTokens.space3,
+          Row(
+            crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              _Metric(
-                label: '你的每月負擔',
-                value: formatTwd(option.userMonthlyCostMinor),
+              Expanded(
+                child: _Metric(
+                  label: '你的每月負擔',
+                  value: formatTwd(option.userMonthlyCostMinor),
+                ),
               ),
-              _Metric(
-                label: option.monthlySavingsMinor == null
-                    ? '方案差額'
-                    : option.monthlySavingsMinor! > 0
-                    ? '每月可能少花'
-                    : '每月可能多花',
-                value: option.monthlySavingsMinor == null
-                    ? '資格不符，不比較'
-                    : formatTwd(option.monthlySavingsMinor!.abs()),
+              const SizedBox(width: FutureMintTokens.space3),
+              Expanded(
+                child: _Metric(
+                  label: savings == null
+                      ? '方案差額'
+                      : savings > 0
+                      ? '每月可能少花'
+                      : '每月可能多花',
+                  value: savings == null
+                      ? '資格不符，不比較'
+                      : formatTwd(savings.abs()),
+                  color: savingsColor,
+                ),
               ),
             ],
           ),
           const SizedBox(height: FutureMintTokens.space4),
+          const Divider(height: 1),
+          const SizedBox(height: FutureMintTokens.space3),
           Row(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
@@ -203,10 +248,11 @@ class _OptionCard extends StatelessWidget {
 }
 
 class _Metric extends StatelessWidget {
-  const _Metric({required this.label, required this.value});
+  const _Metric({required this.label, required this.value, this.color});
 
   final String label;
   final String value;
+  final Color? color;
 
   @override
   Widget build(BuildContext context) => Column(
@@ -217,7 +263,14 @@ class _Metric extends StatelessWidget {
         style: TextStyle(color: Theme.of(context).colorScheme.onSurfaceVariant),
       ),
       const SizedBox(height: FutureMintTokens.space1),
-      Text(value, style: Theme.of(context).textTheme.titleLarge),
+      Text(
+        value,
+        style: Theme.of(context).textTheme.titleLarge?.copyWith(
+          color: color,
+          fontWeight: FontWeight.w800,
+          fontFeatures: const [FontFeature.tabularFigures()],
+        ),
+      ),
     ],
   );
 }

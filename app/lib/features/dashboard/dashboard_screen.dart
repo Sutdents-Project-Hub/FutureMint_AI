@@ -122,25 +122,18 @@ class _DashboardContent extends StatelessWidget {
                 ],
               );
 
+        // The shell already shows a persistent guest banner and the
+        // disclosure card closes the page, so the header starts with content.
         final pageColumn = Column(
           crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
-            disclosure,
-            const SizedBox(height: FutureMintTokens.space5),
-            PageHeading(
-              kicker: '今天的金錢節奏',
-              title: profile.accountRole == AccountRole.parent
-                  ? '陪孩子看懂選擇，不替他做決定'
-                  : '嗨，今天也一起顧好每一塊錢',
-              description: profile.accountRole == AccountRole.parent
-                  ? '家長模式調整說明角度，不會讀取另一個帳號的交易。'
-                  : '先看清楚，再做適合自己的選擇。',
-              accent: FutureMintTokens.teal,
-              trailing: _DashboardHeaderActions(
-                onCapture: () => context.go('/capture'),
-              ),
+            _DashboardHeader(
+              parent: profile.accountRole == AccountRole.parent,
+              onCapture: () => context.go('/capture'),
             ),
-            const SizedBox(height: FutureMintTokens.space6),
+            SizedBox(
+              height: bento ? FutureMintTokens.space6 : FutureMintTokens.space5,
+            ),
             if (controller.insights?.notices.isNotEmpty ?? false) ...[
               _NoticeStrip(notices: controller.insights!.notices),
               const SizedBox(height: FutureMintTokens.space5),
@@ -159,8 +152,10 @@ class _DashboardContent extends StatelessWidget {
           child: Stack(
             clipBehavior: Clip.none,
             children: [
-              const Positioned.fill(
-                child: IgnorePointer(child: _BackgroundSparkles()),
+              Positioned.fill(
+                child: IgnorePointer(
+                  child: _BackgroundSparkles(compact: !bento),
+                ),
               ),
               pageColumn,
             ],
@@ -171,8 +166,111 @@ class _DashboardContent extends StatelessWidget {
   }
 }
 
+class _DashboardHeader extends StatelessWidget {
+  const _DashboardHeader({required this.parent, required this.onCapture});
+
+  final bool parent;
+  final VoidCallback onCapture;
+
+  @override
+  Widget build(BuildContext context) {
+    final title = parent ? '陪孩子看懂選擇，不替他做決定' : '嗨，今天也一起顧好每一塊錢';
+    final description = parent ? '家長模式調整說明角度，不會讀取另一個帳號的交易。' : '先看清楚，再做適合自己的選擇。';
+    return LayoutBuilder(
+      builder: (context, constraints) {
+        final compact =
+            constraints.maxWidth < 620 &&
+            MediaQuery.textScalerOf(context).scale(1) < 1.3;
+        if (!compact) {
+          return PageHeading(
+            kicker: '今天的金錢節奏',
+            title: title,
+            description: description,
+            accent: FutureMintTokens.teal,
+            trailing: _DashboardHeaderActions(onCapture: onCapture),
+          );
+        }
+        // Phone: the mascot takes its own column beside the greeting, so the
+        // budget Hero reaches the first screen instead of a separate art row.
+        return Row(
+          crossAxisAlignment: CrossAxisAlignment.center,
+          children: [
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  PageHeading(
+                    kicker: '今天的金錢節奏',
+                    title: title,
+                    description: description,
+                    accent: FutureMintTokens.teal,
+                  ),
+                  const SizedBox(height: FutureMintTokens.space4),
+                  FilledButton.icon(
+                    onPressed: onCapture,
+                    icon: const Icon(Icons.add_rounded),
+                    label: const Text('記一筆'),
+                  ),
+                ],
+              ),
+            ),
+            const SizedBox(width: FutureMintTokens.space2),
+            const _BlobArtwork(size: 112),
+          ],
+        );
+      },
+    );
+  }
+}
+
+class _BlobArtwork extends StatelessWidget {
+  const _BlobArtwork({required this.size});
+
+  final double size;
+
+  @override
+  Widget build(BuildContext context) => SizedBox(
+    width: size,
+    height: size,
+    child: Stack(
+      children: [
+        Positioned.fill(
+          child: Padding(
+            padding: EdgeInsets.all(size * .06),
+            child: Image.asset(
+              'assets/images/blob_purple.png',
+              fit: BoxFit.contain,
+              excludeFromSemantics: true,
+            ),
+          ),
+        ),
+        Positioned(
+          left: 0,
+          top: size * .08,
+          child: Icon(
+            Icons.auto_awesome_rounded,
+            size: size * .2,
+            color: const Color(0xFF7CFF4D).withValues(alpha: .9),
+          ),
+        ),
+        Positioned(
+          right: 0,
+          bottom: size * .02,
+          child: Icon(
+            Icons.auto_awesome_rounded,
+            size: size * .16,
+            color: FutureMintTokens.neonPurple.withValues(alpha: .85),
+          ),
+        ),
+      ],
+    ),
+  );
+}
+
 class _BackgroundSparkles extends StatelessWidget {
-  const _BackgroundSparkles();
+  const _BackgroundSparkles({this.compact = false});
+
+  final bool compact;
 
   static const _stars = <_StarSpec>[
     _StarSpec(1, 97, 50, -23),
@@ -191,14 +289,18 @@ class _BackgroundSparkles extends StatelessWidget {
     clipBehavior: Clip.none,
     children: [
       for (final star in _stars)
+        // Phone gutters are only 16dp: shrink the stars so they stay in the
+        // gutter instead of being cut by the screen edge or covering text.
         Positioned(
-          left: star.side < 0 ? star.depth : null,
-          right: star.side > 0 ? star.depth : null,
+          left: star.side < 0 ? (compact ? -14 : star.depth) : null,
+          right: star.side > 0 ? (compact ? -14 : star.depth) : null,
           top: star.top,
           child: Icon(
             Icons.auto_awesome_rounded,
-            size: star.size,
-            color: Colors.white24,
+            size: compact
+                ? (star.size * .26).clamp(8, 13).toDouble()
+                : star.size,
+            color: compact ? Colors.white30 : Colors.white24,
           ),
         ),
     ],
@@ -224,43 +326,7 @@ class _DashboardHeaderActions extends StatelessWidget {
     runSpacing: FutureMintTokens.space2,
     crossAxisAlignment: WrapCrossAlignment.center,
     children: [
-      SizedBox(
-        width: 172,
-        height: 142,
-        child: Stack(
-          children: [
-            Positioned(
-              left: 0,
-              top: 0,
-              child: Image.asset(
-                'assets/images/blob_purple.png',
-                width: 150,
-                height: 150,
-                fit: BoxFit.contain,
-                excludeFromSemantics: true,
-              ),
-            ),
-            Positioned(
-              left: 4,
-              top: 18,
-              child: Icon(
-                Icons.auto_awesome_rounded,
-                size: 30,
-                color: const Color(0xFF7CFF4D).withValues(alpha: .9),
-              ),
-            ),
-            Positioned(
-              right: 4,
-              bottom: 8,
-              child: Icon(
-                Icons.auto_awesome_rounded,
-                size: 24,
-                color: FutureMintTokens.neonPurple.withValues(alpha: .85),
-              ),
-            ),
-          ],
-        ),
-      ),
+      const _BlobArtwork(size: 156),
       FilledButton.icon(
         onPressed: onCapture,
         icon: const Icon(Icons.add_rounded),
@@ -290,7 +356,24 @@ class _NoticeStrip extends StatelessWidget {
             children: [
               Badge(
                 label: Text('${notices.length}'),
-                child: const Icon(Icons.notifications_active_outlined),
+                offset: const Offset(2, -2),
+                child: DecoratedBox(
+                  decoration: BoxDecoration(
+                    color: FutureMintTokens.sun.withValues(
+                      alpha: FutureMintTokens.isDark(context) ? .18 : .45,
+                    ),
+                    shape: BoxShape.circle,
+                  ),
+                  child: SizedBox.square(
+                    dimension: 44,
+                    child: Icon(
+                      Icons.notifications_active_outlined,
+                      color: FutureMintTokens.isDark(context)
+                          ? FutureMintTokens.sun
+                          : FutureMintTokens.ink,
+                    ),
+                  ),
+                ),
               ),
               const SizedBox(width: FutureMintTokens.space3),
               Expanded(
@@ -336,17 +419,19 @@ class _SectionCard extends StatelessWidget {
     child: Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
-        Wrap(
-          alignment: WrapAlignment.spaceBetween,
-          crossAxisAlignment: WrapCrossAlignment.center,
-          spacing: 12,
-          runSpacing: 4,
+        Row(
+          crossAxisAlignment: CrossAxisAlignment.center,
           children: [
-            Text(title, style: Theme.of(context).textTheme.titleLarge),
-            action ?? const SizedBox.shrink(),
+            Expanded(
+              child: Text(title, style: Theme.of(context).textTheme.titleLarge),
+            ),
+            if (action != null) ...[
+              const SizedBox(width: FutureMintTokens.space3),
+              action!,
+            ],
           ],
         ),
-        const SizedBox(height: FutureMintTokens.space4),
+        const SizedBox(height: FutureMintTokens.space3),
         child,
       ],
     ),
@@ -362,9 +447,8 @@ class _CoachInsight extends StatelessWidget {
     color: _softSurface(context, FutureMintTokens.lavenderSoft),
     child: LayoutBuilder(
       builder: (context, constraints) {
-        final compact =
-            constraints.maxWidth < 520 ||
-            MediaQuery.textScalerOf(context).scale(1) >= 1.3;
+        final largeText = MediaQuery.textScalerOf(context).scale(1) >= 1.3;
+        final compact = constraints.maxWidth < 520 || largeText;
         final copy = Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
@@ -395,11 +479,22 @@ class _CoachInsight extends StatelessWidget {
         );
         final mascot = Image.asset(
           'assets/images/mascot_orange.png',
-          width: compact ? 112 : 136,
-          height: compact ? 112 : 136,
+          width: compact ? 96 : 136,
+          height: compact ? 96 : 136,
           fit: BoxFit.contain,
           excludeFromSemantics: true,
         );
+        if (compact && !largeText) {
+          // Phone: the coach mascot sits in its own column next to the tip.
+          return Row(
+            crossAxisAlignment: CrossAxisAlignment.center,
+            children: [
+              Expanded(child: copy),
+              const SizedBox(width: FutureMintTokens.space2),
+              mascot,
+            ],
+          );
+        }
         if (compact) {
           return Column(
             crossAxisAlignment: CrossAxisAlignment.stretch,
@@ -434,8 +529,8 @@ class _GoalCard extends StatelessWidget {
     color: _softSurface(context, FutureMintTokens.mintSoft),
     action: Image.asset(
       'assets/images/bars_purple.png',
-      width: 84,
-      height: 84,
+      width: _phone(context) ? 64 : 84,
+      height: _phone(context) ? 64 : 84,
       fit: BoxFit.contain,
       excludeFromSemantics: true,
     ),
@@ -484,8 +579,8 @@ class _SubscriptionOpportunity extends StatelessWidget {
       color: _softSurface(context, FutureMintTokens.skySoft),
       action: Image.asset(
         'assets/images/clipboard_teal.png',
-        width: 76,
-        height: 76,
+        width: _phone(context) ? 60 : 76,
+        height: _phone(context) ? 60 : 76,
         fit: BoxFit.contain,
         excludeFromSemantics: true,
       ),
@@ -547,6 +642,7 @@ class _RecentEventTile extends StatelessWidget {
     final color = categoryColor(event.category);
     return ListTile(
       contentPadding: EdgeInsets.zero,
+      minVerticalPadding: FutureMintTokens.space2,
       leading: CircleAvatar(
         backgroundColor: color.withValues(alpha: .18),
         child: Icon(categoryIcon(event.category), color: color, size: 20),
@@ -557,8 +653,9 @@ class _RecentEventTile extends StatelessWidget {
         income ? event.effectiveAmountMinor : -event.effectiveAmountMinor,
         style: TextStyle(
           fontWeight: FontWeight.w800,
+          fontSize: 16,
           color: income
-              ? Theme.of(context).colorScheme.primary
+              ? FutureMintTokens.brandInk(context)
               : Theme.of(context).colorScheme.onSurface,
         ),
       ),
@@ -581,6 +678,9 @@ class _IconBadge extends StatelessWidget {
     ),
   );
 }
+
+bool _phone(BuildContext context) =>
+    MediaQuery.sizeOf(context).width < FutureMintTokens.railBreakpoint;
 
 Color _softSurface(BuildContext context, Color light) =>
     Theme.of(context).brightness == Brightness.dark

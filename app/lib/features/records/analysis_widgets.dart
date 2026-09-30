@@ -33,11 +33,17 @@ class CashflowAnalysis extends StatelessWidget {
               runSpacing: FutureMintTokens.space2,
               children: [
                 Text('近六個月收支', style: Theme.of(context).textTheme.titleLarge),
-                const Wrap(
+                Wrap(
                   spacing: FutureMintTokens.space3,
                   children: [
-                    _Legend(color: FutureMintTokens.teal, label: '收入'),
-                    _Legend(color: FutureMintTokens.coral, label: '支出＋訂閱'),
+                    _Legend(
+                      color: FutureMintTokens.brandInk(context),
+                      label: '收入',
+                    ),
+                    const _Legend(
+                      color: FutureMintTokens.coral,
+                      label: '支出＋訂閱',
+                    ),
                   ],
                 ),
               ],
@@ -70,7 +76,7 @@ class CashflowAnalysis extends StatelessWidget {
                   insights.needMinor +
                   insights.wantMinor +
                   insights.uncertainMinor,
-              color: FutureMintTokens.teal,
+              color: FutureMintTokens.brandInk(context),
             ),
             _IntentBar(
               label: '想要',
@@ -167,7 +173,7 @@ class _CashflowChart extends StatelessWidget {
                 barRods: [
                   BarChartRodData(
                     toY: points[index].incomeMinor.toDouble(),
-                    color: FutureMintTokens.teal,
+                    color: FutureMintTokens.brandInk(context),
                     width: 10,
                     borderRadius: const BorderRadius.vertical(
                       top: Radius.circular(3),
@@ -215,7 +221,12 @@ class _IntentBar extends StatelessWidget {
       children: [
         Row(
           children: [
-            Expanded(child: Text(label)),
+            Expanded(
+              child: Text(
+                label,
+                style: const TextStyle(fontWeight: FontWeight.w600),
+              ),
+            ),
             MoneyText(
               amount,
               style: const TextStyle(fontWeight: FontWeight.w700),
@@ -247,7 +258,14 @@ class _Legend extends StatelessWidget {
   Widget build(BuildContext context) => Row(
     mainAxisSize: MainAxisSize.min,
     children: [
-      Container(width: 10, height: 10, color: color),
+      Container(
+        width: 10,
+        height: 10,
+        decoration: BoxDecoration(
+          color: color,
+          borderRadius: BorderRadius.circular(3),
+        ),
+      ),
       const SizedBox(width: 6),
       Text(label, style: Theme.of(context).textTheme.bodySmall),
     ],

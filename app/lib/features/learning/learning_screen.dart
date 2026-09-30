@@ -108,6 +108,14 @@ class _LearningScreenState extends State<LearningScreen> {
                             ],
                           )
                         : FilledButton.tonalIcon(
+                            style: FilledButton.styleFrom(
+                              backgroundColor: Theme.of(
+                                context,
+                              ).colorScheme.primaryContainer,
+                              foregroundColor: Theme.of(
+                                context,
+                              ).colorScheme.onPrimaryContainer,
+                            ),
                             onPressed: controller.loadLesson,
                             icon: const Icon(Icons.refresh_rounded),
                             label: const Text('重新載入微課'),
@@ -210,7 +218,7 @@ class _LearningCoachCard extends StatelessWidget {
             labelText: '自由輸入你的問題',
             hintText: '例如：我常常月底不夠用，該先調整哪一類？',
             helperText: '請不要輸入姓名、帳號、卡號或其他可識別資料。',
-            border: OutlineInputBorder(),
+            helperMaxLines: 2,
           ),
         ),
         const SizedBox(height: FutureMintTokens.space2),
@@ -295,11 +303,14 @@ class _LearningPlanCard extends StatelessWidget {
         MediaQuery.sizeOf(context).width < 620 ||
         MediaQuery.textScalerOf(context).scale(1) >= 1.3;
     final sourceChip = Chip(
+      visualDensity: VisualDensity.compact,
       avatar: const Icon(Icons.auto_awesome_outlined, size: 16),
       label: Text(plan.source == CaptureSource.liangjieAi ? 'AI 選題' : '離線規劃'),
     );
 
     if (compact) {
+      // Phone: title and source share a row with the peeking mascot, so the
+      // character rests on the card edge without leaving an empty band.
       return SoftCard(
         key: const Key('learning-plan-card'),
         padding: EdgeInsets.zero,
@@ -310,21 +321,44 @@ class _LearningPlanCard extends StatelessWidget {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
-            Padding(
-              padding: EdgeInsets.only(right: cardPadding.right),
-              child: const Align(
-                alignment: Alignment.topRight,
-                child: _LearningPlanMascot(),
-              ),
+            Row(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Expanded(
+                  child: Padding(
+                    padding: EdgeInsets.fromLTRB(
+                      cardPadding.left,
+                      cardPadding.top,
+                      FutureMintTokens.space2,
+                      0,
+                    ),
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(
+                          plan.title,
+                          style: Theme.of(context).textTheme.titleLarge,
+                        ),
+                        const SizedBox(height: FutureMintTokens.space2),
+                        sourceChip,
+                      ],
+                    ),
+                  ),
+                ),
+                Padding(
+                  padding: EdgeInsets.only(right: cardPadding.right),
+                  child: const _LearningPlanMascot(compact: true),
+                ),
+              ],
             ),
             Padding(
               padding: EdgeInsets.fromLTRB(
                 cardPadding.left,
-                FutureMintTokens.space2,
+                FutureMintTokens.space3,
                 cardPadding.right,
                 cardPadding.bottom,
               ),
-              child: _content(context, sourceChip: sourceChip),
+              child: _content(context, showTitle: false),
             ),
           ],
         ),
@@ -366,15 +400,13 @@ class _LearningPlanCard extends StatelessWidget {
     );
   }
 
-  Widget _content(BuildContext context, {Widget? sourceChip}) => Column(
+  Widget _content(BuildContext context, {bool showTitle = true}) => Column(
     crossAxisAlignment: CrossAxisAlignment.stretch,
     children: [
-      Text(plan.title, style: Theme.of(context).textTheme.titleLarge),
-      if (sourceChip != null) ...[
+      if (showTitle) ...[
+        Text(plan.title, style: Theme.of(context).textTheme.titleLarge),
         const SizedBox(height: FutureMintTokens.space2),
-        sourceChip,
       ],
-      const SizedBox(height: FutureMintTokens.space2),
       Text(plan.summary),
       const SizedBox(height: FutureMintTokens.space4),
       for (var index = 0; index < plan.modules.length; index++)
@@ -388,11 +420,18 @@ class _LearningPlanCard extends StatelessWidget {
                 radius: 16,
                 backgroundColor: plan.modules[index].status == 'current'
                     ? FutureMintTokens.mint
+                    : FutureMintTokens.isDark(context)
+                    ? FutureMintTokens.darkSurface
                     : FutureMintTokens.paper,
                 foregroundColor: plan.modules[index].status == 'current'
                     ? FutureMintTokens.paper
+                    : FutureMintTokens.isDark(context)
+                    ? FutureMintTokens.lavender
                     : FutureMintTokens.ink,
-                child: Text('${index + 1}'),
+                child: Text(
+                  '${index + 1}',
+                  style: const TextStyle(fontWeight: FontWeight.w800),
+                ),
               ),
               const SizedBox(width: FutureMintTokens.space3),
               Expanded(
@@ -421,7 +460,9 @@ class _LearningPlanCard extends StatelessWidget {
 }
 
 class _LearningPlanMascot extends StatelessWidget {
-  const _LearningPlanMascot();
+  const _LearningPlanMascot({this.compact = false});
+
+  final bool compact;
 
   static const imageSize = 132.0;
   static const height = 116.0;
@@ -429,8 +470,8 @@ class _LearningPlanMascot extends StatelessWidget {
   @override
   Widget build(BuildContext context) => SizedBox(
     key: const Key('learning-plan-mascot'),
-    width: imageSize,
-    height: height,
+    width: compact ? 104 : imageSize,
+    height: compact ? 92 : height,
     child: ClipRect(
       child: FittedBox(
         // The PNG has a transparent top margin. This crops only that canvas
@@ -439,8 +480,8 @@ class _LearningPlanMascot extends StatelessWidget {
         fit: BoxFit.cover,
         child: Image.asset(
           'assets/images/mascot_peek_purple.png',
-          width: imageSize,
-          height: imageSize,
+          width: compact ? 104 : imageSize,
+          height: compact ? 104 : imageSize,
           fit: BoxFit.contain,
           excludeFromSemantics: true,
         ),
@@ -486,6 +527,7 @@ class _LessonContent extends StatelessWidget {
                       ),
                       const SizedBox(height: FutureMintTokens.space3),
                       Chip(
+                        visualDensity: VisualDensity.compact,
                         avatar: const Icon(Icons.school_outlined, size: 16),
                         label: Text(
                           lesson.source == CaptureSource.liangjieAi
@@ -495,13 +537,26 @@ class _LessonContent extends StatelessWidget {
                       ),
                     ],
                   );
+                  final largeText =
+                      MediaQuery.textScalerOf(context).scale(1) >= 1.3;
                   final artwork = Image.asset(
                     'assets/images/mascot_orange.png',
-                    width: showArtwork ? 132 : 112,
-                    height: showArtwork ? 132 : 112,
+                    width: showArtwork ? 132 : (largeText ? 112 : 96),
+                    height: showArtwork ? 132 : (largeText ? 112 : 96),
                     fit: BoxFit.contain,
                     excludeFromSemantics: true,
                   );
+                  if (!showArtwork && !largeText) {
+                    // Phone: the coach keeps its own column beside the title.
+                    return Row(
+                      crossAxisAlignment: CrossAxisAlignment.center,
+                      children: [
+                        Expanded(child: copy),
+                        const SizedBox(width: FutureMintTokens.space2),
+                        artwork,
+                      ],
+                    );
+                  }
                   if (!showArtwork) {
                     return Column(
                       crossAxisAlignment: CrossAxisAlignment.stretch,
@@ -673,16 +728,20 @@ class _LessonSection extends StatelessWidget {
     child: Row(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        Text(
-          number,
-          style: Theme.of(context).textTheme.titleLarge?.copyWith(
-            color: Theme.of(context).brightness == Brightness.dark
-                ? FutureMintTokens.lavender
-                : FutureMintTokens.ink,
-            fontWeight: FontWeight.w700,
+        SizedBox(
+          width: 36,
+          child: Text(
+            number,
+            style: Theme.of(context).textTheme.titleLarge?.copyWith(
+              color: Theme.of(context).brightness == Brightness.dark
+                  ? FutureMintTokens.lavender
+                  : FutureMintTokens.ink,
+              fontWeight: FontWeight.w700,
+              fontFeatures: const [FontFeature.tabularFigures()],
+            ),
           ),
         ),
-        const SizedBox(width: FutureMintTokens.space4),
+        const SizedBox(width: FutureMintTokens.space3),
         Expanded(
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,

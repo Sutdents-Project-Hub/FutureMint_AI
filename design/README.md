@@ -30,7 +30,7 @@
 - 200% text scale、reduced motion、loading／empty／error／網路不可用／disabled 狀態可用。
 - API 失敗不得靜默切換成合成資料；訪客模式必須由使用者明確選擇，並固定標示資料不會儲存。
 
-目前沒有自動化 design build；實測證據記錄於 [docs/testing-and-evidence.md](../docs/testing-and-evidence.md)。
+手機寬度的亮／暗主題與 200% 字級溢位由 `app/test/features/mobile_layout_test.dart` 自動檢查；目前沒有自動化 design build；實測證據記錄於 [docs/testing-and-evidence.md](../docs/testing-and-evidence.md)。
 
 ## 正式產品流程補充（2026-09）
 

@@ -7,6 +7,7 @@ Future<void> showAppWalkthrough(BuildContext context) =>
     showModalBottomSheet<void>(
       context: context,
       isScrollControlled: true,
+      useSafeArea: true,
       showDragHandle: true,
       builder: (_) => const _WalkthroughSheet(),
     );
@@ -14,6 +15,7 @@ Future<void> showAppWalkthrough(BuildContext context) =>
 Future<void> showSupportBot(BuildContext context) => showModalBottomSheet<void>(
   context: context,
   isScrollControlled: true,
+  useSafeArea: true,
   showDragHandle: true,
   builder: (_) => const _SupportBotSheet(),
 );
@@ -160,8 +162,12 @@ class _Step extends StatelessWidget {
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         CircleAvatar(
-          backgroundColor: FutureMintTokens.mintSoft,
-          foregroundColor: FutureMintTokens.ink,
+          backgroundColor: FutureMintTokens.isDark(context)
+              ? FutureMintTokens.lavender.withValues(alpha: .22)
+              : FutureMintTokens.mintSoft,
+          foregroundColor: FutureMintTokens.isDark(context)
+              ? FutureMintTokens.lavender
+              : FutureMintTokens.ink,
           child: Icon(icon, size: 20),
         ),
         const SizedBox(width: FutureMintTokens.space3),

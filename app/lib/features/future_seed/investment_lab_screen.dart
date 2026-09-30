@@ -68,7 +68,7 @@ class _InvestmentLabScreenState extends State<InvestmentLabScreen> {
       key: const Key('investment-lab-scroll'),
       padding: EdgeInsets.fromLTRB(
         gutter,
-        FutureMintTokens.space5,
+        FutureMintTokens.space4,
         gutter,
         FutureMintTokens.space7,
       ),
@@ -77,16 +77,21 @@ class _InvestmentLabScreenState extends State<InvestmentLabScreen> {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
-            PageHeading(
-              kicker: 'FutureSeed 投資練習場',
-              title: '用虛擬資金，練習真實的投資決策',
-              description: '使用盤後行情練習買賣、配置與面對波動；不連券商、不使用真錢，也不提供選股建議。',
-              accent: FutureMintTokens.teal,
-              trailing: TextButton.icon(
+            // Back navigation leads the page, matching the subscription coach.
+            Align(
+              alignment: Alignment.centerLeft,
+              child: TextButton.icon(
                 onPressed: () => context.go('/future-seed'),
                 icon: const Icon(Icons.arrow_back_rounded),
                 label: const Text('回到長期比較'),
               ),
+            ),
+            const SizedBox(height: FutureMintTokens.space2),
+            const PageHeading(
+              kicker: 'FutureSeed 投資練習場',
+              title: '用虛擬資金，練習真實的投資決策',
+              description: '使用盤後行情練習買賣、配置與面對波動；不連券商、不使用真錢，也不提供選股建議。',
+              accent: FutureMintTokens.teal,
             ),
             const SizedBox(height: FutureMintTokens.space5),
             if (lab == null)
@@ -246,8 +251,8 @@ class _PortfolioHero extends StatelessWidget {
             '(${positive ? '+' : ''}${lab.returnPercent.toStringAsFixed(2)}%)',
             style: Theme.of(context).textTheme.titleMedium?.copyWith(
               color: positive
-                  ? FutureMintTokens.positive
-                  : FutureMintTokens.danger,
+                  ? FutureMintTokens.positiveInk(context)
+                  : FutureMintTokens.dangerInk(context),
               fontWeight: FontWeight.w700,
             ),
           ),
@@ -287,7 +292,9 @@ class _HeroMetric extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) => SizedBox(
-    width: 150,
+    width: MediaQuery.sizeOf(context).width < FutureMintTokens.railBreakpoint
+        ? 136
+        : 150,
     child: Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
@@ -315,6 +322,13 @@ class _MarketSourceStrip extends StatelessWidget {
     final asOf = market.quotes.isEmpty
         ? '無資料日'
         : market.quotes.first.asOf.toIso8601String().split('T').first;
+    final dark = FutureMintTokens.isDark(context);
+    final accent = market.isFallback
+        ? FutureMintTokens.sun
+        : FutureMintTokens.sky;
+    final foreground = dark
+        ? Theme.of(context).colorScheme.onSurface
+        : FutureMintTokens.ink;
     return Semantics(
       label: '${market.sourceLabel}，資料日 $asOf',
       child: Container(
@@ -323,33 +337,46 @@ class _MarketSourceStrip extends StatelessWidget {
           vertical: FutureMintTokens.space3,
         ),
         decoration: BoxDecoration(
-          color: market.isFallback
+          color: dark
+              ? accent.withValues(alpha: .12)
+              : market.isFallback
               ? FutureMintTokens.sunSoft
               : FutureMintTokens.skySoft,
           borderRadius: BorderRadius.circular(FutureMintTokens.radiusSmall),
+          border: dark ? Border.all(color: accent.withValues(alpha: .4)) : null,
         ),
-        child: Wrap(
-          spacing: FutureMintTokens.space2,
-          runSpacing: FutureMintTokens.space2,
-          crossAxisAlignment: WrapCrossAlignment.center,
+        child: Row(
+          crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            Icon(
-              market.isFallback
-                  ? Icons.info_outline_rounded
-                  : Icons.schedule_rounded,
-              size: 20,
-              color: FutureMintTokens.ink,
-            ),
-            Text(
-              '${market.sourceLabel} · 資料日 $asOf',
-              style: const TextStyle(
-                color: FutureMintTokens.ink,
-                fontWeight: FontWeight.w700,
+            Padding(
+              padding: const EdgeInsets.only(top: 2),
+              child: Icon(
+                market.isFallback
+                    ? Icons.info_outline_rounded
+                    : Icons.schedule_rounded,
+                size: 20,
+                color: dark ? accent : FutureMintTokens.ink,
               ),
             ),
-            Text(
-              market.isFallback ? '目前為備援快照' : '盤後資料，非即時',
-              style: const TextStyle(color: FutureMintTokens.ink),
+            const SizedBox(width: FutureMintTokens.space3),
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    '${market.sourceLabel} · 資料日 $asOf',
+                    style: TextStyle(
+                      color: foreground,
+                      fontWeight: FontWeight.w700,
+                    ),
+                  ),
+                  const SizedBox(height: FutureMintTokens.space1),
+                  Text(
+                    market.isFallback ? '目前為備援快照' : '盤後資料，非即時',
+                    style: TextStyle(color: foreground),
+                  ),
+                ],
+              ),
             ),
           ],
         ),
@@ -427,8 +454,8 @@ class _QuoteRow extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final changeColor = quote.change >= 0
-        ? FutureMintTokens.positive
-        : FutureMintTokens.danger;
+        ? FutureMintTokens.positiveInk(context)
+        : FutureMintTokens.dangerInk(context);
     return Semantics(
       button: onTap != null,
       selected: selected,
@@ -584,7 +611,12 @@ class _OrderPanel extends StatelessWidget {
               runSpacing: FutureMintTokens.space2,
               children: [
                 ChoiceChip(
-                  avatar: const Icon(Icons.add_chart_rounded),
+                  showCheckmark: false,
+                  avatar: Icon(
+                    side == InvestmentOrderSide.buy
+                        ? Icons.check_circle_rounded
+                        : Icons.add_chart_rounded,
+                  ),
                   label: const Text('買入'),
                   selected: side == InvestmentOrderSide.buy,
                   onSelected: busy
@@ -592,7 +624,12 @@ class _OrderPanel extends StatelessWidget {
                       : (_) => onSideChanged(InvestmentOrderSide.buy),
                 ),
                 ChoiceChip(
-                  avatar: const Icon(Icons.sell_outlined),
+                  showCheckmark: false,
+                  avatar: Icon(
+                    side == InvestmentOrderSide.sell
+                        ? Icons.check_circle_rounded
+                        : Icons.sell_outlined,
+                  ),
                   label: const Text('賣出'),
                   selected: side == InvestmentOrderSide.sell,
                   onSelected: busy
@@ -776,8 +813,8 @@ class _HoldingRow extends StatelessWidget {
               '${positive ? '+' : ''}${formatTwd(holding.gainLossMinor)}',
               style: TextStyle(
                 color: positive
-                    ? FutureMintTokens.positive
-                    : FutureMintTokens.danger,
+                    ? FutureMintTokens.positiveInk(context)
+                    : FutureMintTokens.dangerInk(context),
                 fontWeight: FontWeight.w700,
               ),
             ),
@@ -836,6 +873,12 @@ class _PracticeEventCard extends StatelessWidget {
               ],
             );
             final button = FilledButton.tonalIcon(
+              style: FilledButton.styleFrom(
+                backgroundColor: Theme.of(context).colorScheme.primaryContainer,
+                foregroundColor: Theme.of(
+                  context,
+                ).colorScheme.onPrimaryContainer,
+              ),
               onPressed: busy ? null : onRoll,
               icon: const Icon(Icons.casino_outlined),
               label: Text(event == null ? '擲骰子' : '再擲一次'),

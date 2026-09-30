@@ -111,6 +111,7 @@ class _FutureSeedScreenState extends State<FutureSeedScreen> {
                       );
                     }
                     return Column(
+                      crossAxisAlignment: CrossAxisAlignment.stretch,
                       children: [
                         controls,
                         const SizedBox(height: FutureMintTokens.space5),
@@ -227,6 +228,30 @@ class _InvestmentLabEntry extends StatelessWidget {
               Align(alignment: Alignment.bottomRight, child: action),
             ],
           ),
+        );
+      }
+      if (compact && MediaQuery.textScalerOf(context).scale(1) < 1.3) {
+        // Phone: the mascot waves from its own column beside the invitation.
+        return Column(
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: [
+            Row(
+              crossAxisAlignment: CrossAxisAlignment.center,
+              children: [
+                Expanded(child: copy),
+                const SizedBox(width: FutureMintTokens.space2),
+                Image.asset(
+                  'assets/images/mascot_future_purple.png',
+                  width: 112,
+                  height: 112,
+                  fit: BoxFit.contain,
+                  excludeFromSemantics: true,
+                ),
+              ],
+            ),
+            const SizedBox(height: FutureMintTokens.space4),
+            action,
+          ],
         );
       }
       if (compact) {
@@ -419,7 +444,7 @@ class _SliderField extends StatelessWidget {
   double _snap(double nextValue) => (nextValue / step).round() * step;
   @override
   Widget build(BuildContext context) => Padding(
-    padding: const EdgeInsets.only(bottom: FutureMintTokens.space4),
+    padding: const EdgeInsets.only(bottom: FutureMintTokens.space2),
     child: Column(
       children: [
         Row(
@@ -442,6 +467,9 @@ class _SliderField extends StatelessWidget {
             ).colorScheme.primary.withValues(alpha: 0.32),
           ),
           child: Slider(
+            // Align the track with the label row; 22 + 22 + track keeps the
+            // 48dp touch height.
+            padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 22),
             value: value,
             min: min,
             max: max,
@@ -526,8 +554,25 @@ class _SimulationResults extends StatelessWidget {
                       spacing: FutureMintTokens.space2,
                       runSpacing: FutureMintTokens.space2,
                       children: [
-                        for (final scenario in simulation!.scenarios)
+                        for (final (index, scenario)
+                            in simulation!.scenarios.indexed)
+                          // The dot doubles as the chart legend for each line.
                           ChoiceChip(
+                            avatar: Icon(
+                              scenario.id == selected.id
+                                  ? Icons.check_circle_rounded
+                                  : Icons.circle,
+                              size: scenario.id == selected.id ? 16 : 12,
+                              color: InvestmentScenarioChart.colorsFor(
+                                context,
+                              )[index % 3],
+                            ),
+                            showCheckmark: false,
+                            visualDensity: VisualDensity.compact,
+                            labelPadding: const EdgeInsets.only(
+                              left: FutureMintTokens.space1,
+                              right: FutureMintTokens.space2,
+                            ),
                             label: Text(scenario.title),
                             selected: scenario.id == selected.id,
                             onSelected: (_) => onSelected(scenario.id),
@@ -592,6 +637,7 @@ class _ScenarioDetails extends StatelessWidget {
                 style: Theme.of(context).textTheme.titleLarge,
               ),
               Chip(
+                visualDensity: VisualDensity.compact,
                 label: Text(
                   '${scenario.assumedAnnualRatePercent}% · ${scenario.riskLabel}',
                 ),
@@ -602,8 +648,8 @@ class _ScenarioDetails extends StatelessWidget {
           Text(scenario.description),
           const SizedBox(height: FutureMintTokens.space4),
           Wrap(
-            spacing: FutureMintTokens.space6,
-            runSpacing: FutureMintTokens.space3,
+            spacing: FutureMintTokens.space5,
+            runSpacing: FutureMintTokens.space4,
             children: [
               _Metric(label: '投入本金', value: formatTwd(scenario.principalMinor)),
               _Metric(label: '假設成長', value: formatTwd(scenario.growthMinor)),
@@ -642,13 +688,27 @@ class _Metric extends StatelessWidget {
   final String label;
   final String value;
   @override
-  Widget build(BuildContext context) => Column(
-    crossAxisAlignment: CrossAxisAlignment.start,
-    children: [
-      Text(label, style: Theme.of(context).textTheme.bodySmall),
-      const SizedBox(height: FutureMintTokens.space1),
-      Text(value, style: Theme.of(context).textTheme.titleLarge),
-    ],
+  Widget build(BuildContext context) => ConstrainedBox(
+    constraints: const BoxConstraints(minWidth: 132),
+    child: Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Text(
+          label,
+          style: Theme.of(context).textTheme.bodySmall?.copyWith(
+            color: Theme.of(context).colorScheme.onSurfaceVariant,
+          ),
+        ),
+        const SizedBox(height: FutureMintTokens.space1),
+        Text(
+          value,
+          style: Theme.of(context).textTheme.titleLarge?.copyWith(
+            fontWeight: FontWeight.w800,
+            fontFeatures: const [FontFeature.tabularFigures()],
+          ),
+        ),
+      ],
+    ),
   );
 }
 
@@ -770,7 +830,7 @@ class _AiReadingCompanionState extends State<_AiReadingCompanion> {
             labelText: '自由輸入問題',
             hintText: '例如：如果中間下跌，我應該觀察什麼？',
             helperText: '內容只用於教育解釋，不會產生買賣指令。',
-            border: OutlineInputBorder(),
+            helperMaxLines: 2,
           ),
         ),
         const SizedBox(height: FutureMintTokens.space2),

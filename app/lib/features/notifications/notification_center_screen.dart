@@ -70,10 +70,17 @@ class _NoticeCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final color = switch (notice.level) {
-      InsightLevel.attention => FutureMintTokens.sunSoft,
-      InsightLevel.positive => FutureMintTokens.mintSoft,
-      InsightLevel.info => FutureMintTokens.skySoft,
+    final dark = FutureMintTokens.isDark(context);
+    final (surface, accent) = switch (notice.level) {
+      InsightLevel.attention => (
+        FutureMintTokens.sunSoft,
+        FutureMintTokens.sun,
+      ),
+      InsightLevel.positive => (
+        FutureMintTokens.mintSoft,
+        FutureMintTokens.lavender,
+      ),
+      InsightLevel.info => (FutureMintTokens.skySoft, FutureMintTokens.sky),
     };
     final icon = switch (notice.kind) {
       InsightKind.subscription => Icons.autorenew_rounded,
@@ -81,47 +88,89 @@ class _NoticeCard extends StatelessWidget {
       InsightKind.saving => Icons.trending_up_rounded,
       InsightKind.learning => Icons.school_outlined,
     };
-    return SoftCard(
-      borderWidth: 1,
-      color: Theme.of(context).brightness == Brightness.dark
-          ? FutureMintTokens.darkSurfaceRaised
-          : color,
-      child: Row(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          CircleAvatar(
-            backgroundColor: Theme.of(context).colorScheme.surface,
-            foregroundColor: FutureMintTokens.ink,
-            child: Icon(icon),
+    final theme = Theme.of(context);
+    return Semantics(
+      button: true,
+      child: Material(
+        color: dark ? FutureMintTokens.darkSurfaceRaised : surface,
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.circular(FutureMintTokens.radiusMedium),
+          side: BorderSide(
+            color: dark
+                ? accent.withValues(alpha: .28)
+                : theme.colorScheme.outlineVariant,
           ),
-          const SizedBox(width: FutureMintTokens.space3),
-          Expanded(
-            child: Column(
+        ),
+        clipBehavior: Clip.antiAlias,
+        child: InkWell(
+          onTap: () => context.go(notice.actionPath),
+          child: Padding(
+            padding: FutureMintTokens.cardPadding(context),
+            child: Row(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                Text(
-                  notice.title,
-                  style: const TextStyle(fontWeight: FontWeight.w700),
-                ),
-                const SizedBox(height: FutureMintTokens.space1),
-                Text(notice.message),
-                if (notice.amountMinor != null) ...[
-                  const SizedBox(height: FutureMintTokens.space2),
-                  MoneyText(
-                    notice.amountMinor!,
-                    style: Theme.of(context).textTheme.titleMedium,
+                // The icon keeps its own tinted disc in both themes so it never
+                // disappears into the card surface.
+                DecoratedBox(
+                  decoration: BoxDecoration(
+                    color: dark
+                        ? accent.withValues(alpha: .2)
+                        : theme.colorScheme.surface,
+                    shape: BoxShape.circle,
                   ),
-                ],
-                const SizedBox(height: FutureMintTokens.space2),
-                TextButton.icon(
-                  onPressed: () => context.go(notice.actionPath),
-                  icon: const Icon(Icons.arrow_forward_rounded),
-                  label: const Text('前往查看'),
+                  child: SizedBox.square(
+                    dimension: 44,
+                    child: Icon(
+                      icon,
+                      color: dark ? accent : FutureMintTokens.ink,
+                    ),
+                  ),
+                ),
+                const SizedBox(width: FutureMintTokens.space3),
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        notice.title,
+                        style: theme.textTheme.titleMedium?.copyWith(
+                          fontWeight: FontWeight.w700,
+                        ),
+                      ),
+                      const SizedBox(height: FutureMintTokens.space1),
+                      Text(notice.message),
+                      const SizedBox(height: FutureMintTokens.space3),
+                      Row(
+                        children: [
+                          if (notice.amountMinor != null)
+                            MoneyText(
+                              notice.amountMinor!,
+                              style: theme.textTheme.titleMedium?.copyWith(
+                                fontWeight: FontWeight.w800,
+                              ),
+                            ),
+                          const Spacer(),
+                          Text(
+                            '前往查看',
+                            style: theme.textTheme.labelLarge?.copyWith(
+                              color: theme.colorScheme.primary,
+                            ),
+                          ),
+                          const SizedBox(width: FutureMintTokens.space1),
+                          Icon(
+                            Icons.arrow_forward_rounded,
+                            size: 18,
+                            color: theme.colorScheme.primary,
+                          ),
+                        ],
+                      ),
+                    ],
+                  ),
                 ),
               ],
             ),
           ),
-        ],
+        ),
       ),
     );
   }

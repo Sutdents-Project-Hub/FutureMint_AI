@@ -70,4 +70,26 @@ abstract final class FutureMintTokens {
   static EdgeInsets cardPadding(BuildContext context) => EdgeInsets.all(
     MediaQuery.sizeOf(context).width < railBreakpoint ? space4 : space5,
   );
+
+  // Light-only ink colors fall below 4.5:1 on the dark canvas. These helpers
+  // keep the same semantic meaning while switching to readable dark variants.
+  static const positiveOnDark = Color(0xFF6FE3A5);
+  static const dangerOnDark = Color(0xFFFF9B8F);
+
+  static bool isDark(BuildContext context) =>
+      Theme.of(context).brightness == Brightness.dark;
+
+  /// Brand ink for labels, income values and first chart series.
+  static Color brandInk(BuildContext context) =>
+      isDark(context) ? const Color(0xFFB8AEFF) : teal;
+
+  static Color positiveInk(BuildContext context) =>
+      isDark(context) ? positiveOnDark : positive;
+
+  static Color dangerInk(BuildContext context) =>
+      isDark(context) ? dangerOnDark : danger;
+
+  /// Lightens a light-surface accent (kicker, label) for the dark canvas.
+  static Color accentInk(BuildContext context, Color accent) =>
+      isDark(context) ? Color.lerp(accent, Colors.white, .48)! : accent;
 }
