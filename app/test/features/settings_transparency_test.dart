@@ -110,7 +110,13 @@ void main() {
     await tester.pumpAndSettle();
     expect(find.byKey(const Key('ai-consent-disclosure')), findsOneWidget);
     expect(find.text('第三方服務：量界智算。'), findsOneWidget);
-    expect(find.textContaining('上游模型'), findsOneWidget);
+    expect(find.text('合成政策測試資料'), findsOneWidget);
+    expect(find.textContaining('test recipient'), findsOneWidget);
+    expect(
+      find.textContaining('請求模型：synthetic-requested-model'),
+      findsOneWidget,
+    );
+    expect(find.textContaining('模型 ID 不代表已驗證上游模型權重'), findsOneWidget);
     expect(find.textContaining('請勿輸入帳號、聯絡方式'), findsOneWidget);
     expect(find.text('同意並啟用'), findsOneWidget);
     expect(find.text('暫不啟用'), findsOneWidget);

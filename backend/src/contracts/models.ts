@@ -48,6 +48,7 @@ export interface FamilyChildSummary {
   incomeMinor: number;
   expenseMinor: number;
   subscriptionMinor: number;
+  monthlyCommitmentMinor?: number;
   availableMinor: number;
   goalProgress: number;
   summary: string;
@@ -85,13 +86,52 @@ export interface MoneyEvent {
   category: MoneyCategory;
   merchant?: string;
   occurredAt: string;
+  subscriptionId?: string;
   recurrence?: Recurrence;
   split?: SplitDetails;
   spendingIntent?: SpendingIntent;
   intentReason?: string;
   idempotencyKey?: string;
+  source?: "manual" | "liangjie-ai" | "openai-ai" | "deterministic-demo";
   createdAt: string;
   updatedAt: string;
+}
+
+export interface Subscription {
+  id: string;
+  userId: string;
+  name: string;
+  amountMinor: number;
+  currency: "TWD";
+  billingCycle: BillingCycle;
+  anchorDate: string;
+  originalBillingDay: number;
+  originalBillingMonth: number;
+  nextBillingDate: string;
+  active: boolean;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface SubscriptionInput {
+  name: string;
+  amountMinor: number;
+  currency: "TWD";
+  billingCycle: BillingCycle;
+  anchorDate: string;
+}
+
+export interface MoneyEventPage {
+  items: MoneyEvent[];
+  nextCursor?: string;
+}
+
+export interface MoneyEventPageQuery {
+  type?: MoneyEventType;
+  from?: string;
+  to?: string;
+  limit?: number;
+  cursor?: string;
 }
 
 export interface UserProfile {
@@ -160,6 +200,7 @@ export interface DashboardSummary {
   incomeMinor: number;
   expenseMinor: number;
   subscriptionMinor: number;
+  monthlyCommitmentMinor?: number;
   availableMinor: number;
   goalRemainingMinor: number;
   goalProgress: number;
@@ -243,10 +284,16 @@ export interface CaptureDraft {
   confidence: number;
   missingFields: string[];
   needsConfirmation: true;
-  source: "liangjie-ai" | "deterministic-demo";
+  source: "liangjie-ai" | "openai-ai" | "deterministic-demo" | "manual";
+  provider?: string;
+  model?: string;
+  policyVersion?: string;
 }
 
 export interface CaptureParseResult {
+  provider?: string;
+  model?: string;
+  policyVersion?: string;
   drafts: CaptureDraft[];
   clarificationQuestion?: string;
   rejectedReason?: string;
@@ -263,7 +310,10 @@ export interface Lesson {
   action: string;
   disclaimer: string;
   sourceEventIds: string[];
-  source: "liangjie-ai" | "deterministic-demo";
+  source: "liangjie-ai" | "openai-ai" | "deterministic-demo" | "manual";
+  provider?: string;
+  model?: string;
+  policyVersion?: string;
   selectedOption?: string;
   completedAt?: string;
   createdAt: string;
@@ -294,6 +344,7 @@ export interface FinancialInsights {
   wantMinor: number;
   uncertainMinor: number;
   subscriptionMinor: number;
+  monthlyCommitmentMinor?: number;
   summary: string;
   notices: InsightNotice[];
 }
@@ -310,7 +361,10 @@ export interface LearningPlan {
   title: string;
   summary: string;
   modules: LearningPlanModule[];
-  source: "liangjie-ai" | "deterministic-demo";
+  source: "liangjie-ai" | "openai-ai" | "deterministic-demo" | "manual";
+  provider?: string;
+  model?: string;
+  policyVersion?: string;
   disclaimer: string;
 }
 
@@ -369,7 +423,10 @@ export interface CoachReply {
   answer: string;
   takeaway: string;
   suggestions: string[];
-  source: "liangjie-ai" | "deterministic-demo";
+  source: "liangjie-ai" | "openai-ai" | "deterministic-demo" | "manual";
+  provider?: string;
+  model?: string;
+  policyVersion?: string;
   disclaimer: string;
 }
 
@@ -422,6 +479,7 @@ export interface VirtualInvestmentOrder {
   quoteAsOf: string;
   quoteSource: MarketQuoteSource;
   idempotencyKey: string;
+  executionSequence?: number;
   createdAt: string;
 }
 

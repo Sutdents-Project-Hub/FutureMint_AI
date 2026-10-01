@@ -7,13 +7,15 @@ import '../../design/soft_components.dart';
 import '../../design/tokens.dart';
 import '../../shared/money_text.dart';
 import '../../state/app_controller.dart';
+import 'subscription_editor.dart';
 
 class SubscriptionCoachScreen extends StatelessWidget {
   const SubscriptionCoachScreen({super.key});
 
   @override
   Widget build(BuildContext context) {
-    final comparison = context.watch<AppController>().subscriptionComparison;
+    final controller = context.watch<AppController>();
+    final comparison = controller.subscriptionComparison;
     final gutter = FutureMintTokens.pageGutter(context);
     return SingleChildScrollView(
       padding: EdgeInsets.fromLTRB(
@@ -43,6 +45,111 @@ class SubscriptionCoachScreen extends StatelessWidget {
               accent: FutureMintTokens.skyInk,
             ),
             const SizedBox(height: FutureMintTokens.space5),
+            SoftCard(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.stretch,
+                children: [
+                  Text(
+                    '目前每月訂閱承諾：${controller.subscriptions.monthlyCommitmentMinor} 元',
+                  ),
+                  const Text('實際付款另列於收支紀錄，避免重複扣除。'),
+                  const SizedBox(height: 12),
+                  if (controller.hasPendingSubscription) ...[
+                    const Text('上一筆訂閱尚待確認。重試會使用原資料，避免重複建立。'),
+                    FilledButton(
+                      onPressed: controller.busy
+                          ? null
+                          : controller.retryPendingSubscription,
+                      child: const Text('重試原訂閱'),
+                    ),
+                  ],
+                  OutlinedButton.icon(
+                    onPressed: controller.busy
+                        ? null
+                        : () => showSubscriptionEditor(context, controller),
+                    icon: const Icon(Icons.add),
+                    label: const Text('新增訂閱'),
+                  ),
+                  for (final item in controller.subscriptions.items.where(
+                    (s) => s.active,
+                  ))
+                    ListTile(
+                      contentPadding: EdgeInsets.zero,
+                      title: Text(item.name),
+                      subtitle: Text(
+                        '${item.amountMinor} 元／${item.billingCycle == BillingCycle.yearly ? '年' : '月'}；下次 ${item.nextBillingDate.toIso8601String().split('T').first}',
+                      ),
+                      onTap: controller.busy
+                          ? null
+                          : () => showSubscriptionEditor(
+                              context,
+                              controller,
+                              subscription: item,
+                            ),
+                      trailing: IconButton(
+                        tooltip: '停用訂閱追蹤',
+                        icon: const Icon(Icons.pause_circle_outline),
+                        onPressed: controller.busy
+                            ? null
+                            : () async {
+                                final confirm = await showDialog<bool>(
+                                  context: context,
+                                  builder: (dialog) => AlertDialog(
+                                    title: const Text('停用訂閱追蹤？'),
+                                    content: const Text(
+                                      '既有付款會保留；未來提醒與每月承諾將停止。這不會取消服務供應商的訂閱。',
+                                    ),
+                                    actions: [
+                                      TextButton(
+                                        onPressed: () =>
+                                            Navigator.pop(dialog, false),
+                                        child: const Text('取消'),
+                                      ),
+                                      FilledButton(
+                                        onPressed: () =>
+                                            Navigator.pop(dialog, true),
+                                        child: const Text('停用'),
+                                      ),
+                                    ],
+                                  ),
+                                );
+                                if (confirm == true) {
+                                  await controller.deactivateSubscription(
+                                    item.id,
+                                  );
+                                }
+                              },
+                      ),
+                    ),
+                  if (controller.subscriptions.legacyCandidates.isNotEmpty) ...[
+                    const Divider(),
+                    const Text('舊訂閱付款：如仍持續使用，可明確建立追蹤；歷史付款保留。'),
+                    for (final payment
+                        in controller.subscriptions.legacyCandidates)
+                      ListTile(
+                        contentPadding: EdgeInsets.zero,
+                        title: Text(payment.merchant ?? '未命名訂閱付款'),
+                        subtitle: Text(
+                          '${payment.effectiveAmountMinor} 元（已發生）',
+                        ),
+                        trailing: TextButton(
+                          onPressed: controller.busy
+                              ? null
+                              : () => showSubscriptionEditor(
+                                  context,
+                                  controller,
+                                  legacy: payment,
+                                ),
+                          child: const Text('採用為訂閱'),
+                        ),
+                      ),
+                  ],
+                  if (controller.errorMessage != null)
+                    Text(controller.errorMessage!),
+                ],
+              ),
+            ),
+            const SizedBox(height: FutureMintTokens.space4),
             if (comparison == null)
               const SoftCard(
                 color: FutureMintTokens.skySoft,

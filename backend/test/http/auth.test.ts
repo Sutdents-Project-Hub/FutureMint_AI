@@ -7,7 +7,7 @@ import { InMemoryRepository } from "../../src/adapters/inMemoryRepository";
 import { EducationalMarketDataProvider } from "../../src/adapters/twseMarketDataProvider";
 import { FutureMintService } from "../../src/application/futureMintService";
 import type { AiProvider } from "../../src/application/ports";
-import { AuthService } from "../../src/auth/authService";
+import { AuthService, aiConsentPolicyVersion } from "../../src/auth/authService";
 import { buildServer } from "../../src/http/server";
 import type { Runtime } from "../../src/http/runtime";
 
@@ -188,7 +188,7 @@ describe("authenticated HTTP routes", () => {
       method: "PUT",
       url: "/api/privacy/ai-consent",
       headers,
-      payload: { granted: true },
+      payload: { granted: true, policyVersion: aiConsentPolicyVersion },
     });
     const withdrawn = await app.inject({
       method: "PUT",
@@ -200,7 +200,7 @@ describe("authenticated HTTP routes", () => {
     expect(initial.json()).toMatchObject({
       data: {
         granted: false,
-        policyVersion: "third-party-ai-v1",
+        policyVersion: aiConsentPolicyVersion,
         grantedAt: null,
         withdrawnAt: null,
       },
@@ -289,7 +289,7 @@ describe("authenticated HTTP routes", () => {
         method: "PUT",
         url: "/api/privacy/ai-consent",
         headers,
-        payload: { granted: true },
+        payload: { granted: true, policyVersion: aiConsentPolicyVersion },
       });
       const allowed = await liangjieApp.inject({
         method: "POST",

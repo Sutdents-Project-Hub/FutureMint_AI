@@ -32,7 +32,7 @@ describe("parseRuntimeConfig", () => {
         AI_PROVIDER: "demo",
         DATA_PROVIDER: "postgres",
       }),
-    ).toThrow("AI_PROVIDER=liangjie and DATA_PROVIDER=postgres");
+    ).toThrow("AI_PROVIDER=liangjie or openai and DATA_PROVIDER=postgres");
 
     expect(
       parseRuntimeConfig({
@@ -43,6 +43,9 @@ describe("parseRuntimeConfig", () => {
     ).toMatchObject({ mode: "hosted" });
   });
 
+  it("permits official OpenAI with PostgreSQL in production", () => {
+    expect(parseRuntimeConfig({ NODE_ENV: "production", AI_PROVIDER: "openai", DATA_PROVIDER: "postgres" })).toMatchObject({ mode: "hosted", aiProvider: "openai" });
+  });
   it("rejects missing provider choices instead of guessing", () => {
     expect(() => parseRuntimeConfig({})).toThrow("AI_PROVIDER");
   });

@@ -19,6 +19,7 @@ class _AuthScreenState extends State<AuthScreen> {
   final _password = TextEditingController();
   var _registering = false;
   var _showPassword = false;
+  String? _ageBand;
 
   @override
   void dispose() {
@@ -32,7 +33,16 @@ class _AuthScreenState extends State<AuthScreen> {
     final email = _email.text.trim();
     final password = _password.text;
     if (_registering) {
-      await session.register(email: email, password: password);
+      if (_ageBand == null) {
+        session.message = '請選擇使用者年齡並確認聲明。';
+        setState(() {});
+        return;
+      }
+      await session.register(
+        email: email,
+        password: password,
+        ageBand: _ageBand,
+      );
     } else {
       await session.login(email: email, password: password);
     }
@@ -308,6 +318,40 @@ class _AuthScreenState extends State<AuthScreen> {
                                     const SizedBox(
                                       height: FutureMintTokens.space5,
                                     ),
+                                    if (_registering) ...[
+                                      const Text(
+                                        '台灣服務限 15 歲以上；15–17 歲需取得監護人同意。',
+                                      ),
+                                      DropdownButtonFormField<String>(
+                                        key: const Key('registration-age'),
+                                        initialValue: _ageBand,
+                                        decoration: const InputDecoration(
+                                          labelText: '年齡聲明',
+                                        ),
+                                        items: const [
+                                          DropdownMenuItem(
+                                            value: 'under-15',
+                                            child: Text('未滿 15 歲'),
+                                          ),
+                                          DropdownMenuItem(
+                                            value: '15-17',
+                                            child: Text('15–17 歲'),
+                                          ),
+                                          DropdownMenuItem(
+                                            value: '18-plus',
+                                            child: Text('18 歲以上'),
+                                          ),
+                                        ],
+                                        onChanged: session.busy
+                                            ? null
+                                            : (v) =>
+                                                  setState(() => _ageBand = v),
+                                        validator: (v) => v == null
+                                            ? '請選擇年齡；送出代表確認聲明。'
+                                            : null,
+                                      ),
+                                      const SizedBox(height: 16),
+                                    ],
                                     FilledButton.icon(
                                       onPressed: session.busy
                                           ? null

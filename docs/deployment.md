@@ -2,15 +2,11 @@
 
 ## 目標與目前狀態
 
-目標是同一個 Coolify project／production environment 內的三個獨立 Resources：
+正式架構維持三個獨立 Resources：`futuremint-ai-web`（`app/Dockerfile`）、`futuremint-ai-api`（`backend/Dockerfile`）與 `futuremint-ai-postgres`（Coolify managed PostgreSQL 17）。根 `compose.yaml` 僅供本機驗證，不作 production 入口。
 
-1. `futuremint-ai-postgres`：PostgreSQL 17 Database。
-2. `futuremint-ai-api`：private GitHub repository 的 `/backend` Dockerfile Application。
-3. `futuremint-ai-web`：同一 repository 的 `/app` Dockerfile Application。
+使用者確認既有 Coolify 三 Resources 曾成功部署；目前 live health、DNS／TLS、runtime 設定與完整使用者流程尚未在本輪驗證。本次程式變更需由使用者自行重新部署並驗收。
 
-Coolify 從 GitHub clone source，與開發者電腦無關。Repository 已定義 `futuremint-ai-postgres`、`futuremint-ai-api` 與 `futuremint-ai-web` 的目標設定，並已完成本機 Docker／migration／health check 基礎；但目前沒有本輪可採信的平台截圖、設定導出、公開 endpoint 或 smoke-test 證據能證明 Coolify resources、DNS／TLS、runtime variables、正式資料庫與量界連線已建立。因此本文件以「尚未部署」為當前狀態，以下內容是待執行的部署、rollback 與人工驗收契約，不得當成已完成證據。
-
-根目錄 `compose.yaml` 只供本機整合測試：頂層 `name: futuremint_ai` 讓 Docker Desktop 顯示 `futuremint_ai` Compose project，內含 `web`、`api`、`postgres` 三個容器。Coolify project 使用 `futuremint-ai`，production 仍應建立下列三個獨立 Resources，不使用 Compose 的本機免密碼 PostgreSQL 設定。
+Coolify 讀 GitHub commit snapshot；未 push 的本機修正不會出現在平台。下列欄位是重新部署與驗收契約，不是本輪已執行的外部操作。
 
 ## 部署前準備
 
@@ -97,9 +93,9 @@ ALLOWED_ORIGINS=https://<frontend-domain>
 - Coolify 變數值若含 `$`，在 Normal View 勾 Literal，避免被當成其他變數插值。
 - 不設定 `ALLOW_DEMO_SEED`，production 自動部署不寫示範資料。
 - `ALLOWED_ORIGINS` 只放完整 HTTPS frontend origins；多個以逗號分隔，不用 `*`。
-- API 會在 listen 前拒絕非 `liangjie + postgres` provider pair，或遺漏、帶 path／尾端 `/`、非 HTTPS 的 `ALLOWED_ORIGINS`；看到 startup failure 時先修 runtime variable，不可先略過健康檢查。
+- API 會在 listen 前拒絕非 `liangjie|openai + postgres` provider pair，或遺漏、帶 path／尾端 `/`、非 HTTPS 的 `ALLOWED_ORIGINS`；看到 startup failure 時先修 runtime variable，不可先略過健康檢查。
 - VPS／Coolify 必須允許 API 對 `https://openapi.twse.com.tw/` 的 outbound HTTPS；市場來源失敗時 UI 會顯示教育快照，不影響 health check。
-- Docker image 在 `DATA_PROVIDER=postgres` 時會先跑 migration；migration 失敗則 container 退出。
+- Docker image 先執行不連外部服務的配置 preflight，通過後才跑 PostgreSQL migration；任一步失敗即退出，不接受流量。
 - API runtime image 已包含 `curl`，可供 Coolify UI 執行 HTTP health check；Dockerfile 也保留以 Node `fetch` 驗證 `/api/health`。只有該路徑回 200 時新 deployment 才應接流量。
 - 不設定 pre／post-deployment migration command，避免與 image entrypoint 重複執行。
 
@@ -128,10 +124,15 @@ curl -i https://api.<your-domain>/api/health
 | Auto Deploy | On |
 | Include Source Commit in Build | Off |
 
-只新增一個 Build only variable（勾 Build Variable、取消 Runtime Variable）：
+設定以下非秘密的 Build only variables（勾 Build Variable、取消 Runtime Variable）：
 
 ```dotenv
+BUILD_ENV=production
 API_BASE_URL=https://api.<your-domain>/api/
+PRIVACY_POLICY_URL=https://api.<your-domain>/privacy
+SUPPORT_URL=https://api.<your-domain>/support
+SUPPORT_EMAIL=<正式客服 Email>
+SERVICE_OPERATOR=<公開營運者名稱>
 ```
 
 末尾 `/` 不可省略。它是公開網址，不是 secret；Flutter 在 build 時把它編進 bundle。變更 API domain 後必須重新 deploy Web。
@@ -201,7 +202,7 @@ curl -fsSI https://<frontend-domain>/capture
 
 - 正式 frontend／API domains 與 DNS provider。
 - VPS sizing、resource limits、監控、磁碟告警與 Coolify backup。
-- PostgreSQL backup schedule／retention／S3 endpoint。
+- 每日備份保留 30 天的排程與異地 endpoint、隔離 restore／刪除不復活演練。
 - 量界正式 model、費率、額度、資料條款與競賽允許性。
 - Production email verification、password reset、備份中帳號刪除 SLA、公開隱私／支援頁與未成年人法遵。
 
@@ -221,9 +222,13 @@ API Runtime variables 除前述項目外，必須設定：
 | `PUBLIC_BASE_URL` | API 的公開 HTTPS origin，不帶 path；需路由根目錄公開頁與 `/api/` |
 | `SERVICE_OPERATOR`、`SUPPORT_EMAIL` | 真實營運者名稱及公開客服 |
 | `PRIVACY_POLICY_VERSION` | 經營運者確認的政策版本 |
-| `DATA_REGION`、`BACKUP_RETENTION_DAYS` | 實際資料地區、備份最大保存天數（正整數） |
-| `MINIMUM_AGE`、`MINOR_CONSENT_DISCLOSURE` | 確認的最低年齡與未成年人／家長同意安排 |
-| `AI_DATA_TERMS_DISCLOSURE` | 經查核的量界及上游保留、訓練、地區、刪除等資料處理條款 |
+| `DATA_REGION`、`BACKUP_RETENTION_DAYS` | 實際資料地區、備份最大保存天數；本次目標 30 天，需實際排程及清除驗收 |
+| `MINIMUM_AGE`、`MINOR_CONSENT_DISCLOSURE` | production 最低年齡固定 `15`；揭露 15–17 歲監護人安排與 Email 不證明法定代理人身分 |
+| `AI_DATA_TERMS_DISCLOSURE` | 公開隱私揭露；另需所選 provider 的接收方、條款及 reviewed 欄位一致 |
+| `LIANGJIE_DATA_RECIPIENTS`、`LIANGJIE_DATA_TERMS_DISCLOSURE`、`LIANGJIE_DATA_TERMS_REVIEWED` | 量界及上游公開政策；選量界時 production 必填且 reviewed=true |
+| `OPENAI_MODEL`、`OPENAI_API_KEY`、`OPENAI_DATA_RECIPIENTS`、`OPENAI_DATA_TERMS_DISCLOSURE`、`OPENAI_DATA_TERMS_REVIEWED` | 僅明確選 `AI_PROVIDER=openai` 時設定；key 為 runtime secret，模型需在能力 allowlist |
+| `AI_OPERATION_TIMEOUT_MS`、`AI_MAX_OUTPUT_TOKENS` | 預設 12000 ms／2048 tokens；重試共用總 deadline、最多兩次上游嘗試 |
+| `AI_DAILY_USER_LIMIT`、`AI_DAILY_GLOBAL_LIMIT`、`AI_MAX_CONCURRENCY` | 預設 30／300／5，PostgreSQL 共享台北日額度與到期 lease |
 | `PRIVACY_POLICY_REVIEWED` | 只有完成上述內容的營運確認後才能設 `true` |
 
 Web Build variables：`BUILD_ENV=production`、`API_BASE_URL`、`PRIVACY_POLICY_URL`、`SUPPORT_URL`、`SUPPORT_EMAIL`、`SERVICE_OPERATOR`。政策／支援通常分別指向 API origin 的 `/privacy`、`/support`；不要指向會被 Flutter SPA fallback 吃掉的路徑。所有值均非秘密。
@@ -231,3 +236,35 @@ Web Build variables：`BUILD_ENV=production`、`API_BASE_URL`、`PRIVACY_POLICY_
 本機 Compose 明確使用 `BUILD_ENV=validation`，不可部署該產物。Docker image、CI 與本機 build 通過只代表編譯與檢查可執行，沒有驗證 DNS、SMTP 送達或 Apple 接受。
 
 新增 migration 006／007 會停用舊短邀請碼並讓現有帳號補驗證 Email。先做備份、隔離 migration／還原演練，再部署；不要直接 rollback 到依賴明文邀請碼的舊版本。發版後以合成帳號驗收：註冊→收信驗證→profile→AI 同意→記錄→家庭加入／停用→密碼重設→舊 session 失效→帳號刪除。SMTP、AI 真實請求及遠端資源操作須另獲使用者授權。
+
+## 本輪重新部署與外部驗收
+
+1. 先備份既有資料庫，於隔離 PostgreSQL 驗證 008／009／010／011 migration、還原與刪除不復活；不得改舊 migration checksum 或刪原 volume。
+2. 核對 API runtime policy／SMTP／CORS／秘密與公開設定；Docker pure preflight 在 migration 前執行，不連資料庫／SMTP。失敗 log 只含缺失／不合法變數名稱及 configuration／startup 階段，不記值、連線字串或 provider body。
+3. 使用者自行重新部署既有 API／Web，再確認 live `/api/health`、公開 `/privacy`／`support`、Email 驗證／密碼重設／監護人 fragment confirm／withdraw、資格限制、AI policy 再授權、訂閱／實付、分頁／匯出、家庭摘要及刪除。健康 200 不代表 SMTP、AI 或資料流程成功。
+4. provider 預設選量界；官方 OpenAI 僅明確 runtime 切換，不 failover。欄位以 `backend/src/config/aiConfig.ts`、`startupConfig.ts` 及 `backend/src/http/runtime.ts` 為準，完整安全索引見 `backend/.env.example`。
+5. 確認每日備份保留 30 天／異地 storage／隔離 restore 與刪除不復活。尚未整合 credential store、Discord 通知或完成演練，不用配置 placeholder 宣稱完成。
+6. iPhone 另需 Apple Team、signed archive／TestFlight、App Privacy／年齡問卷、實機通知／權限／點擊與客服／政策 URL 驗收。未簽章 iOS／CI build 不可代替商店驗收。
+
+本輪不執行部署、SMTP／AI 正式請求、Apple 登入或送審；這些需各自明確授權。
+
+## 9. 隔離還原與刪除帳號對帳
+
+新增 011 會將帳號刪除時的 SHA-256 ID 雜湊與時間保存在最小 journal，與帳號刪除同一 transaction。沒有 Email、密碼或帳務；journal 不隨 account cascade 消失。此機制只涵蓋套用 011 後的刪除，歷史刪除需營運者另外確認。
+
+1. 每日備份／journal 放入加密、限制存取的異地儲存，保存備份最多 30 天。還原前另從目前 live DB 匯出最新 journal，不能只用舊備份內的 journal。
+2. 在隔離且尚未接流量的資料庫還原，採用不同資料庫名稱，例如 `futuremint_restore`；套用最新 migrations。保留原 DB／volume。
+3. 使用 API 已編譯的工具；環境值只放維運機器 secret，不貼在 shell 歷史／文件。`DATABASE_URL` 指向目前來源、`RESTORE_DATABASE_URL` 指向隔離還原 DB；僅允許 PostgreSQL URL，query options 只支援 `sslmode`，不得用 query 改 host／database。
+
+```bash
+node dist/scripts/reconcileRestoredAccounts.js export /protected/latest.deletion-journal.json
+node dist/scripts/reconcileRestoredAccounts.js preview /protected/latest.deletion-journal.json
+# 由營運者確認還原 DB 無應用流量後，在該維運環境設定：
+# RESTORE_RECONCILIATION_MAINTENANCE=true
+node dist/scripts/reconcileRestoredAccounts.js apply /protected/latest.deletion-journal.json
+```
+
+`export` 建立權限 0600 的新檔、不覆蓋既有檔；`preview` 只計數；`apply` 在 transaction 中移除對應帳號及其 cascade 資料、保存 journal，重跑不新增刪除。工具拒絕來源與還原 DB 同名，即使不同 host／credentials／URL 別名也拒絕；maintenance 旗標仍需人員確認隔離狀態。
+
+4. 驗收已刪帳號無法登入、其帳務／sessions 不存在、未刪帳號及家庭摘要正常，再依既有核准流程切換資源。重新開放前，停止舊環境寫入並再匯出／對帳最終 journal，避免對帳後的新刪除遺失。
+5. 最小 journal 需保留到所有早於刪除時間的備份及副本都已銷毀；在此前不可清空。排程、異地整合、備份到期銷毀及 production 還原演練尚未執行。

@@ -27,7 +27,7 @@ FutureMint AI 是專為青少年設計的 AI 金錢決策教練：把使用者�
 - Apple Pay、LINE Pay、悠遊卡、銀行、電子發票、Email 自動同步。
 - 付款、轉帳、證券下單、開戶、金融商品推薦、信用評分或保證報酬。
 - 家長監控、學校帳號、公開排行榜與跨世代完整產品線。
-- 正式未成年人法遵、客服、付費、災難復原與大規模資料管線。
+- 付費與大規模資料管線；正式未成年人法遵、客服與災難復原需營運驗收，程式內同意流程不取代此驗收。
 - 將可確定計算的金額與公式交給 AI。
 - Azure runtime；主辦方 Azure 已關閉，現行部署目標是團隊 VPS／Coolify。
 
@@ -54,7 +54,7 @@ FutureMint AI 是專為青少年設計的 AI 金錢決策教練：把使用者�
 - Client：Flutter 3.41.x，Web 由 Nginx container 服務。
 - API：Fastify 5 + TypeScript + Node.js 22。
 - Data：Coolify PostgreSQL 17，versioned SQL migrations。
-- AI：量界智算 OpenAI-compatible adapter；deterministic provider 只供 Demo／測試。
+- AI：預設量界智算；可明確設定官方 OpenAI，不自動 failover；deterministic provider 只供 Demo／測試。
 - Hosting：private GitHub repository → Coolify Auto Deploy；Web、API、PostgreSQL 三個 Resources。
 - Security：scrypt password、hashed session token、Bearer ownership、Zod、CORS allowlist、rate limit 與 parameterized SQL。
 - Design：`design/futuremint-ai/MASTER.md` 是 Flutter 視覺、響應式與可及性共同依據，不是 runtime。
@@ -63,7 +63,7 @@ FutureMint AI 是專為青少年設計的 AI 金錢決策教練：把使用者�
 
 - 正式 Web／API domains、VPS 容量、監測與現場網路備援。
 - 量界帳號可用 model、費率、quota、資料條款與競賽允許性。
-- PostgreSQL backup schedule、retention、S3 destination 與 restore 演練。
+- 每日備份／保留 30 天的實際排程、異地目的地、隔離 restore 與刪除不復活演練。
 - 青少年訪談／可用性測試人數，以及監護與去識別方式。
 - 訂閱方案資料來源與授權。
 - iOS signing Team；Android／Web 為主要展示面。
@@ -72,6 +72,12 @@ FutureMint AI 是專為青少年設計的 AI 金錢決策教練：把使用者�
 
 ## 2026-09 核准的正式產品範圍
 
-使用者已核准將專案當正式產品準備，iOS 僅支援 iPhone。保留 Web／Android 與訪客示範，新增 Email 驗證、密碼重設、家庭邀請更新／停用、公開隱私／支援入口與發布設定檢查。家庭仍只分享摘要，不新增銀行、支付或真實交易。
+分類：新能力、缺陷修正與既有狀態釐清。首次正式服務以臺灣 15 歲以上為界線；未滿 15 歲僅能以合成資料訪客體驗，15–17 歲需監護人單次信件確認，18 歲以上需自行聲明。年齡政策版本為 `tw-service-age-15-v1`，既有帳號需補聲明。監護人同意、家庭摘要分享與第三方 AI 授權是三個獨立選擇；Email 確認不證明法定代理人身分，仍需營運查核與客服流程。
 
-AI 對自由問題執行教材選題、依分類摘要安排學習順序；教育正文採受控繁體中文教材，不承諾任意問題的生成式金融建議。教材外的問題只能對應現有四個教育主題。正式營運者、最低年齡、家長同意安排、SMTP、資料地區、備份與第三方資料條款仍需提供與確認；本機程式完成不代表正式服務已開放。
+訂閱合約與實際付款分離：建立月繳／年繳訂閱不會自行新增支出，使用者可另記首次付款或採用自己的舊付款。編輯、停止及續訂日由穩定合約 ID 管理；支出統計只計實付紀錄，月承諾成本另列。紀錄支援分頁、手動輸入與自己的 JSON 匯出；統計使用完整資料。訂閱價格／比較為使用者輸入與合成方案，未接外部即時價格。
+
+AI 預設量界智算，營運者可明確設定官方 OpenAI；不自動切換供應商。切換供應商、模型或資料條款後需重新授權，未啟用仍可手動記帳、管理訂閱、查看受控教材與教育試算。學習規劃依月預算及分類摘要安排，微課按需選題；沒有每週自動推課。
+
+iPhone 本機續訂提醒需使用者選擇啟用，於台北續訂前一天 09:00 提醒，最多排入最早 60 個未來提醒。登出、刪除及切換帳號清除提醒；回到 App 或訂閱變動後重排，其他裝置變動需同步後才更新。Web／Android 只有 App 內提醒；未整合 APNs。新增入口沿用既有版面與元件。
+
+正式 SMTP、公開網域、供應商資料條款、每日備份保留 30 天與隔離還原／刪除不復活驗收，以及 Apple Team、簽章、TestFlight、App Privacy 與年齡問卷仍待外部驗收。本機完成不等於正式開放。

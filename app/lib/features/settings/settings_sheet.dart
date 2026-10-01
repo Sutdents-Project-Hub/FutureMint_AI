@@ -1,4 +1,7 @@
+import 'dart:convert';
 import 'package:flutter/material.dart';
+import 'package:flutter/foundation.dart';
+import '../../export/export_plaintext.dart';
 import 'package:flutter/services.dart';
 import 'package:provider/provider.dart';
 
@@ -38,14 +41,28 @@ Future<void> showAiConsentDisclosure(BuildContext context) => showDialog<void>(
               mainAxisSize: MainAxisSize.min,
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                const Text('第三方服務：量界智算。'),
+                Text(
+                  (controller.servicePolicy == null ||
+                          !controller.servicePolicy!.reviewed)
+                      ? '供應商資料暫時無法載入，請重新連線後再決定。'
+                      : '第三方服務：${controller.servicePolicy!.aiDisplayName}。',
+                ),
+                if (controller.servicePolicy != null)
+                  Text(
+                    '同意版本：${controller.servicePolicy!.aiPolicyVersion}；資料接收方：${controller.servicePolicy!.dataRecipients.join('、')}。',
+                  ),
+                if (controller.servicePolicy?.model != null)
+                  Text(
+                    '請求模型：${controller.servicePolicy!.model}。模型 ID 不代表已驗證上游模型權重。',
+                  ),
                 const SizedBox(height: FutureMintTokens.space2),
                 const Text(
                   '依使用的功能，後端會傳送你主動輸入的記帳文字、事件分類與是否設定目標等摘要，以及教練提問。AI 協助解析記帳與選擇金融教育主題；課程與教練回覆使用固定教育內容。請勿輸入帳號、聯絡方式或其他敏感資訊。',
                 ),
                 const SizedBox(height: FutureMintTokens.space2),
-                const Text(
-                  '量界可能連接上游模型。服務供應商、資料保留與處理地區等條件，請先閱讀隱私權政策。啟用代表你同意依政策將上述資料傳送給第三方 AI 服務。',
+                Text(
+                  controller.servicePolicy?.dataTerms ??
+                      '供應商、資料保留與處理地區等條件載入後，才可啟用第三方 AI。',
                 ),
                 const SizedBox(height: FutureMintTokens.space2),
                 const PrivacySupportLinks(),
@@ -75,7 +92,11 @@ Future<void> showAiConsentDisclosure(BuildContext context) => showDialog<void>(
           ),
           FilledButton(
             key: const Key('enable-ai-consent'),
-            onPressed: controller.busy || !controller.canManageAiConsent
+            onPressed:
+                controller.busy ||
+                    !controller.canManageAiConsent ||
+                    (controller.servicePolicy == null ||
+                        !controller.servicePolicy!.reviewed)
                 ? null
                 : () async {
                     final enabled = await controller.updateAiConsent(true);
@@ -502,6 +523,16 @@ class _SettingsSheet extends StatelessWidget {
                       ),
                       const SizedBox(height: FutureMintTokens.space3),
                       if (!guest) ...[
+                        if (!controller.canWrite)
+                          const Text('目前為唯讀模式；既有資料可查看、匯出與刪除帳號。'),
+                        if (controller.onViewEligibility != null)
+                          TextButton(
+                            onPressed: () {
+                              Navigator.pop(context);
+                              controller.onViewEligibility!();
+                            },
+                            child: const Text('查看年齡／監護人同意狀態'),
+                          ),
                         const Divider(height: FutureMintTokens.space7),
                         Text(
                           'AI 使用同意',
@@ -510,7 +541,7 @@ class _SettingsSheet extends StatelessWidget {
                         const SizedBox(height: FutureMintTokens.space2),
                         Text(
                           controller.aiConsent.granted
-                              ? '已啟用量界智算 AI；你可隨時撤回。'
+                              ? '已啟用 ${controller.servicePolicy?.aiDisplayName ?? '第三方'} AI；你可隨時撤回。'
                               : '尚未啟用 AI；非 AI 功能仍可使用。',
                         ),
                         const SizedBox(height: FutureMintTokens.space2),
@@ -547,6 +578,124 @@ class _SettingsSheet extends StatelessWidget {
                         const _FamilySection(),
                         const SizedBox(height: FutureMintTokens.space3),
                         const Divider(height: FutureMintTokens.space7),
+                        if (controller.reminders?.supported == true)
+                          SwitchListTile(
+                            key: const Key('subscription-reminder-toggle'),
+                            contentPadding: EdgeInsets.zero,
+                            title: const Text('iPhone 訂閱本機提醒'),
+                            subtitle: const Text(
+                              '續訂前一天 09:00（台灣時間）；通知只顯示一般提醒，不含名稱或金額。',
+                            ),
+                            value: controller.reminders!.enabled,
+                            onChanged: controller.busy
+                                ? null
+                                : controller.setRemindersEnabled,
+                          ),
+                        if (controller.onGuardianWithdrawn != null)
+                          TextButton(
+                            onPressed: controller.busy
+                                ? null
+                                : () async {
+                                    final confirmed = await showDialog<bool>(
+                                      context: context,
+                                      builder: (dialog) => AlertDialog(
+                                        title: const Text('撤回監護人同意？'),
+                                        content: const Text(
+                                          '服務將停止寫入資料，並清除這台 iPhone 的訂閱提醒。家庭分享與監護人同意是不同設定。',
+                                        ),
+                                        actions: [
+                                          TextButton(
+                                            onPressed: () =>
+                                                Navigator.pop(dialog, false),
+                                            child: const Text('取消'),
+                                          ),
+                                          FilledButton(
+                                            onPressed: () =>
+                                                Navigator.pop(dialog, true),
+                                            child: const Text('撤回'),
+                                          ),
+                                        ],
+                                      ),
+                                    );
+                                    if (confirmed == true) {
+                                      await controller.onGuardianWithdrawn!();
+                                      if (context.mounted) {
+                                        Navigator.pop(context);
+                                      }
+                                    }
+                                  },
+                            child: const Text('撤回監護人同意'),
+                          ),
+                        OutlinedButton.icon(
+                          key: const Key('export-self'),
+                          onPressed: controller.busy
+                              ? null
+                              : () async {
+                                  final data = await controller.exportSelf();
+                                  if (data == null || !context.mounted) return;
+                                  final text = const JsonEncoder.withIndent(
+                                    '  ',
+                                  ).convert(data);
+                                  await showDialog<void>(
+                                    context: context,
+                                    builder: (dialog) => AlertDialog(
+                                      title: const Text('匯出自己的資料'),
+                                      content: ConstrainedBox(
+                                        constraints: const BoxConstraints(
+                                          maxWidth: 520,
+                                          maxHeight: 420,
+                                        ),
+                                        child: SingleChildScrollView(
+                                          child: Column(
+                                            mainAxisSize: MainAxisSize.min,
+                                            children: [
+                                              const Text(
+                                                '這是含個人紀錄的純文字 JSON。分享或儲存前請自行確認內容及存放位置。',
+                                              ),
+                                              SelectableText(text),
+                                            ],
+                                          ),
+                                        ),
+                                      ),
+                                      actions: [
+                                        TextButton(
+                                          onPressed: () =>
+                                              Navigator.pop(dialog),
+                                          child: const Text('關閉'),
+                                        ),
+                                        FilledButton(
+                                          onPressed: () async {
+                                            await Clipboard.setData(
+                                              ClipboardData(text: text),
+                                            );
+                                          },
+                                          child: const Text('複製 JSON'),
+                                        ),
+                                        if (kIsWeb)
+                                          TextButton(
+                                            onPressed: () => downloadJson(text),
+                                            child: const Text('下載 JSON 檔案'),
+                                          ),
+                                        if (controller.reminders?.supported ==
+                                            true)
+                                          TextButton(
+                                            onPressed: () async {
+                                              await const MethodChannel(
+                                                'futuremint/subscription-reminders',
+                                              ).invokeMethod<void>(
+                                                'shareExport',
+                                                {'text': text},
+                                              );
+                                            },
+                                            child: const Text('分享／儲存檔案'),
+                                          ),
+                                      ],
+                                    ),
+                                  );
+                                },
+                          icon: const Icon(Icons.download_outlined),
+                          label: const Text('匯出我的資料（JSON）'),
+                        ),
                         Text(
                           '帳號',
                           style: Theme.of(context).textTheme.titleMedium,
@@ -662,7 +811,7 @@ class _SettingsSheet extends StatelessWidget {
                       ),
                       const SizedBox(height: FutureMintTokens.space2),
                       const Text(
-                        '請只記錄自己的預算與消費，不要輸入姓名、學校、帳號或卡號；系統無法自動辨識所有個資。啟用 AI 後，記帳文字會經後端送往量界智算解析，原文不會寫入交易紀錄或一般日誌。資料的保存、刪除與第三方處理條件請閱讀隱私權政策；訪客資料不會儲存。',
+                        '請只記錄自己的預算與消費，不要輸入姓名、學校、帳號或卡號；系統無法自動辨識所有個資。啟用 AI 後，記帳文字會經後端送往同意頁揭露的第三方 AI 解析，原文不會寫入交易紀錄或一般日誌。資料的保存、刪除與第三方處理條件請閱讀隱私權政策；訪客資料不會儲存。',
                       ),
                       const SizedBox(height: FutureMintTokens.space2),
                       const PrivacySupportLinks(),

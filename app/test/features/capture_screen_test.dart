@@ -19,6 +19,7 @@ void main() {
     await tester.pumpAndSettle();
     expect(find.byKey(const Key('capture-hero')), findsOneWidget);
     await tester.enterText(find.byKey(const Key('capture-input')), '今天買珍奶 75');
+    await tester.ensureVisible(find.text('幫我整理'));
     await tester.tap(find.text('幫我整理'));
     await tester.pumpAndSettle();
 
@@ -79,6 +80,7 @@ void main() {
       find.byKey(const Key('capture-input')),
       'Netflix 390 四個人分',
     );
+    await tester.ensureVisible(find.text('幫我整理'));
     await tester.tap(find.text('幫我整理'));
     await tester.pumpAndSettle();
 

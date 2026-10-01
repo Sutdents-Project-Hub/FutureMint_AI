@@ -89,18 +89,12 @@ const main = async (): Promise<void> => {
 };
 
 const summarizeMigrationError = (error: unknown): Record<string, string> => {
-  const record = error !== null && typeof error === "object"
-    ? error as { code?: unknown }
-    : undefined;
-  const message = error instanceof Error ? error.message : "Unknown migration error";
-
-  return {
-    errorType: error instanceof Error ? error.name : typeof error,
-    ...(typeof record?.code === "string" ? { code: record.code } : {}),
-    message: message
-      .replace(/\bpostgres(?:ql)?:\/\/[^\s@]+@[^\s]+/giu, "postgres://[redacted]")
-      .slice(0, 300),
-  };
+  const code = error !== null && typeof error === "object" ? (error as { code?: unknown }).code : undefined;
+  const safeCode = typeof code === "string" && (/^[0-9A-Z]{5}$/.test(code) || ["ECONNREFUSED", "ETIMEDOUT", "ENOTFOUND"].includes(code)) ? code : undefined;
+  const migration = error instanceof Error ? error.message.match(/^Migration checksum mismatch: (\d+_[a-z0-9_-]+\.sql)$/u)?.[1] : undefined;
+  return { phase: "migration", errorType: error instanceof Error ? error.name : typeof error,
+    ...(safeCode ? { code: safeCode } : {}), ...(migration ? { migration } : {}),
+    action: migration ? "restore_original_migration_file" : "check_database_connection_and_migration_compatibility" };
 };
 
 if (require.main === module) {

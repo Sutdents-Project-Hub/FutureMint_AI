@@ -7,6 +7,8 @@ import '../core/future_mint_repository.dart';
 import '../core/models.dart';
 import '../data/api_repository.dart';
 import 'app_controller.dart';
+import '../auth/service_policy.dart';
+import '../reminders/subscription_reminders.dart';
 
 enum SessionStatus {
   loading,
@@ -14,6 +16,7 @@ enum SessionStatus {
   restorationFailed,
   verificationRequired,
   onboarding,
+  eligibilityRequired,
   authenticated,
   guest,
 }
@@ -28,16 +31,21 @@ class SessionController extends ChangeNotifier {
     required SessionPersistence store,
     required AuthenticatedRepositoryFactory authenticatedRepository,
     required GuestRepositoryFactory guestRepository,
+    SubscriptionReminders? reminders,
   }) : _auth = auth,
        _store = store,
        _authenticatedRepository = authenticatedRepository,
-       _guestRepository = guestRepository;
+       _guestRepository = guestRepository,
+       reminders = reminders ?? SubscriptionReminders();
 
   final AuthGateway _auth;
   final SessionPersistence _store;
   final AuthenticatedRepositoryFactory _authenticatedRepository;
   final GuestRepositoryFactory _guestRepository;
 
+  final SubscriptionReminders reminders;
+  ServicePolicy? servicePolicy;
+  EligibilityStatus? eligibility;
   SessionStatus status = SessionStatus.loading;
   PublicAccount? account;
   AppController? app;
@@ -59,6 +67,7 @@ class SessionController extends ChangeNotifier {
   }
 
   bool get isGuest => status == SessionStatus.guest;
+  bool get hasActiveToken => _token != null;
   bool get needsEmailVerification =>
       account?.verificationRequired == true && account?.emailVerified != true;
 
@@ -140,8 +149,19 @@ class SessionController extends ChangeNotifier {
     }
   }
 
-  Future<bool> register({required String email, required String password}) =>
-      _beginAuth(() => _auth.register(email: email, password: password));
+  Future<bool> register({
+    required String email,
+    required String password,
+    String? ageBand,
+  }) => _beginAuth(
+    () => ageBand == null
+        ? _auth.register(email: email, password: password)
+        : _auth.registerWithAge(
+            email: email,
+            password: password,
+            ageBand: ageBand,
+          ),
+  );
 
   Future<bool> login({required String email, required String password}) =>
       _beginAuth(() => _auth.login(email: email, password: password));
@@ -165,7 +185,8 @@ class SessionController extends ChangeNotifier {
         message = '帳號已建立，但驗證信暫時無法寄出。請點「重新寄驗證信」再試一次。';
       }
       return _isCurrent(epoch, session.token) &&
-          (status == SessionStatus.verificationRequired ||
+          (status == SessionStatus.eligibilityRequired ||
+              status == SessionStatus.verificationRequired ||
               status == SessionStatus.onboarding ||
               status == SessionStatus.authenticated);
     } catch (error) {
@@ -187,13 +208,27 @@ class SessionController extends ChangeNotifier {
   Future<void> _activateAuthenticated(
     PublicAccount nextAccount,
     String token,
-    int epoch,
-  ) async {
+    int epoch, {
+    bool readOnly = false,
+  }) async {
     if (!_isCurrent(epoch, token)) return;
     account = nextAccount;
     if (nextAccount.verificationRequired && !nextAccount.emailVerified) {
       _disposeApp();
       status = SessionStatus.verificationRequired;
+      return;
+    }
+    servicePolicy = await _auth.getServicePolicy();
+    if (!_isCurrent(epoch, token)) return;
+    eligibility = await _auth.getEligibility(token);
+    if (!_isCurrent(epoch, token)) return;
+    if (!readOnly &&
+        servicePolicy?.eligibilityRequired != false &&
+        eligibility != null &&
+        !eligibility!.canWrite) {
+      await _clearReminders();
+      _disposeApp();
+      status = SessionStatus.eligibilityRequired;
       return;
     }
     if (!nextAccount.profileComplete) {
@@ -207,14 +242,48 @@ class SessionController extends ChangeNotifier {
       repository: _authenticatedRepository(token),
       mode: AppMode.authenticated,
       accountEmail: nextAccount.email,
+      intentOwner: nextAccount.id,
+      intentStore: _store is PendingIntentPersistence
+          ? _store as PendingIntentPersistence
+          : null,
       onExit: () => _logoutFor(token, epoch),
       onUnauthorized: () => _expireSessionFor(token, epoch),
-      aiConsent: aiConsent,
-      onAiConsentChanged: (granted) =>
-          _auth.updateAiConsent(token: token, granted: granted),
+      aiConsent: readOnly ? const AiConsentStatus.notGranted() : aiConsent,
+      canWrite: !readOnly,
+      onViewEligibility: showEligibility,
+      servicePolicy: servicePolicy,
+      reminders: reminders,
+      onGuardianWithdrawn:
+          eligibility?.ageBand == '15-17' &&
+              eligibility?.guardianStatus == 'approved'
+          ? withdrawGuardian
+          : null,
+      onEligibilityChanged: () async {
+        await refreshEligibility();
+      },
+      onAiConsentChanged: (granted) => _auth.updateVersionedAiConsent(
+        token: token,
+        granted: granted,
+        policyVersion: servicePolicy?.aiPolicyVersion,
+      ),
       onDeleteAccount: (password) => _deleteAccountFor(token, epoch, password),
     );
-    await nextApp.initialize();
+    if (readOnly) {
+      await _clearReminders();
+    } else {
+      await reminders.bind(nextAccount.id);
+    }
+    if (!_isCurrent(epoch, token)) {
+      nextApp.dispose();
+      return;
+    }
+    try {
+      await nextApp.restorePendingIntents();
+      await nextApp.initialize();
+    } catch (_) {
+      nextApp.dispose();
+      rethrow;
+    }
     if (!_isCurrent(epoch, token)) {
       nextApp.dispose();
       return;
@@ -246,24 +315,50 @@ class SessionController extends ChangeNotifier {
         repository: _authenticatedRepository(token),
         mode: AppMode.authenticated,
         accountEmail: nextAccount.email,
+        intentOwner: nextAccount.id,
+        intentStore: _store is PendingIntentPersistence
+            ? _store as PendingIntentPersistence
+            : null,
         onExit: () => _logoutFor(token, epoch),
         onUnauthorized: () => _expireSessionFor(token, epoch),
         aiConsent: aiConsent,
-        onAiConsentChanged: (granted) =>
-            _auth.updateAiConsent(token: token, granted: granted),
+        servicePolicy: servicePolicy,
+        reminders: reminders,
+        onGuardianWithdrawn:
+            eligibility?.ageBand == '15-17' &&
+                eligibility?.guardianStatus == 'approved'
+            ? withdrawGuardian
+            : null,
+        onEligibilityChanged: () async {
+          await refreshEligibility();
+        },
+        onAiConsentChanged: (granted) => _auth.updateVersionedAiConsent(
+          token: token,
+          granted: granted,
+          policyVersion: servicePolicy?.aiPolicyVersion,
+        ),
         onDeleteAccount: (password) =>
             _deleteAccountFor(token, epoch, password),
       );
+      await nextApp.restorePendingIntents();
       final saved = await nextApp.updateProfile(profile);
       if (!_isCurrent(epoch, token)) return false;
       if (!saved) {
         message = nextApp.errorMessage ?? '預算與目標尚未保存。';
         return false;
       }
+      account = nextAccount.copyWith(profileComplete: true);
+      if (!nextApp.summariesLoaded) {
+        status = SessionStatus.restorationFailed;
+        message = '設定已儲存，但摘要暫時無法載入。請重新連線，不需要重新設定。';
+        return false;
+      }
+      await reminders.bind(nextAccount.id);
+      await reminders.synchronize(nextApp.subscriptions.items);
+      if (!_isCurrent(epoch, token)) return false;
       _disposeApp();
       app = nextApp;
       nextApp = null;
-      account = nextAccount.copyWith(profileComplete: true);
       status = SessionStatus.authenticated;
       return true;
     } catch (error) {
@@ -285,6 +380,7 @@ class SessionController extends ChangeNotifier {
 
   Future<void> continueAsGuest() async {
     final epoch = _beginTransition();
+    await _clearReminders();
     busy = true;
     message = null;
     _notifyListeners();
@@ -319,6 +415,129 @@ class SessionController extends ChangeNotifier {
       message = _messageFor(error);
     } finally {
       if (_isCurrent(epoch)) {
+        busy = false;
+        _notifyListeners();
+      }
+    }
+  }
+
+  void showEligibility() {
+    _disposeApp();
+    status = SessionStatus.eligibilityRequired;
+    _notifyListeners();
+  }
+
+  Future<void> enterReadOnly() async {
+    final token = _token, epoch = _epoch, current = account;
+    if (token == null || current == null || !current.profileComplete || busy) {
+      return;
+    }
+    busy = true;
+    message = null;
+    _notifyListeners();
+    try {
+      await _activateAuthenticated(current, token, epoch, readOnly: true);
+    } catch (e) {
+      if (_isCurrent(epoch, token)) message = _messageFor(e);
+    } finally {
+      if (_isCurrent(epoch, token)) {
+        busy = false;
+        _notifyListeners();
+      }
+    }
+  }
+
+  Future<bool> _eligibilityAction(
+    Future<void> Function(String token) action,
+  ) async {
+    final token = _token, epoch = _epoch;
+    if (token == null || busy) return false;
+    busy = true;
+    message = null;
+    notice = null;
+    _notifyListeners();
+    try {
+      await action(token);
+      if (!_isCurrent(epoch, token)) return false;
+      final current = await _auth.me(token);
+      if (!_isCurrent(epoch, token)) return false;
+      await _activateAuthenticated(current, token, epoch);
+      return _isCurrent(epoch, token);
+    } catch (e) {
+      if (_isCurrent(epoch, token)) {
+        if (_isExpiredSession(e)) {
+          await _expireSessionFor(token, epoch);
+        } else {
+          message = _messageFor(e);
+        }
+      }
+      return false;
+    } finally {
+      if (_isCurrent(epoch, token)) {
+        busy = false;
+        _notifyListeners();
+      }
+    }
+  }
+
+  Future<bool> declareAge(String ageBand) =>
+      _eligibilityAction((token) => _auth.declareAge(token, ageBand));
+  Future<bool> requestGuardian(String email) =>
+      _eligibilityAction((token) => _auth.requestGuardian(token, email.trim()));
+  Future<bool> refreshEligibility() => _eligibilityAction((_) async {});
+  Future<void> withdrawGuardian() async {
+    await _eligibilityAction((token) async {
+      await _auth.withdrawGuardian(token);
+      await _clearReminders();
+    });
+  }
+
+  Future<void> resume() async {
+    final token = _token, epoch = _epoch, current = app;
+    if (busy || current?.busy == true || token == null) return;
+    busy = true;
+    _notifyListeners();
+    try {
+      final refreshed = await _auth.me(token);
+      if (!_isCurrent(epoch, token)) return;
+      final metadata = await _auth.getServicePolicy();
+      if (!_isCurrent(epoch, token)) return;
+      final nextEligibility = await _auth.getEligibility(token);
+      if (!_isCurrent(epoch, token)) return;
+      final writable =
+          metadata?.eligibilityRequired == false ||
+          nextEligibility == null ||
+          nextEligibility.canWrite;
+      final needsVerification =
+          refreshed.verificationRequired && !refreshed.emailVerified;
+      if (current != null &&
+          refreshed.id == account?.id &&
+          refreshed.profileComplete &&
+          !needsVerification &&
+          current.canWrite == writable &&
+          servicePolicy?.signature == metadata?.signature) {
+        account = refreshed;
+        eligibility = nextEligibility;
+        servicePolicy = metadata;
+        final consent = await _loadAiConsent(token);
+        if (!_isCurrent(epoch, token)) return;
+        current.applyAiConsent(
+          current.canWrite ? consent : const AiConsentStatus.notGranted(),
+        );
+        await current.refreshWithFeedback();
+      } else {
+        await _activateAuthenticated(refreshed, token, epoch);
+      }
+    } catch (e) {
+      if (_isCurrent(epoch, token)) {
+        if (_isExpiredSession(e)) {
+          await _expireSessionFor(token, epoch);
+        } else {
+          message = _messageFor(e);
+        }
+      }
+    } finally {
+      if (_isCurrent(epoch, token)) {
         busy = false;
         _notifyListeners();
       }
@@ -421,9 +640,19 @@ class SessionController extends ChangeNotifier {
     }
   }
 
+  Future<void> _clearReminders() async {
+    try {
+      await reminders.clear();
+    } catch (_) {
+      notice = '本機提醒暫時無法清除，請到 iPhone 設定關閉 FutureMint 通知。';
+    }
+  }
+
   Future<void> logout() => _logoutFor(_token, _epoch);
 
   Future<void> _logoutFor(String? token, int expectedEpoch) async {
+    if (!_isCurrent(expectedEpoch, token)) return;
+    await _clearReminders();
     if (!_isCurrent(expectedEpoch, token)) return;
     final epoch = _beginTransition();
     busy = true;
@@ -455,7 +684,13 @@ class SessionController extends ChangeNotifier {
 
   Future<AiConsentStatus> _loadAiConsent(String token) async {
     try {
-      return await _auth.getAiConsent(token);
+      final consent = await _auth.getAiConsent(token);
+      if (servicePolicy != null &&
+          (!servicePolicy!.reviewed ||
+              consent.policyVersion != servicePolicy!.aiPolicyVersion)) {
+        return const AiConsentStatus.notGranted();
+      }
+      return consent;
     } catch (error) {
       if (_isExpiredSession(error)) rethrow;
       // Consent is security-sensitive: network or server failures must not
@@ -484,9 +719,21 @@ class SessionController extends ChangeNotifier {
     message = null;
     _notifyListeners();
     try {
+      final deletedAccountId = account?.id;
       await _auth.deleteAccount(token: token, password: password);
+      String? pendingWarning;
+      if (deletedAccountId != null && _store is PendingIntentPersistence) {
+        try {
+          await (_store as PendingIntentPersistence).clearPending(
+            deletedAccountId,
+          );
+        } catch (_) {
+          pendingWarning = '帳號已刪除，但裝置仍有舊待確認資訊；請清除 App 本機資料。';
+        }
+      }
+      if (_isCurrent(epoch, token)) await _clearReminders();
       if (!_isCurrent(epoch)) return;
-      String? storageWarning;
+      String? storageWarning = pendingWarning;
       try {
         await _persist(epoch, _store.clearToken);
       } catch (_) {
@@ -513,6 +760,8 @@ class SessionController extends ChangeNotifier {
 
   Future<void> _expireSessionFor(String? token, int expectedEpoch) async {
     if (!_isCurrent(expectedEpoch, token)) return;
+    await _clearReminders();
+    if (!_isCurrent(expectedEpoch, token)) return;
     final epoch = _beginTransition();
     String? storageWarning;
     try {
@@ -532,6 +781,7 @@ class SessionController extends ChangeNotifier {
 
   Future<void> discardStoredSession() async {
     final epoch = _beginTransition();
+    await _clearReminders();
     String? storageWarning;
     try {
       await _persist(epoch, _store.clearToken);

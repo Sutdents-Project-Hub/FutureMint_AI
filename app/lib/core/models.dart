@@ -13,7 +13,14 @@ enum MoneyCategory {
   other,
 }
 
-enum CaptureSource { liangjieAi, deterministicDemo }
+enum CaptureSource {
+  liangjieAi,
+  openaiAi,
+  deterministicDemo,
+  manual;
+
+  bool get isAi => this == liangjieAi || this == openaiAi;
+}
 
 enum BillingCycle { monthly, yearly }
 
@@ -57,11 +64,15 @@ T _enumByName<T extends Enum>(Iterable<T> values, String name) =>
 
 String _sourceToJson(CaptureSource source) => switch (source) {
   CaptureSource.liangjieAi => 'liangjie-ai',
+  CaptureSource.openaiAi => 'openai-ai',
   CaptureSource.deterministicDemo => 'deterministic-demo',
+  CaptureSource.manual => 'manual',
 };
 
 CaptureSource _sourceFromJson(String value) => switch (value) {
   'liangjie-ai' => CaptureSource.liangjieAi,
+  'openai-ai' => CaptureSource.openaiAi,
+  'manual' => CaptureSource.manual,
   _ => CaptureSource.deterministicDemo,
 };
 
@@ -144,6 +155,8 @@ class MoneyEvent {
     this.spendingIntent,
     this.intentReason,
     this.idempotencyKey,
+    this.source,
+    this.subscriptionId,
   });
 
   final String id;
@@ -159,6 +172,8 @@ class MoneyEvent {
   final SpendingIntent? spendingIntent;
   final String? intentReason;
   final String? idempotencyKey;
+  final CaptureSource? source;
+  final String? subscriptionId;
   final DateTime createdAt;
   final DateTime updatedAt;
 
@@ -186,6 +201,10 @@ class MoneyEvent {
         : _enumByName(SpendingIntent.values, json['spendingIntent'] as String),
     intentReason: json['intentReason'] as String?,
     idempotencyKey: json['idempotencyKey'] as String?,
+    source: json['source'] is String
+        ? _sourceFromJson(json['source'] as String)
+        : null,
+    subscriptionId: json['subscriptionId'] as String?,
     createdAt: DateTime.parse(json['createdAt'] as String),
     updatedAt: DateTime.parse(json['updatedAt'] as String),
   );
@@ -204,6 +223,8 @@ class MoneyEvent {
     if (spendingIntent != null) 'spendingIntent': spendingIntent!.name,
     if (intentReason != null) 'intentReason': intentReason,
     if (idempotencyKey != null) 'idempotencyKey': idempotencyKey,
+    if (source != null) 'source': _sourceToJson(source!),
+    if (subscriptionId != null) 'subscriptionId': subscriptionId,
     'createdAt': createdAt.toIso8601String(),
     'updatedAt': updatedAt.toIso8601String(),
   };
@@ -224,6 +245,8 @@ class MoneyEvent {
       other.spendingIntent == spendingIntent &&
       other.intentReason == intentReason &&
       other.idempotencyKey == idempotencyKey &&
+      other.source == source &&
+      other.subscriptionId == subscriptionId &&
       other.createdAt == createdAt &&
       other.updatedAt == updatedAt;
 
@@ -304,6 +327,7 @@ class DashboardSummary {
     required this.incomeMinor,
     required this.expenseMinor,
     required this.subscriptionMinor,
+    this.monthlyCommitmentMinor = 0,
     required this.availableMinor,
     required this.goalRemainingMinor,
     required this.goalProgress,
@@ -314,6 +338,7 @@ class DashboardSummary {
   final int incomeMinor;
   final int expenseMinor;
   final int subscriptionMinor;
+  final int monthlyCommitmentMinor;
   final int availableMinor;
   final int goalRemainingMinor;
   final double goalProgress;
@@ -325,6 +350,7 @@ class DashboardSummary {
         incomeMinor: json['incomeMinor'] as int,
         expenseMinor: json['expenseMinor'] as int,
         subscriptionMinor: json['subscriptionMinor'] as int,
+        monthlyCommitmentMinor: json['monthlyCommitmentMinor'] as int? ?? 0,
         availableMinor: json['availableMinor'] as int,
         goalRemainingMinor: json['goalRemainingMinor'] as int,
         goalProgress: (json['goalProgress'] as num).toDouble(),
@@ -351,6 +377,7 @@ class CaptureDraft {
     this.split,
     this.spendingIntent,
     this.intentReason,
+    this.subscriptionId,
   });
 
   final String draftId;
@@ -364,6 +391,7 @@ class CaptureDraft {
   final SplitDetails? split;
   final SpendingIntent? spendingIntent;
   final String? intentReason;
+  final String? subscriptionId;
   final double confidence;
   final List<String> missingFields;
   final bool needsConfirmation;
@@ -389,6 +417,7 @@ class CaptureDraft {
         ? null
         : _enumByName(SpendingIntent.values, json['spendingIntent'] as String),
     intentReason: json['intentReason'] as String?,
+    subscriptionId: json['subscriptionId'] as String?,
     confidence: (json['confidence'] as num).toDouble(),
     missingFields: List<String>.from(json['missingFields'] as List? ?? []),
     needsConfirmation: json['needsConfirmation'] as bool? ?? true,
@@ -460,12 +489,16 @@ class CaptureDraft {
           : missingFields,
       needsConfirmation: needsConfirmation,
       source: source,
+      subscriptionId: nextType == MoneyEventType.subscription
+          ? subscriptionId
+          : null,
     );
   }
 
   Map<String, dynamic> toJson() => {
     'draftId': draftId,
     'type': type.name,
+    if (subscriptionId != null) 'subscriptionId': subscriptionId,
     if (amountMinor != null) 'amountMinor': amountMinor,
     'currency': currency,
     'category': category.name,
@@ -694,6 +727,7 @@ class FinancialInsights {
     required this.wantMinor,
     required this.uncertainMinor,
     required this.subscriptionMinor,
+    this.monthlyCommitmentMinor = 0,
     required this.summary,
     required this.notices,
   });
@@ -704,6 +738,7 @@ class FinancialInsights {
   final int wantMinor;
   final int uncertainMinor;
   final int subscriptionMinor;
+  final int monthlyCommitmentMinor;
   final String summary;
   final List<InsightNotice> notices;
 
@@ -720,6 +755,7 @@ class FinancialInsights {
         wantMinor: json['wantMinor'] as int,
         uncertainMinor: json['uncertainMinor'] as int,
         subscriptionMinor: json['subscriptionMinor'] as int,
+        monthlyCommitmentMinor: json['monthlyCommitmentMinor'] as int? ?? 0,
         summary: json['summary'] as String,
         notices: (json['notices'] as List<dynamic>)
             .map((item) => InsightNotice.fromJson(item as Map<String, dynamic>))

@@ -156,3 +156,9 @@ iOS 只支援 iPhone。沿用既有設計，淺色／深色／系統主題需實
 - 深色主題中淺色專用的 ink token（`teal`、`positive`、`danger`、淺色 kicker）改用 `FutureMintTokens.brandInk／positiveInk／dangerInk／accentInk` 取得可讀版本。
 - 帶圖示的 ChoiceChip 不顯示預設勾勾，改以 `check_circle` 取代圖示表示選取，避免重疊並保留非顏色的選取提示。
 - 手機 PageHeading 標題使用 headline 範圍下限 26。
+
+## 上架流程與狀態（2026-10-01）
+
+本輪不改既有布局、色彩、字級與插圖；年齡／監護人、AI 政策、手動紀錄、訂閱管理、匯出與 iPhone 提醒入口重用原元件。等待資格、寄信失敗、撤回及政策過期均需保留可見的 help/retry、登出與刪除，不用不可退出的全螢幕同意流程。
+
+訂閱卡分開呈現合約承諾成本與實際付款，不能把新增合約顯示成已扣款。提醒文字明示 iPhone 本機權限與其他平台 App 內限制；遠端變更需同步。AI disclosure 顯示當前 provider、模型、資料接收方與政策版本；拒絕後手動功能仍有入口。微課標明受控教材與選題來源。

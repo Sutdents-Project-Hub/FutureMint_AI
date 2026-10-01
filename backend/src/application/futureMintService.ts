@@ -18,6 +18,8 @@ import type {
   InvestmentOrderInput,
   Lesson,
   MoneyEvent,
+  MoneyEventPageQuery,
+  SubscriptionInput,
   SubscriptionCompareInput,
   SubscriptionComparison,
   SubscriptionPlan,
@@ -36,6 +38,9 @@ import {
   practiceDiceInputSchema,
   familyJoinInputSchema,
   subscriptionCompareInputSchema,
+  subscriptionInputSchema,
+  subscriptionCreateInputSchema,
+  moneyEventPageQuerySchema,
 } from "../contracts/schemas";
 import { calculateDashboard } from "../domain/budget";
 import { calculateFinancialInsights } from "../domain/analytics";
@@ -47,6 +52,8 @@ import {
   validateInvestmentOrder,
 } from "../domain/investmentLab";
 import { compareSubscription } from "../domain/subscriptions";
+import { monthlySubscriptionCommitment, withNextBillingDate } from "../domain/subscriptionSchedule";
+import { assertSameOrderRequest, moneyRequestFingerprint } from "../domain/idempotency";
 import { DomainError } from "../contracts/errors";
 
 export class FutureMintService {
@@ -99,9 +106,7 @@ export class FutureMintService {
     input: ConfirmedMoneyEventInput,
   ): Promise<MoneyEvent> {
     const parsed = moneyEventInputSchema.parse(input);
-    return this.repository.saveMoneyEvent(userId, {
-      ...this.normalizedMoneyEventInput(parsed),
-    });
+    return this.repository.withUsersTransaction([userId], (repository) => repository.saveMoneyEvent(userId,this.normalizedMoneyEventInput(parsed)));
   }
 
   async updateMoneyEvent(
@@ -110,11 +115,7 @@ export class FutureMintService {
     input: EditableMoneyEventInput,
   ): Promise<MoneyEvent> {
     const parsed = moneyEventUpdateSchema.parse(input);
-    return this.repository.updateMoneyEvent(
-      userId,
-      eventId,
-      this.normalizedMoneyEventInput(parsed),
-    );
+    return this.repository.withUsersTransaction([userId], (repository)=>repository.updateMoneyEvent(userId,eventId,this.normalizedMoneyEventInput(parsed)));
   }
 
   async deleteMoneyEvent(userId: string, eventId: string): Promise<void> {
@@ -158,35 +159,72 @@ export class FutureMintService {
       );
   }
 
-  async getSubscriptions(userId: string) {
-    const events = await this.repository.listMoneyEvents(userId);
+  async listMoneyEventsPage(userId: string, query: MoneyEventPageQuery = {}) {
+    return this.repository.listMoneyEventsPage(userId,moneyEventPageQuerySchema.parse(query));
+  }
+
+  async getSubscriptions(userId: string, now = new Date()) {
+    const [events, subscriptions] = await Promise.all([this.repository.listMoneyEvents(userId),this.repository.listSubscriptions(userId)]);
+    const items=subscriptions.map((item)=>withNextBillingDate(item,now));
     return {
       subscriptions: events.filter((event) => event.type === "subscription"),
+      items,
+      monthlyCommitmentMinor: monthlySubscriptionCommitment(items),
+      legacyCandidates: events.filter((event)=>event.type === "subscription" && event.recurrence && !event.subscriptionId),
       catalog: this.subscriptionCatalog.map((plan) => ({ ...plan })),
       disclaimer: "方案價格與資格為合成展示資料，並非即時市場資訊。",
     };
+  }
+
+  async createSubscription(userId: string, input: SubscriptionInput & {idempotencyKey:string;legacyPaymentId?:string;initialPayment?: ConfirmedMoneyEventInput}) {
+    const {initialPayment,legacyPaymentId,...parsed}=subscriptionCreateInputSchema.parse(input);
+    if (initialPayment && (initialPayment.type !== "subscription" || initialPayment.subscriptionId)) throw new DomainError("invalid_subscription_payment","首次付款須為尚未連結的訂閱付款。",422);
+    return this.repository.withUsersTransaction([userId],async(repository)=>{
+      const normalizedPayment=initialPayment ? this.normalizedMoneyEventInput(initialPayment) : undefined;
+      const requestFingerprint=createHash("sha256").update(JSON.stringify([parsed.name,parsed.amountMinor,parsed.currency,parsed.billingCycle,parsed.anchorDate,legacyPaymentId ?? null,normalizedPayment ? [normalizedPayment.idempotencyKey,moneyRequestFingerprint(normalizedPayment)] : null])).digest("hex");
+      const subscription=await repository.createSubscription(userId,{...parsed,requestFingerprint});
+      if(legacyPaymentId) {
+        const payment=(await repository.listMoneyEvents(userId)).find((item)=>item.id===legacyPaymentId);
+        if(!payment || payment.type!=="subscription" || !payment.recurrence || (payment.subscriptionId && payment.subscriptionId!==subscription.id)) throw new DomainError("invalid_legacy_subscription","這筆舊付款無法採用為此訂閱。",409);
+        if(!payment.subscriptionId) await repository.updateMoneyEvent(userId,payment.id,{...payment,subscriptionId:subscription.id,confirmed:true});
+      }
+      if (initialPayment) await repository.saveMoneyEvent(userId,this.normalizedMoneyEventInput({...initialPayment,subscriptionId:subscription.id}));
+      return subscription;
+    });
+  }
+
+  async updateSubscription(userId:string,subscriptionId:string,input:SubscriptionInput) {
+    const parsed=subscriptionInputSchema.parse(input);
+    return this.repository.withUsersTransaction([userId],(repository)=>repository.updateSubscription(userId,subscriptionId,parsed));
+  }
+
+  async deactivateSubscription(userId:string,subscriptionId:string) {
+    return this.repository.withUsersTransaction([userId],(repository)=>repository.deactivateSubscription(userId,subscriptionId));
+  }
+
+  async exportUserData(userId: string) {
+    return this.repository.withUsersTransaction([userId],async(repository)=>{
+      const [profile,moneyEvents,subscriptions,investmentOrders,familyMembership,lessons] = await Promise.all([
+        repository.getProfile(userId).catch((error: unknown) => { if (error instanceof DomainError && error.code === "profile_not_found") return null; throw error; }),repository.listMoneyEvents(userId),repository.listSubscriptions(userId),repository.listInvestmentOrders(userId),repository.getFamilyMembership(userId),repository.listLessons(userId),
+      ]);
+      return {profile,moneyEvents,subscriptions,lessons,investmentOrders,familyMembership:familyMembership ? {familyId:familyMembership.familyId,role:familyMembership.role,joinedAt:familyMembership.joinedAt} : null};
+    });
   }
 
   async getDashboard(
     userId: string,
     now = new Date(),
   ): Promise<DashboardSummary> {
-    const [profile, events] = await Promise.all([
-      this.repository.getProfile(userId),
-      this.repository.listMoneyEvents(userId),
-    ]);
-    return calculateDashboard(profile, events, now);
+    const [profile, events, subscriptions] = await Promise.all([this.repository.getProfile(userId),this.repository.listMoneyEvents(userId),this.repository.listSubscriptions(userId)]);
+    return {...calculateDashboard(profile, events, now),monthlyCommitmentMinor:monthlySubscriptionCommitment(subscriptions)};
   }
 
   async getInsights(
     userId: string,
     now = new Date(),
   ): Promise<FinancialInsights> {
-    const [profile, events] = await Promise.all([
-      this.repository.getProfile(userId),
-      this.repository.listMoneyEvents(userId),
-    ]);
-    return calculateFinancialInsights(profile, events, now);
+    const [profile, events, subscriptions] = await Promise.all([this.repository.getProfile(userId),this.repository.listMoneyEvents(userId),this.repository.listSubscriptions(userId)]);
+    return calculateFinancialInsights(profile, events, now, subscriptions);
   }
 
   compareSubscriptions(
@@ -213,11 +251,12 @@ export class FutureMintService {
   }
 
   async getLearningPlan(userId: string) {
-    const [profile, events] = await Promise.all([
+    const [profile, events, subscriptions] = await Promise.all([
       this.repository.getProfile(userId),
       this.repository.listMoneyEvents(userId),
+      this.repository.listSubscriptions(userId),
     ]);
-    const insights = calculateFinancialInsights(profile, events);
+    const insights = calculateFinancialInsights(profile, events, new Date(), subscriptions);
     return this.aiProvider.generateLearningPlan({
       userId,
       profile,
@@ -363,6 +402,7 @@ export class FutureMintService {
                 incomeMinor: dashboard.incomeMinor,
                 expenseMinor: dashboard.expenseMinor,
                 subscriptionMinor: dashboard.subscriptionMinor,
+                monthlyCommitmentMinor: dashboard.monthlyCommitmentMinor,
                 availableMinor: dashboard.availableMinor,
                 goalProgress: dashboard.goalProgress,
                 summary: insights.summary,
@@ -526,10 +566,10 @@ export class FutureMintService {
     if (!membership) return;
     const members = await this.repository.listFamilyMembers(membership.familyId);
     await this.repository.withUsersTransaction(
-      members.map((member) => member.userId),
+      [userId,...members.map((member) => member.userId)],
       async (repository) => {
         const currentMembership = await repository.getFamilyMembership(userId);
-        if (!currentMembership) return;
+        if (!currentMembership || currentMembership.familyId !== membership.familyId) throw new DomainError("family_changed","家庭關聯已更新，請重新載入。",409,true);
         const currentMembers = await repository.listFamilyMembers(
           currentMembership.familyId,
         );
@@ -575,12 +615,10 @@ export class FutureMintService {
         profile.goalSavedMinor > 0 ? profile.goalSavedMinor : 1000,
       );
       const existingOrders = await repository.listInvestmentOrders(userId);
-      if (
-        existingOrders.some(
-          (order) => order.idempotencyKey === parsed.idempotencyKey,
-        )
-      ) {
-        return buildInvestmentLab(account, existingOrders, market);
+      const existingOrder=existingOrders.find((order)=>order.idempotencyKey === parsed.idempotencyKey);
+      if (existingOrder) {
+        assertSameOrderRequest(existingOrder,parsed);
+        return buildInvestmentLab(account,existingOrders,market);
       }
       const quote = market.quotes.find(
         (candidate) => candidate.symbol === parsed.symbol,

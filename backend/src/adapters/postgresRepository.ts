@@ -1,6 +1,9 @@
-import { createHash } from "node:crypto";
+import { createHash, randomUUID } from "node:crypto";
 
-import { Pool } from "pg";
+import { Pool, types } from "pg";
+
+// PostgreSQL DATE is a calendar date, never a local-midnight instant.
+types.setTypeParser(1082, (value: string) => value);
 
 import type {
   AuthRepository,
@@ -8,8 +11,10 @@ import type {
   EditableMoneyEventInput,
   FutureMintRepository,
   RateLimitStore,
+  SubscriptionCreateRecordInput,
 } from "../application/ports";
 import { DomainError } from "../contracts/errors";
+import { moneyEventPageQuerySchema } from "../contracts/schemas";
 import type {
   Account,
   AccountActionToken,
@@ -18,12 +23,20 @@ import type {
   FamilyMemberRecord,
   Lesson,
   MoneyEvent,
+  MoneyEventPageQuery,
+  Subscription,
+  SubscriptionInput,
   SaveInvestmentOrderInput,
   SessionRecord,
   UserProfile,
   VirtualInvestmentAccount,
   VirtualInvestmentOrder,
 } from "../contracts/models";
+
+import { subscriptionAnchor, withNextBillingDate } from "../domain/subscriptionSchedule";
+import { assertSameOrderRequest, moneyRequestFingerprint, idempotencyConflict } from "../domain/idempotency";
+import { resolveMoneyEventUpdate } from "../domain/moneyEventUpdate";
+import { decodeMoneyEventCursor, moneyEventPage } from "../domain/moneyEventPage";
 
 export interface SqlClient {
   query<T extends Record<string, unknown>>(
@@ -81,6 +94,9 @@ interface MoneyEventRow extends Record<string, unknown> {
   category: MoneyEvent["category"];
   merchant: string | null;
   occurred_at: Date | string;
+  subscription_id: string | null;
+  request_fingerprint: string | null;
+  source: MoneyEvent["source"] | null;
   recurrence: MoneyEvent["recurrence"] | null;
   split: MoneyEvent["split"] | null;
   spending_intent: MoneyEvent["spendingIntent"] | null;
@@ -102,6 +118,7 @@ interface LessonRow extends Record<string, unknown> {
   disclaimer: string;
   source_event_ids: string[];
   source: Lesson["source"];
+  metadata?: {provider?:string;model?:string;policyVersion?:string};
   selected_option: string | null;
   completed_at: Date | string | null;
   created_at: Date | string;
@@ -122,6 +139,7 @@ interface InvestmentOrderRow extends Record<string, unknown> {
   quantity: number;
   unit_price: number | string;
   total_minor: number;
+  execution_sequence: number | string;
   quote_as_of: Date | string;
   quote_source: VirtualInvestmentOrder["quoteSource"];
   idempotency_key: string;
@@ -208,6 +226,8 @@ const moneyEventFromRow = (row: MoneyEventRow): MoneyEvent => ({
   category: row.category,
   ...(row.merchant ? { merchant: row.merchant } : {}),
   occurredAt: isoDateTime(row.occurred_at),
+  ...(row.subscription_id ? {subscriptionId:row.subscription_id} : {}),
+  ...(row.source ? {source:row.source} : {}),
   ...(row.recurrence ? { recurrence: row.recurrence } : {}),
   ...(row.split ? { split: row.split } : {}),
   ...(row.spending_intent
@@ -233,6 +253,7 @@ const lessonFromRow = (row: LessonRow): Lesson => ({
   disclaimer: row.disclaimer,
   sourceEventIds: row.source_event_ids,
   source: row.source,
+  ...row.metadata,
   ...(row.selected_option ? { selectedOption: row.selected_option } : {}),
   ...(row.completed_at ? { completedAt: isoDateTime(row.completed_at) } : {}),
   createdAt: isoDateTime(row.created_at),
@@ -256,6 +277,7 @@ const investmentOrderFromRow = (
   side: row.side,
   quantity: row.quantity,
   unitPrice: Number(row.unit_price),
+  executionSequence: Number(row.execution_sequence),
   totalMinor: row.total_minor,
   quoteAsOf: dateOnly(row.quote_as_of),
   quoteSource: row.quote_source,
@@ -278,12 +300,18 @@ export class PostgresRepository
     private readonly client: SqlClient,
     private readonly closeClient: () => Promise<void> = async () => undefined,
     private readonly acquireClient?: () => Promise<TransactionSqlClient>,
+    private readonly transactionScoped = false,
+    private readonly transactionUsers?: ReadonlySet<string>,
   ) {}
 
   async withUsersTransaction<T>(
     userIds: string[],
     operation: (repository: FutureMintRepository) => Promise<T>,
   ): Promise<T> {
+    if (this.transactionScoped) {
+      if(!userIds.every((id)=>this.transactionUsers?.has(id))) throw new Error("Cannot expand an existing user transaction");
+      return operation(this);
+    }
     const acquire = this.acquireClient ?? (this.client instanceof Pool
       ? async () => (await (this.client as Pool).connect()) as unknown as TransactionSqlClient
       : undefined);
@@ -305,7 +333,7 @@ export class PostgresRepository
           pending = result.catch(() => undefined);
           return result;
         },
-      });
+      }, undefined, undefined, true, new Set(userIds));
       let result: T;
       try { result = await operation(scoped); }
       finally { await pending; }
@@ -319,6 +347,11 @@ export class PostgresRepository
         (transactionClient as TransactionSqlClient).release();
       }
     }
+  }
+
+  getPool(): Pool {
+    if (!(this.client instanceof Pool)) throw new Error("Repository does not own a PostgreSQL pool");
+    return this.client;
   }
 
   async ping(): Promise<void> {
@@ -385,16 +418,64 @@ export class PostgresRepository
 
   async listMoneyEvents(userId: string): Promise<MoneyEvent[]> {
     const { rows } = await this.client.query<MoneyEventRow>(
-      "SELECT * FROM money_events WHERE user_id = $1 ORDER BY occurred_at DESC",
+      "SELECT * FROM money_events WHERE user_id = $1 ORDER BY occurred_at DESC, id DESC",
       [userId],
     );
     return rows.map(moneyEventFromRow);
+  }
+
+  async listMoneyEventsPage(userId: string, query: MoneyEventPageQuery = {}) {
+    query=moneyEventPageQuerySchema.parse(query);
+    const cursor=decodeMoneyEventCursor(query.cursor);
+    const limit=query.limit ?? 50;
+    const {rows}=await this.client.query<MoneyEventRow>(`SELECT * FROM money_events WHERE user_id=$1
+      AND ($2::text IS NULL OR type=$2) AND ($3::timestamptz IS NULL OR occurred_at >= $3)
+      AND ($4::timestamptz IS NULL OR occurred_at <= $4)
+      AND ($5::timestamptz IS NULL OR (occurred_at,id) < (COALESCE((SELECT occurred_at FROM money_events WHERE user_id=$1 AND id=$6),$5::timestamptz),$6::text))
+      ORDER BY occurred_at DESC,id DESC LIMIT $7`,[userId,query.type ?? null,query.from ?? null,query.to ?? null,cursor?.occurredAt ?? null,cursor?.id ?? null,limit+1]);
+    return moneyEventPage(rows.map(moneyEventFromRow),limit);
+  }
+
+  private subscriptionFromRow(row: Record<string,unknown>): Subscription {
+    return withNextBillingDate({id:String(row.id),userId:String(row.user_id),name:String(row.name),amountMinor:Number(row.amount_minor),currency:"TWD",billingCycle:row.billing_cycle as Subscription["billingCycle"],anchorDate:dateOnly(row.anchor_date as string),originalBillingDay:Number(row.original_billing_day),originalBillingMonth:Number(row.original_billing_month),nextBillingDate:dateOnly(row.anchor_date as string),active:Boolean(row.active),createdAt:isoDateTime(row.created_at as string),updatedAt:isoDateTime(row.updated_at as string)});
+  }
+  async listSubscriptions(userId: string): Promise<Subscription[]> {
+    const {rows}=await this.client.query("SELECT * FROM subscriptions WHERE user_id=$1 ORDER BY created_at,id",[userId]);
+    return rows.map((row)=>this.subscriptionFromRow(row));
+  }
+  async getSubscription(userId: string, subscriptionId: string): Promise<Subscription | null> {
+    const {rows}=await this.client.query("SELECT * FROM subscriptions WHERE user_id=$1 AND id=$2",[userId,subscriptionId]);
+    return rows[0] ? this.subscriptionFromRow(rows[0]) : null;
+  }
+  async createSubscription(userId: string, input: SubscriptionCreateRecordInput): Promise<Subscription> {
+    if(!this.transactionScoped) return this.withUsersTransaction([userId],(repository)=>repository.createSubscription(userId,input));
+    const anchor=subscriptionAnchor(input);
+    const {rows}=await this.client.query(`INSERT INTO subscriptions (id,user_id,name,amount_minor,currency,billing_cycle,anchor_date,original_billing_day,original_billing_month,idempotency_key,request_fingerprint)
+      VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11) ON CONFLICT (user_id,idempotency_key) DO UPDATE SET idempotency_key=EXCLUDED.idempotency_key RETURNING *`,[randomUUID(),userId,input.name,input.amountMinor,input.currency,input.billingCycle,input.anchorDate,anchor.originalBillingDay,anchor.originalBillingMonth,input.idempotencyKey,input.requestFingerprint]);
+    if(rows[0].request_fingerprint!==input.requestFingerprint) throw idempotencyConflict();
+    return this.subscriptionFromRow(rows[0]);
+  }
+  async updateSubscription(userId: string, subscriptionId: string, input: SubscriptionInput): Promise<Subscription> {
+    const anchor=subscriptionAnchor(input);
+    const {rows}=await this.client.query(`UPDATE subscriptions SET name=$3,amount_minor=$4,currency=$5,billing_cycle=$6,anchor_date=$7,original_billing_day=$8,original_billing_month=$9,updated_at=clock_timestamp() WHERE user_id=$1 AND id=$2 RETURNING *`,[userId,subscriptionId,input.name,input.amountMinor,input.currency,input.billingCycle,input.anchorDate,anchor.originalBillingDay,anchor.originalBillingMonth]);
+    if(!rows[0]) throw new DomainError("subscription_not_found","找不到這項訂閱。",404);
+    return this.subscriptionFromRow(rows[0]);
+  }
+  async deactivateSubscription(userId:string,subscriptionId:string):Promise<Subscription> {
+    const {rows}=await this.client.query("UPDATE subscriptions SET active=FALSE,updated_at=clock_timestamp() WHERE user_id=$1 AND id=$2 RETURNING *",[userId,subscriptionId]);
+    if(!rows[0]) throw new DomainError("subscription_not_found","找不到這項訂閱。",404);
+    return this.subscriptionFromRow(rows[0]);
+  }
+  private async assertSubscriptionOwner(userId:string,input:EditableMoneyEventInput):Promise<void> {
+    if(input.subscriptionId && !await this.getSubscription(userId,input.subscriptionId)) throw new DomainError("subscription_not_found","找不到這項訂閱。",404);
   }
 
   async saveMoneyEvent(
     userId: string,
     input: ConfirmedMoneyEventInput,
   ): Promise<MoneyEvent> {
+    if (!this.transactionScoped) return this.withUsersTransaction([userId],(repository)=>repository.saveMoneyEvent(userId,input));
+    await this.assertSubscriptionOwner(userId,input);
     const id = `event-${createHash("sha256")
       .update(`${userId}:${input.idempotencyKey}`)
       .digest("hex")
@@ -403,10 +484,10 @@ export class PostgresRepository
       `INSERT INTO money_events (
         id, user_id, type, amount_minor, currency, category, merchant,
         occurred_at, recurrence, split, spending_intent, intent_reason,
-        idempotency_key
+        idempotency_key, subscription_id, request_fingerprint, source
       ) VALUES (
         $1, $2, $3, $4, $5, $6, $7, $8, $9::jsonb, $10::jsonb, $11, $12,
-        $13
+        $13, $14, $15, $16
       )
       ON CONFLICT (user_id, idempotency_key) DO UPDATE SET
         idempotency_key = EXCLUDED.idempotency_key
@@ -425,9 +506,14 @@ export class PostgresRepository
         input.spendingIntent ?? null,
         input.intentReason ?? null,
         input.idempotencyKey,
+        input.subscriptionId ?? null,
+        moneyRequestFingerprint(input),
+        input.source ?? null,
       ],
     );
-    return moneyEventFromRow(rows[0]);
+    const event=moneyEventFromRow(rows[0]);
+    if ((rows[0].request_fingerprint ?? moneyRequestFingerprint(event)) !== moneyRequestFingerprint(input)) throw idempotencyConflict();
+    return event;
   }
 
   async updateMoneyEvent(
@@ -435,12 +521,18 @@ export class PostgresRepository
     eventId: string,
     input: EditableMoneyEventInput,
   ): Promise<MoneyEvent> {
+    if(!this.transactionScoped) return this.withUsersTransaction([userId],(repository)=>repository.updateMoneyEvent(userId,eventId,input));
+    const existingRows=await this.client.query<MoneyEventRow>("SELECT * FROM money_events WHERE user_id=$1 AND id=$2",[userId,eventId]);
+    if(!existingRows.rows[0]) throw new DomainError("money_event_not_found","找不到這筆紀錄。",404);
+    const originalFingerprint=existingRows.rows[0].request_fingerprint ?? moneyRequestFingerprint(moneyEventFromRow(existingRows.rows[0]));
+    await this.assertSubscriptionOwner(userId,input);
+    input=resolveMoneyEventUpdate(moneyEventFromRow(existingRows.rows[0]),input);
     const { rows } = await this.client.query<MoneyEventRow>(
       `UPDATE money_events SET
         type = $3, amount_minor = $4, currency = $5, category = $6,
         merchant = $7, occurred_at = $8, recurrence = $9::jsonb,
         split = $10::jsonb, spending_intent = $11, intent_reason = $12,
-        updated_at = now()
+        subscription_id=$13, source=$14, request_fingerprint=COALESCE(request_fingerprint,$15), updated_at = clock_timestamp()
       WHERE user_id = $1 AND id = $2
       RETURNING *`,
       [
@@ -456,6 +548,9 @@ export class PostgresRepository
         input.split ? JSON.stringify(input.split) : null,
         input.spendingIntent ?? null,
         input.intentReason ?? null,
+        input.subscriptionId ?? null,
+        input.source ?? null,
+        originalFingerprint,
       ],
     );
     if (!rows[0]) {
@@ -472,6 +567,10 @@ export class PostgresRepository
     if (rowCount !== 1) {
       throw new DomainError("money_event_not_found", "找不到這筆紀錄。", 404);
     }
+  }
+
+  async listLessons(userId:string):Promise<Lesson[]> {
+    const {rows}=await this.client.query<LessonRow>("SELECT * FROM lessons WHERE user_id=$1 ORDER BY created_at,id",[userId]); return rows.map(lessonFromRow);
   }
 
   async getLesson(userId: string, lessonId: string): Promise<Lesson | null> {
@@ -495,10 +594,10 @@ export class PostgresRepository
       `INSERT INTO lessons (
         id, user_id, title, concept, example, question, options, action,
         disclaimer, source_event_ids, source, selected_option, completed_at,
-        created_at
+        created_at, metadata
       ) VALUES (
         $1, $2, $3, $4, $5, $6, $7::jsonb, $8, $9, $10::jsonb, $11, $12,
-        $13, $14
+        $13, $14, $15::jsonb
       )
       ON CONFLICT (id) DO UPDATE SET
         title = EXCLUDED.title,
@@ -511,7 +610,8 @@ export class PostgresRepository
         source_event_ids = EXCLUDED.source_event_ids,
         source = EXCLUDED.source,
         selected_option = EXCLUDED.selected_option,
-        completed_at = EXCLUDED.completed_at
+        completed_at = EXCLUDED.completed_at,
+        metadata=EXCLUDED.metadata
       RETURNING *`,
       [
         lesson.id,
@@ -528,6 +628,7 @@ export class PostgresRepository
         lesson.selectedOption ?? null,
         lesson.completedAt ?? null,
         lesson.createdAt,
+        JSON.stringify({provider:lesson.provider,model:lesson.model,policyVersion:lesson.policyVersion}),
       ],
     );
     return lessonFromRow(rows[0]);
@@ -554,7 +655,7 @@ export class PostgresRepository
     const { rows } = await this.client.query<InvestmentOrderRow>(
       `SELECT * FROM virtual_investment_orders
       WHERE user_id = $1
-      ORDER BY created_at ASC`,
+      ORDER BY execution_sequence ASC`,
       [userId],
     );
     return rows.map(investmentOrderFromRow);
@@ -564,6 +665,7 @@ export class PostgresRepository
     userId: string,
     input: SaveInvestmentOrderInput,
   ): Promise<VirtualInvestmentOrder> {
+    if (!this.transactionScoped) return this.withUsersTransaction([userId],(repository)=>repository.saveInvestmentOrder(userId,input));
     const id = `order-${createHash("sha256")
       .update(`${userId}:${input.idempotencyKey}`)
       .digest("hex")
@@ -571,8 +673,8 @@ export class PostgresRepository
     const { rows } = await this.client.query<InvestmentOrderRow>(
       `INSERT INTO virtual_investment_orders (
         id, user_id, symbol, name, side, quantity, unit_price, total_minor,
-        quote_as_of, quote_source, idempotency_key
-      ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11)
+        quote_as_of, quote_source, idempotency_key, execution_sequence
+      ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, (SELECT COALESCE(MAX(execution_sequence),0)+1 FROM virtual_investment_orders WHERE user_id=$2))
       ON CONFLICT (user_id, idempotency_key) DO UPDATE SET
         idempotency_key = EXCLUDED.idempotency_key
       RETURNING *`,
@@ -590,7 +692,9 @@ export class PostgresRepository
         input.idempotencyKey,
       ],
     );
-    return investmentOrderFromRow(rows[0]);
+    const order=investmentOrderFromRow(rows[0]);
+    assertSameOrderRequest(order,input);
+    return order;
   }
 
   async resetDemo(_userId: string): Promise<void> {
@@ -1138,11 +1242,19 @@ export class PostgresRepository
   async deleteAccount(userId: string, expectedPasswordHash?: string): Promise<void> {
     const membership = await this.getFamilyMembership(userId);
     const group = membership ? await this.getFamilyGroup(membership.familyId) : null;
-    return this.withUsersTransaction([userId, ...(group ? [group.createdBy] : [])], async (repository) => {
+    const members=membership ? await this.listFamilyMembers(membership.familyId) : [];
+    return this.withUsersTransaction([userId,...members.map((item)=>item.userId), ...(group ? [group.createdBy] : [])], async (repository) => {
       const scoped = repository as PostgresRepository;
+      if ((await scoped.getFamilyMembership(userId))?.familyId !== membership?.familyId) throw new DomainError("family_changed","家庭關聯已更新，請重新載入。",409,true);
+      if(membership && group?.createdBy===userId) {
+        const currentMembers=await scoped.listFamilyMembers(membership.familyId);
+        if(currentMembers.map((item)=>item.userId).sort().join("|")!==members.map((item)=>item.userId).sort().join("|")) throw new DomainError("family_changed","家庭關聯已更新，請重新載入。",409,true);
+      }
       if (expectedPasswordHash && (await scoped.findAccountById(userId))?.passwordHash !== expectedPasswordHash) {
         throw new DomainError("invalid_credentials", "電子郵件或密碼不正確。", 401);
       }
+      await scoped.client.query(`INSERT INTO deleted_account_journal (account_hash) VALUES ($1)
+        ON CONFLICT (account_hash) DO UPDATE SET deleted_at=EXCLUDED.deleted_at`, [createHash("sha256").update(userId).digest("hex")]);
       await scoped.client.query("DELETE FROM accounts WHERE user_id = $1", [userId]);
     });
   }

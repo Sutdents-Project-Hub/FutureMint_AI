@@ -4,7 +4,7 @@
 
 FutureMint AI 是青少年的 AI 金錢決策教練。使用者以繁體中文主動輸入收入、支出或訂閱（目前只接受文字／貼上，不提供圖片上傳或 OCR），系統先整理成可修改草稿與「需要／想要」建議；只有確認後才保存，並以確定性程式更新收支分析、訂閱提醒、個人學習規劃、FutureSeed 複利比較與延遲行情投資練習場。
 
-主辦方 Azure 環境已關閉，因此目標架構已改為團隊 VPS／Coolify。前端、API 與 PostgreSQL 是三個獨立 Resource；AI 由 API 呼叫量界智算，瀏覽器不會接觸資料庫或模型金鑰。Repository 已具備 Dockerfile、migration、health check 與三 Resource 設定文件；但目前沒有本輪可採信的 Coolify、DNS／TLS、正式 PostgreSQL、量界連線或完整使用者流程實測證據，因此統一視為「尚未部署與驗收」。
+主辦方 Azure 環境已關閉，因此目標架構已改為團隊 VPS／Coolify。前端、API 與 PostgreSQL 是三個獨立 Resource；AI 由 API 呼叫量界智算，瀏覽器不會接觸資料庫或模型金鑰。Repository 已具備 Dockerfile、migration、health check 與三 Resource 設定文件；使用者確認既有 Coolify 三 Resources 曾成功部署；目前 live health、DNS／TLS、runtime 設定與完整使用者流程尚未在本輪驗證。本次程式變更需由使用者自行重新部署並驗收。
 
 ## 命名對照
 
@@ -20,10 +20,10 @@ FutureMint AI 是青少年的 AI 金錢決策教練。使用者以繁體中文�
 ## 現在可以做什麼
 
 - 用繁體中文輸入「今天買珍奶 75」、「打工薪水 1500」或「Netflix 390 四個人分」。
-- 查看量界智算或 deterministic demo 的解析來源，修正金額／項目／分類／需要或想要後再確認保存。
+- 查看所選量界智算／官方 OpenAI 或 deterministic demo 的解析來源，修正金額／項目／分類／需要或想要後再確認保存。
 - 在紀錄頁編輯或刪除自己已保存的收入、支出與訂閱；預算、分析與訂閱比較會立即重算。
 - 用電子郵件與密碼註冊、登入、登出；正式環境先驗證 Email，再完成首次預算與目標設定，並可申請密碼重設。
-- 在第三方 AI 功能啟用前查看量界智算的資料類別與用途，可選擇不啟用或日後撤回；未同意時 Client 與 API 都會擋住量界請求。
+- 在第三方 AI 功能啟用前查看當前供應商、接收方、資料類別與用途，可選擇不啟用或日後撤回；未同意時 Client 與 API 都會擋住第三方 AI 請求。
 - 已登入帳號可在 App 內輸入目前密碼並二次確認，刪除帳號及其預算、紀錄、課程、虛擬投資與家庭關聯。
 - 每個帳號只能讀寫自己的 PostgreSQL profile、事件與課程資料；重啟 API 後資料仍保留。
 - 先看六個月收支、需要／想要比例與圖形化提醒，再查看長期交易明細。
@@ -55,7 +55,7 @@ flowchart LR
     U["使用者瀏覽器"] -->|"HTTPS"| W
     W -->|"HTTPS /api"| A
     A -->|"Coolify private network"| P["Coolify: PostgreSQL 17"]
-    A -->|"HTTPS, server-side only"| L["量界智算"]
+    A -->|"HTTPS, server-side only"| L["量界智算／明確選用官方 OpenAI"]
     A -->|"HTTPS, daily snapshot"| T["TWSE OpenAPI"]
 ```
 
@@ -166,7 +166,7 @@ docker build \
   -t futuremint-ai-web app
 ```
 
-API image 在 `DATA_PROVIDER=postgres` 時會於每次啟動先執行 idempotent migration，再啟動 Fastify；runtime image 也包含 `curl`，可供 Coolify 的 HTTP health check 驗證 `/api/health`。Coolify 的正式設定、private GitHub App、domains、環境變數、備份與 rollback 步驟見 [部署說明](docs/deployment.md)。
+API image 每次啟動先做無 I/O 的完整設定 preflight，通過後在 `DATA_PROVIDER=postgres` 時執行 idempotent migration，再啟動 Fastify；runtime image 也包含 `curl`，可供 Coolify 的 HTTP health check 驗證 `/api/health`。Coolify 的正式設定、private GitHub App、domains、環境變數、備份與 rollback 步驟見 [部署說明](docs/deployment.md)。
 
 ## 品質指令
 
@@ -195,19 +195,20 @@ flutter build web --release \
   --dart-define=API_BASE_URL=http://localhost:3000/api/
 ```
 
-根目錄 [.env.example](.env.example) 只包含本機 Web／API port 與公開 API URL 的安全 placeholder；可複製為 `.env` 調整 Compose 啟動位置。量界 API key 與 PostgreSQL connection string 仍只放 `backend/.env` 或 Coolify runtime secret。
+根目錄 [.env.example](.env.example) 包含本機 Web／API port、公開 API URL、provider 模式與空白量界 key 的安全範例；可複製為 `.env` 調整 Compose 啟動位置。量界 API key 與 PostgreSQL connection string 仍只放 `backend/.env` 或 Coolify runtime secret。
 
 已實際執行的結果與未驗證項目記錄在 [測試與證據](docs/testing-and-evidence.md)。
 
-GitHub Actions workflow 位於 [.github/workflows/ci.yml](.github/workflows/ci.yml)，會在 `main` push 與 Pull Request 執行 API／Flutter 的測試、型別／靜態檢查與 build；GitHub hosted runner 的實際執行需等下一次 push 後觀察。
+GitHub Actions workflow 位於 [.github/workflows/ci.yml](.github/workflows/ci.yml)，會在 `main` push 與 Pull Request 執行 API／Flutter 的測試、型別／靜態檢查與 build；基線 `af7a5df` 已有 GitHub CI 成功證據（122 API／121 Flutter tests、未簽章 iOS 與 images）；本輪變更尚未在遠端 CI 執行。
 
 ## 環境變數與秘密
 
-前端只有公開的 build argument：
+前端 build arguments 均為公開設定：
 
 - `API_BASE_URL`：必須是以 `/api/` 結尾的 API HTTPS base URL。改值後必須重新 build 前端。
+- `BUILD_ENV=production`、`PRIVACY_POLICY_URL`、`SUPPORT_URL`、`SUPPORT_EMAIL`、`SERVICE_OPERATOR`：正式公開政策／支援及營運者，production 不接受 validation placeholder。
 
-API 變數名稱索引在 `backend/.env.example`。Coolify production 至少需要：
+API 變數名稱索引在 `backend/.env.example`。以下為量界模式的連線變數；完整 production 必填 SMTP、公開政策、年齡與供應商條款，見 [部署變數表](docs/deployment.md#2026-09-正式產品新增發布條件)：
 
 - `NODE_ENV=production`
 - `HOST=0.0.0.0`
@@ -227,7 +228,7 @@ API 變數名稱索引在 `backend/.env.example`。Coolify production 至少需�
 
 - 目標：private GitHub repository 的 `main` 經 Coolify GitHub App／webhook 自動部署。
 - Repository 已建立 Web／API Dockerfile、PostgreSQL migration、health check 與 Coolify 三 Resource 的設定契約；這些是可部署配置，不是已部署證據。
-- Coolify resources、private GitHub integration、DNS／TLS、正式 PostgreSQL、CORS、Web bundle 的 production API URL、量界帳號模型／額度與完整 synthetic-account 主線都尚待在平台內建立並留下驗證證據。
+- 使用者確認既有 Coolify 三 Resources 曾成功部署；目前 live health、DNS／TLS、runtime 設定與完整使用者流程尚未在本輪驗證。本次程式變更需由使用者自行重新部署並驗收。
 - 部署不需要 Azure VM、Azure Functions、Cosmos DB 或 Azure OpenAI。
 
 ## 文件索引
@@ -260,12 +261,18 @@ API 變數名稱索引在 `backend/.env.example`。Coolify production 至少需�
 - 所有 commit／push 都必須先依 [AGENTS.md](AGENTS.md) 掃描 staged、unstaged、untracked 與 diff；本次遷移未執行版本控制或外部發布。
 - 新增套件、模型、資料或素材時仍需逐項確認來源、競賽規則與 attribution。
 
-## 2026-09 正式產品準備
+## 2026-10 正式產品準備
 
-本次為缺陷修正與使用者核准的正式產品範圍調整。iOS 只支援 iPhone；Web／Android 的既有程式保留。新增 Email 驗證、一次性密碼重設、家庭邀請更新／停用、原生安全憑證儲存、公開隱私／支援頁及發布前設定檢查。
+分類：新能力、缺陷修正與既有狀態釐清。首次正式服務以臺灣 15 歲以上為界線；未滿 15 歲僅能以合成資料訪客體驗，15–17 歲需監護人單次信件確認，18 歲以上需自行聲明。年齡政策版本為 `tw-service-age-15-v1`，既有帳號需補聲明。監護人同意、家庭摘要分享與第三方 AI 授權是三個獨立選擇；Email 確認不證明法定代理人身分，仍需營運查核與客服流程。
 
-正式發布需要真實 `PUBLIC_BASE_URL`、`SERVICE_OPERATOR`、`SUPPORT_EMAIL`、SMTP 與經營運者確認的隱私揭露；完整變數在 `backend/.env.example` 與 [部署文件](docs/deployment.md)。設定缺少時 production 拒絕啟動，不能拿測試資料替代。公開政策與支援頁由 API Resource 的 `/privacy`、`/support` 提供；它們不在 `/api/` 下，反向代理需轉送這些路徑。
+訂閱合約與實際付款分離：建立月繳／年繳訂閱不會自行新增支出，使用者可另記首次付款或採用自己的舊付款。編輯、停止及續訂日由穩定合約 ID 管理；支出統計只計實付紀錄，月承諾成本另列。紀錄支援分頁、手動輸入與自己的 JSON 匯出；統計使用完整資料。訂閱價格／比較為使用者輸入與合成方案，未接外部即時價格。
 
-前端 production build 必須提供 `BUILD_ENV=production`、API／隱私／支援 HTTPS URL、客服 Email 及營運者名稱。`BUILD_ENV=validation` 僅供本機／CI 驗證，允許本機 HTTP，禁止拿該產物發布。iOS 本機未簽章驗證使用 `bash app/tool/build_ios_validation.sh`；經確認 Apple Team 與上架設定後才使用 `bash app/tool/build_ios_release.sh`。兩者以隔離暫存副本排除測試插件，產物在 `app/build/release-ios/`。
+AI 預設量界智算，營運者可明確設定官方 OpenAI；不自動切換供應商。切換供應商、模型或資料條款後需重新授權，未啟用仍可手動記帳、管理訂閱、查看受控教材與教育試算。學習規劃依月預算及分類摘要安排，微課按需選題；沒有每週自動推課。
 
-本次未 commit、push、部署、登入 Apple 或送審；本機檢查及剩餘驗收見 [測試證據](docs/testing-and-evidence.md)。
+iPhone 本機續訂提醒需使用者選擇啟用，於台北續訂前一天 09:00 提醒，最多排入最早 60 個未來提醒。登出、刪除及切換帳號清除提醒；回到 App 或訂閱變動後重排，其他裝置變動需同步後才更新。Web／Android 只有 App 內提醒；未整合 APNs。新增入口沿用既有版面與元件。
+
+API runtime 設定來源為 `backend/src/config/aiConfig.ts`、`startupConfig.ts` 及 `backend/src/http/runtime.ts`；安全變數索引見 `backend/.env.example`。production 設定先檢查再 migration，錯誤只列階段及變數名稱。新增 migrations 008／009／010／011，既有 migration checksum 保留。
+
+使用者確認既有 Coolify 三 Resources 曾成功部署；目前 live health、DNS／TLS、runtime 設定與完整使用者流程尚未在本輪驗證。本次程式變更需由使用者自行重新部署並驗收。
+
+每日備份保留 30 天、隔離還原與刪除不復活、SMTP／domain、Apple Team／signed TestFlight、App Privacy／年齡問卷仍為外部驗收條件。檢查證據見 [測試與證據](docs/testing-and-evidence.md)。

@@ -59,6 +59,12 @@ describe.skipIf(!connectionString)("isolated PostgreSQL integration", () => {
           await client.query(`INSERT INTO family_groups (id,invite_code,created_by) VALUES ('legacy-family','OLDCODE1','legacy-parent')`);
           await client.query(`INSERT INTO family_members (family_id,user_id) VALUES ('legacy-family','legacy-parent'),('legacy-family','legacy-child')`);
         }
+        if(file.startsWith("008_")) {
+          await client.query("INSERT INTO virtual_investment_accounts (user_id,starting_cash_minor) VALUES ('legacy-parent',1000)");
+          await client.query(`INSERT INTO virtual_investment_orders (id,user_id,symbol,name,side,quantity,unit_price,total_minor,quote_as_of,quote_source,idempotency_key,created_at)
+            VALUES ('legacy-order-b','legacy-parent','0050','合成','sell',1,100,100,'2026-01-01','educational-snapshot','legacy-order-b','2026-01-01T00:00:00Z'),
+                   ('legacy-order-a','legacy-parent','0050','合成','buy',1,100,100,'2026-01-01','educational-snapshot','legacy-order-a','2026-01-01T00:00:00Z')`);
+        }
         await client.query(await readFile(path.join(directory, file), "utf8"));
         await client.query("COMMIT");
       } catch (error) { await client.query("ROLLBACK"); throw error; }
@@ -190,4 +196,112 @@ describe.skipIf(!connectionString)("isolated PostgreSQL integration", () => {
     await otherRepository.clearRateLimit(key);
     expect((await repository.consumeRateLimit(key, 60_000)).current).toBe(1);
   });
+  it("migrates equal-time order history deterministically and reads DATE without timezone shifts",async()=>{
+    expect((await repository.listInvestmentOrders("legacy-parent")).map((item)=>[item.id,item.executionSequence,item.quoteAsOf])).toEqual([["legacy-order-a",1,"2026-01-01"],["legacy-order-b",2,"2026-01-01"]]);
+    const originalTimezone=process.env.TZ;
+    try {
+      process.env.TZ="Asia/Taipei";
+      const userId=await addUser();
+      expect((await repository.getProfile(userId)).goalDate).toBe("2027-12-31");
+    } finally { if(originalTimezone===undefined) delete process.env.TZ; else process.env.TZ=originalTimezone; }
+  });
+
+  it("creates subscriptions and initial payments once across independent connections",async()=>{
+    const userId=await addUser(); const service=makeService(repository), other=makeService(otherRepository);
+    const input={name:"年度影音",amountMinor:1200,currency:"TWD" as const,billingCycle:"yearly" as const,anchorDate:"2024-02-29",idempotencyKey:"subscription-create-001",initialPayment:{type:"subscription" as const,amountMinor:1200,currency:"TWD" as const,category:"subscription" as const,occurredAt:"2026-07-01T00:00:00Z",confirmed:true as const,idempotencyKey:"subscription-payment-001",source:"manual" as const}};
+    const [first,second]=await Promise.all([service.createSubscription(userId,input),other.createSubscription(userId,input)]);
+    expect(first.id).toBe(second.id); expect((await service.getSubscriptions(userId)).items).toHaveLength(1);
+    expect(await repository.listMoneyEvents(userId)).toHaveLength(1);
+    await expect(other.createSubscription(userId,{...input,amountMinor:2400})).rejects.toMatchObject({code:"idempotency_conflict",status:409});
+    await expect(other.createSubscription(userId,{...input,idempotencyKey:"different-subscription",initialPayment:{...input.initialPayment,amountMinor:900}})).rejects.toMatchObject({code:"idempotency_conflict"});
+    expect((await service.getSubscriptions(userId)).items).toHaveLength(1);
+    const otherUser=await addUser();
+    await expect(other.saveMoneyEvent(otherUser,{...input.initialPayment,subscriptionId:first.id})).rejects.toMatchObject({code:"subscription_not_found"});
+    const events=await repository.listMoneyEvents(userId);
+    await service.deactivateSubscription(userId,first.id);
+    expect((await service.getSubscriptions(userId)).monthlyCommitmentMinor).toBe(0);
+    expect(await repository.listMoneyEvents(userId)).toEqual(events);
+  });
+
+  it("preserves money request fingerprints through edit and pages equal-time records",async()=>{
+    const userId=await addUser();const service=makeService(repository),other=makeService(otherRepository);
+    const input={type:"expense" as const,amountMinor:10,currency:"TWD" as const,category:"food" as const,occurredAt:"2026-07-01T00:00:00Z",confirmed:true as const,idempotencyKey:"money-conflict-original"};
+    const [first,second]=await Promise.all([service.saveMoneyEvent(userId,input),other.saveMoneyEvent(userId,input)]);expect(first.id).toBe(second.id);
+    await service.updateMoneyEvent(userId,first.id,{...input,amountMinor:20});
+    await expect(other.saveMoneyEvent(userId,{...input,amountMinor:11})).rejects.toMatchObject({code:"idempotency_conflict"});
+    expect((await other.saveMoneyEvent(userId,input)).amountMinor).toBe(20);
+    await Promise.all(Array.from({length:104},(_,index)=>service.saveMoneyEvent(userId,{...input,idempotencyKey:`paged-record-${index}`})));
+    const pages=[];let cursor:string|undefined;
+    do { const page=await other.listMoneyEventsPage(userId,{cursor}); pages.push(...page.items); cursor=page.nextCursor; } while(cursor);
+    expect(pages).toHaveLength(105);expect(new Set(pages.map((item)=>item.id)).size).toBe(105);
+    expect((await service.getDashboard(userId,new Date("2026-07-02T00:00:00Z"))).expenseMinor).toBe(1060);
+  });
+
+  it("executes order reconstruction by lock sequence even when a transaction starts earlier",async()=>{
+    const userId=await addUser();await repository.getOrCreateInvestmentAccount(userId,1000);
+    const first=await pool.connect(),second=await secondPool.connect();
+    try {
+      await first.query("BEGIN");await second.query("BEGIN");
+      await second.query("SELECT pg_advisory_xact_lock(hashtextextended($1,0))",[`futuremint:user:${userId}`]);
+      await second.query(`INSERT INTO virtual_investment_orders (id,user_id,symbol,name,side,quantity,unit_price,total_minor,quote_as_of,quote_source,idempotency_key,execution_sequence)
+        VALUES ($1,$2,'0050','合成','buy',1,100,100,'2026-01-01','educational-snapshot','later-start-buy',1)`,[randomUUID(),userId]);
+      await second.query("COMMIT");
+      await first.query("SELECT pg_advisory_xact_lock(hashtextextended($1,0))",[`futuremint:user:${userId}`]);
+      await first.query(`INSERT INTO virtual_investment_orders (id,user_id,symbol,name,side,quantity,unit_price,total_minor,quote_as_of,quote_source,idempotency_key,execution_sequence)
+        VALUES ($1,$2,'0050','合成','sell',1,100,100,'2026-01-01','educational-snapshot','earlier-start-sell',2)`,[randomUUID(),userId]);
+      await first.query("COMMIT");
+      const lab=await makeService(repository).getInvestmentLab(userId);expect(lab.holdings).toEqual([]);expect(lab.cashMinor).toBe(1000);
+      const orders=await repository.listInvestmentOrders(userId);expect(orders.map((item)=>item.side)).toEqual(["buy","sell"]);
+      await expect(makeService(otherRepository).placeInvestmentOrder(userId,{symbol:"0050",side:"buy",quantity:2,idempotencyKey:"later-start-buy"})).rejects.toMatchObject({code:"idempotency_conflict"});
+    } finally {await first.query("ROLLBACK");await second.query("ROLLBACK");first.release();second.release();}
+  });
+
+  it("rejects account deletion when a child switches families before captured locks are acquired",async()=>{
+    const parentA=await addUser("parent"),parentB=await addUser("parent"),child=await addUser();
+    const service=makeService(repository),other=makeService(otherRepository);
+    const old=await service.createFamilyInvite(parentA),next=await service.createFamilyInvite(parentB);
+    await service.joinFamily(child,{inviteCode:old.inviteCode!});
+    const original=repository.withUsersTransaction.bind(repository);
+    repository.withUsersTransaction=async(userIds,operation)=>{
+      await other.leaveFamily(child);await other.joinFamily(child,{inviteCode:next.inviteCode!});
+      return original(userIds,operation);
+    };
+    try {await expect(repository.deleteAccount(child)).rejects.toMatchObject({code:"family_changed",status:409});}
+    finally {repository.withUsersTransaction=original;}
+    expect(await repository.findAccountById(child)).not.toBeNull();expect((await repository.getFamilyMembership(child))?.familyId).toBe(next.familyId);
+  });
+
+  it("rejects stale parent-delete member snapshots and later cascades only account-owned data",async()=>{
+    const parent=await addUser("parent"),child=await addUser();const service=makeService(repository),other=makeService(otherRepository);
+    const invite=await service.createFamilyInvite(parent);
+    const original=repository.withUsersTransaction.bind(repository);
+    repository.withUsersTransaction=async(userIds,operation)=>{await other.joinFamily(child,{inviteCode:invite.inviteCode!});return original(userIds,operation);};
+    try {await expect(repository.deleteAccount(parent)).rejects.toMatchObject({code:"family_changed"});}
+    finally {repository.withUsersTransaction=original;}
+    expect(await repository.findAccountById(parent)).not.toBeNull();expect(await repository.findAccountById(child)).not.toBeNull();
+    const subscription=await service.createSubscription(parent,{name:"monthly",amountMinor:100,currency:"TWD",billingCycle:"monthly",anchorDate:"2026-01-31",idempotencyKey:"delete-subscription-key",initialPayment:{type:"subscription",amountMinor:100,currency:"TWD",category:"subscription",occurredAt:"2026-01-31T00:00:00Z",confirmed:true,idempotencyKey:"delete-payment-key"}});
+    expect(subscription.id).toBeTruthy();await repository.deleteAccount(parent);
+    expect(await repository.listSubscriptions(parent)).toEqual([]);expect(await repository.listMoneyEvents(parent)).toEqual([]);expect(await repository.getFamilyMembership(child)).toBeNull();expect(await repository.findAccountById(child)).not.toBeNull();
+  });
+
+  it("preserves adopted subscription links on old-client edits while leaving original request fingerprints intact",async()=>{
+    const userId=await addUser();const service=makeService(repository),other=makeService(otherRepository);
+    const original={type:"subscription" as const,amountMinor:1200,currency:"TWD" as const,category:"subscription" as const,occurredAt:"2026-07-01T00:00:00Z",recurrence:{billingCycle:"yearly" as const},source:"openai-ai" as const,confirmed:true as const,idempotencyKey:"legacy-edit-payment"};
+    const legacy=await service.saveMoneyEvent(userId,original);
+    const contractInput={name:"annual",amountMinor:1200,currency:"TWD" as const,billingCycle:"yearly" as const,anchorDate:"2026-07-01",idempotencyKey:"adopt-edit-contract",legacyPaymentId:legacy.id};
+    const contract=await service.createSubscription(userId,contractInput);
+    const fingerprint=(await pool.query("SELECT request_fingerprint FROM money_events WHERE user_id=$1 AND id=$2",[userId,legacy.id])).rows[0].request_fingerprint;
+    const edited=await other.updateMoneyEvent(userId,legacy.id,{...original,amountMinor:900,currency:undefined as unknown as "TWD",source:"manual"});
+    expect(edited.subscriptionId).toBe(contract.id);expect(edited.currency).toBe("TWD");expect(edited.source).toBe("manual");
+    expect((await service.getSubscriptions(userId)).legacyCandidates).toEqual([]);
+    expect((await service.saveMoneyEvent(userId,original)).amountMinor).toBe(900);
+    expect((await pool.query("SELECT request_fingerprint FROM money_events WHERE user_id=$1 AND id=$2",[userId,legacy.id])).rows[0].request_fingerprint).toBe(fingerprint);
+    const noRecurrence=await other.updateMoneyEvent(userId,legacy.id,{type:"subscription",amountMinor:800,currency:"TWD",category:"subscription",occurredAt:original.occurredAt,confirmed:true});
+    expect(noRecurrence.subscriptionId).toBe(contract.id);expect(noRecurrence.source).toBe("manual");
+    const second=await service.createSubscription(userId,{...contractInput,legacyPaymentId:undefined,idempotencyKey:"another-owned-contract"});
+    await expect(other.updateMoneyEvent(userId,legacy.id,{...original,subscriptionId:second.id})).rejects.toMatchObject({code:"subscription_link_changed"});
+    const changed=await other.updateMoneyEvent(userId,legacy.id,{type:"expense",amountMinor:800,currency:"TWD",category:"other",occurredAt:original.occurredAt,subscriptionId:contract.id,confirmed:true});
+    expect(changed.subscriptionId).toBeUndefined();
+  });
+
 });

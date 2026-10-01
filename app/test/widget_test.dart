@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:futuremint_app/app/future_mint_app.dart';
 import 'package:futuremint_app/auth/auth_models.dart';
+import 'package:futuremint_app/auth/service_policy.dart';
 import 'package:futuremint_app/core/models.dart';
 import 'package:futuremint_app/data/guest_repository.dart';
 import 'package:futuremint_app/design/tokens.dart';
@@ -23,6 +24,14 @@ Future<AppController> createController({
     aiConsent: aiConsent,
     onAiConsentChanged: onAiConsentChanged,
     onDeleteAccount: onDeleteAccount,
+    servicePolicy: const ServicePolicy(
+      aiPolicyVersion: 'test-ai-policy-v1',
+      aiDisplayName: '量界智算',
+      aiProvider: 'liangjie',
+      model: 'synthetic-requested-model',
+      dataRecipients: ['test recipient'],
+      dataTerms: '合成政策測試資料',
+    ),
   );
   await controller.initialize();
   return controller;

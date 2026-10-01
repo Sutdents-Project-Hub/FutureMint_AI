@@ -5,6 +5,7 @@ import 'package:http/http.dart' as http;
 
 import '../core/future_mint_repository.dart';
 import '../core/models.dart';
+import '../core/launch_models.dart';
 import '../shared/date_text.dart';
 
 abstract interface class _KeyValueStore {
@@ -33,7 +34,11 @@ class _MemoryStore implements _KeyValueStore {
   }
 }
 
-class GuestRepository implements FutureMintRepository {
+class GuestRepository
+    implements
+        FutureMintRepository,
+        LaunchRepository,
+        ControlledEducationRepository {
   GuestRepository.transient({
     Uri? marketBaseUri,
     http.Client? client,
@@ -53,6 +58,10 @@ class GuestRepository implements FutureMintRepository {
   final DateTime Function() _now;
   int? _investmentStartingCashMinor;
   final List<VirtualInvestmentOrder> _investmentOrders = [];
+  final List<ActiveSubscription> _subscriptions = [];
+  int _subscriptionCounter = 0;
+  final Set<String> _subscriptionCreateKeys = {};
+  final Set<String> _adoptedPayments = {};
 
   static Future<GuestRepository> create({
     Uri? marketBaseUri,
@@ -254,6 +263,9 @@ class GuestRepository implements FutureMintRepository {
       incomeMinor: income,
       expenseMinor: expenses,
       subscriptionMinor: subscriptions,
+      monthlyCommitmentMinor: _subscriptions
+          .where((s) => s.active)
+          .fold(0, (v, s) => v + s.monthlyCommitmentMinor),
       availableMinor: profile.monthlyBudgetMinor - expenses - subscriptions,
       goalRemainingMinor: max(
         0,
@@ -448,6 +460,8 @@ class GuestRepository implements FutureMintRepository {
       spendingIntent: draft.spendingIntent,
       intentReason: draft.intentReason,
       idempotencyKey: idempotencyKey,
+      source: draft.source,
+      subscriptionId: draft.subscriptionId,
       createdAt: now,
       updatedAt: now,
     );
@@ -482,6 +496,8 @@ class GuestRepository implements FutureMintRepository {
       spendingIntent: draft.spendingIntent,
       intentReason: draft.intentReason,
       idempotencyKey: existing.idempotencyKey,
+      source: draft.source,
+      subscriptionId: draft.subscriptionId,
       createdAt: existing.createdAt,
       updatedAt: DateTime.now(),
     );
@@ -502,16 +518,175 @@ class GuestRepository implements FutureMintRepository {
   }
 
   @override
-  Future<SubscriptionComparison> compareSubscriptions() async {
+  Future<MoneyEventPage> listMoneyEventPage({String? cursor}) async {
+    final all = await listMoneyEvents();
+    all.sort((a, b) {
+      final order = b.occurredAt.compareTo(a.occurredAt);
+      return order == 0 ? b.id.compareTo(a.id) : order;
+    });
+    final start = cursor == null ? 0 : int.parse(cursor);
+    return MoneyEventPage(
+      all.skip(start).take(50).toList(),
+      start + 50 < all.length ? '${start + 50}' : null,
+    );
+  }
+
+  @override
+  Future<SubscriptionCollection> getSubscriptions() async =>
+      SubscriptionCollection(
+        items: List.unmodifiable(
+          _subscriptions.map(
+            (s) => s.active
+                ? _subscription(
+                    s.id,
+                    SubscriptionInput(
+                      name: s.name,
+                      amountMinor: s.amountMinor,
+                      billingCycle: s.billingCycle,
+                      anchorDate: s.anchorDate,
+                    ),
+                  )
+                : s,
+          ),
+        ),
+        legacyCandidates: (await listMoneyEvents())
+            .where(
+              (e) =>
+                  e.type == MoneyEventType.subscription &&
+                  e.subscriptionId == null &&
+                  !_adoptedPayments.contains(e.id),
+            )
+            .toList(),
+      );
+  ActiveSubscription _subscription(String id, SubscriptionInput input) {
+    if (input.name.trim().isEmpty || input.amountMinor <= 0) {
+      throw const FormatException('請填入名稱與正確金額。');
+    }
+    var year = input.anchorDate.year, month = input.anchorDate.month;
+    final today = toTaipeiTime(_now());
+    DateTime next() => DateTime(
+      year,
+      month,
+      min(input.anchorDate.day, DateTime(year, month + 1, 0).day),
+    );
+    while (next().isBefore(DateTime(today.year, today.month, today.day))) {
+      if (input.billingCycle == BillingCycle.yearly) {
+        year++;
+      } else {
+        month++;
+        if (month > 12) {
+          month = 1;
+          year++;
+        }
+      }
+    }
+    return ActiveSubscription(
+      id: id,
+      userId: 'guest-user',
+      name: input.name.trim(),
+      amountMinor: input.amountMinor,
+      billingCycle: input.billingCycle,
+      anchorDate: input.anchorDate,
+      originalBillingDay: input.anchorDate.day,
+      originalBillingMonth: input.anchorDate.month,
+      nextBillingDate: next(),
+      active: true,
+    );
+  }
+
+  @override
+  Future<void> createSubscription(
+    SubscriptionInput input, {
+    required String idempotencyKey,
+    String? legacyPaymentId,
+    CaptureDraft? initialPayment,
+  }) async {
+    if (_subscriptionCreateKeys.contains(idempotencyKey)) return;
+    final item = _subscription(
+      'guest-subscription-${++_subscriptionCounter}',
+      input,
+    );
+    if (initialPayment != null) {
+      await saveDraft(
+        CaptureDraft.fromJson({
+          ...initialPayment.toJson(),
+          'subscriptionId': item.id,
+        }),
+        idempotencyKey: 'subscription-payment-${initialPayment.draftId}',
+      );
+    }
+    if (legacyPaymentId != null) {
+      final events = await listMoneyEvents();
+      final i = events.indexWhere(
+        (e) =>
+            e.id == legacyPaymentId &&
+            e.type == MoneyEventType.subscription &&
+            e.subscriptionId == null,
+      );
+      if (i < 0) throw const FormatException('這筆付款已採用或無法採用。');
+      events[i] = MoneyEvent.fromJson({
+        ...events[i].toJson(),
+        'subscriptionId': item.id,
+      });
+      await _writeEvents(events);
+    }
+    _subscriptions.add(item);
+    _subscriptionCreateKeys.add(idempotencyKey);
+    if (legacyPaymentId != null) _adoptedPayments.add(legacyPaymentId);
+  }
+
+  @override
+  Future<void> updateSubscription(String id, SubscriptionInput input) async {
+    final i = _subscriptions.indexWhere((s) => s.id == id);
+    if (i < 0) throw const FormatException('找不到訂閱。');
+    _subscriptions[i] = _subscription(id, input);
+  }
+
+  @override
+  Future<void> deactivateSubscription(String id) async {
+    final i = _subscriptions.indexWhere((s) => s.id == id);
+    if (i < 0) throw const FormatException('找不到訂閱。');
+    final s = _subscriptions[i];
+    _subscriptions[i] = ActiveSubscription(
+      id: s.id,
+      userId: s.userId,
+      name: s.name,
+      amountMinor: s.amountMinor,
+      billingCycle: s.billingCycle,
+      anchorDate: s.anchorDate,
+      originalBillingDay: s.originalBillingDay,
+      originalBillingMonth: s.originalBillingMonth,
+      nextBillingDate: s.nextBillingDate,
+      active: false,
+    );
+  }
+
+  @override
+  Future<Map<String, dynamic>> exportSelf() async => {
+    'profile': (await getProfile()).toJson(),
+    'moneyEvents': (await listMoneyEvents()).map((e) => e.toJson()).toList(),
+  };
+
+  @override
+  Future<SubscriptionComparison?> compareSubscriptions() async {
     final events = await listMoneyEvents();
     final subscriptions = events
         .where((event) => event.type == MoneyEventType.subscription)
         .toList();
     subscriptions.sort((a, b) => b.occurredAt.compareTo(a.occurredAt));
     final current = subscriptions.isEmpty ? null : subscriptions.first;
-    final currentPrice = current?.effectiveAmountMinor ?? 390;
-    final currentName = current?.merchant ?? '影音個人方案';
-    final members = current?.split?.participants ?? 1;
+    final active = _subscriptions.where((s) => s.active).lastOrNull;
+    if (current == null && active == null) return null;
+    final amount = active?.amountMinor ?? current!.effectiveAmountMinor;
+    final cycle =
+        active?.billingCycle ??
+        current!.recurrence?.billingCycle ??
+        BillingCycle.monthly;
+    final currentPrice = cycle == BillingCycle.yearly
+        ? (amount / 12).round()
+        : amount;
+    final currentName = active?.name ?? current!.merchant ?? '未命名訂閱';
+    final members = active == null ? current!.split?.participants ?? 1 : 1;
     final sharedEligible = members >= 4;
     return SubscriptionComparison(
       currentName: currentName,
@@ -590,33 +765,29 @@ class GuestRepository implements FutureMintRepository {
     final need = intentTotal(SpendingIntent.need);
     final want = intentTotal(SpendingIntent.want);
     final uncertain = intentTotal(SpendingIntent.uncertain);
-    final subscriptions = events.where(
-      (event) => event.type == MoneyEventType.subscription,
-    );
-    final subscription = subscriptions.fold<int>(0, (sum, event) {
-      final amount = event.effectiveAmountMinor;
-      return sum +
-          (event.recurrence?.billingCycle == BillingCycle.yearly
-              ? (amount / 12).round()
-              : amount);
-    });
+    final subscription = current
+        .where((e) => e.type == MoneyEventType.subscription)
+        .fold<int>(0, (v, e) => v + e.effectiveAmountMinor);
+    final subscriptions = (await getSubscriptions()).items
+        .where((s) => s.active)
+        .toList();
     final notices = <InsightNotice>[];
-    final upcoming = subscriptions.where((event) {
-      final next = event.recurrence?.nextBillingAt;
-      if (next == null) return false;
-      final days = next.difference(_now()).inDays;
+    final today = DateTime(now.year, now.month, now.day);
+    final upcoming = subscriptions.where((s) {
+      final days = s.nextBillingDate.difference(today).inDays;
       return days >= 0 && days <= 30;
-    }).firstOrNull;
-    if (upcoming != null) {
+    }).toList()..sort((a, b) => a.nextBillingDate.compareTo(b.nextBillingDate));
+    if (upcoming.isNotEmpty) {
+      final item = upcoming.first;
       notices.add(
         InsightNotice(
-          id: 'subscription-renewal-${upcoming.id}',
+          id: 'subscription-renewal-${item.id}',
           kind: InsightKind.subscription,
           level: InsightLevel.attention,
           title: '續訂前先問一次：最近真的有在用嗎？',
-          message: '${upcoming.merchant ?? '這項訂閱'}即將續訂；這是檢查提醒，不代表它一定浪費。',
+          message: '${item.name}即將續訂；這是檢查提醒，不代表它一定浪費。',
           actionPath: '/subscriptions',
-          amountMinor: upcoming.effectiveAmountMinor,
+          amountMinor: item.amountMinor,
         ),
       );
     }
@@ -665,12 +836,28 @@ class GuestRepository implements FutureMintRepository {
       wantMinor: want,
       uncertainMinor: uncertain,
       subscriptionMinor: subscription,
+      monthlyCommitmentMinor: _subscriptions
+          .where((s) => s.active)
+          .fold(0, (v, s) => v + s.monthlyCommitmentMinor),
       summary: classified == 0
           ? '先完成幾筆需要／想要判斷，這裡就會開始形成你的金錢模式。'
           : '本月已分類支出中，想要約占 ${((want / classified) * 100).round()}%；先看趨勢，再決定下一個小行動。',
       notices: notices,
     );
   }
+
+  @override
+  Future<Lesson> getControlledLesson() async => const Lesson(
+    id: 'catalog-fixed-cost',
+    title: '固定支出，也能重新選擇',
+    concept: '固定支出會每月重複發生。先換算成月成本，再比較使用頻率與方案資格，比單純退訂更接近真正的選擇。',
+    example: '訂閱原價每月 390 元，四人分擔後約 98 元；比較方案時要用真正負擔，並確認資格與條款。',
+    question: '下週你最想先嘗試哪一個小改變？',
+    options: ['先檢查一項固定訂閱', '設定一個小額支出上限', '維持現況並持續記錄'],
+    action: '選一個做得到的選項，七天後再看它是否真的幫上忙。',
+    disclaimer: '內容僅供金融教育與反思，不構成投資或金融商品建議。',
+    source: CaptureSource.manual,
+  );
 
   @override
   Future<Lesson> generateLesson() async {

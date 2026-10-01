@@ -5,6 +5,7 @@ import '../../core/models.dart';
 import '../../design/soft_components.dart';
 import '../../design/tokens.dart';
 import '../../state/session_controller.dart';
+import 'account_safety_actions.dart';
 
 class OnboardingScreen extends StatefulWidget {
   const OnboardingScreen({super.key});
@@ -216,6 +217,7 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
                             icon: const Icon(Icons.arrow_forward_rounded),
                             label: Text(session.busy ? '正在儲存…' : '儲存並開始使用'),
                           ),
+                          AccountSafetyActions(session: session),
                         ],
                       ),
                     ),

@@ -1,6 +1,7 @@
 import "dotenv/config";
 
 import { buildServer } from "./http/server";
+import { summarizeStartupError } from "./config/startupConfig";
 
 const main = async (): Promise<void> => {
   const app = await buildServer();
@@ -22,8 +23,6 @@ const main = async (): Promise<void> => {
 };
 
 void main().catch((error: unknown) => {
-  console.error("futuremint_api_start_failed", {
-    errorType: error instanceof Error ? error.name : typeof error,
-  });
+  console.error("futuremint_api_start_failed", summarizeStartupError(error));
   process.exitCode = 1;
 });

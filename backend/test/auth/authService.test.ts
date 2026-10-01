@@ -101,7 +101,7 @@ describe("AuthService", () => {
       grantedAt: null,
       withdrawnAt: null,
     });
-    await expect(service.setAiConsent(account.id, { granted: true })).resolves.toEqual({
+    await expect(service.setAiConsent(account.id, { granted: true, policyVersion: aiConsentPolicyVersion })).resolves.toEqual({
       granted: true,
       policyVersion: aiConsentPolicyVersion,
       grantedAt: "2026-08-30T01:00:00.000Z",
@@ -158,7 +158,7 @@ describe("AuthService", () => {
       email: "second@example.com",
       password: "futuremint2026",
     });
-    await service.setAiConsent(first.account.id, { granted: true });
+    await service.setAiConsent(first.account.id, { granted: true, policyVersion: aiConsentPolicyVersion });
 
     await expect(
       service.deleteAccount(first.account.id, { password: "wrong-password2026" }),

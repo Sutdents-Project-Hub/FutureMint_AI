@@ -26,7 +26,7 @@ flutter run -d chrome \
   --dart-define=API_BASE_URL=http://localhost:3000/api/
 ```
 
-`API_BASE_URL` 是公開設定，必須以 `/api/` 結尾。API 的 `ALLOWED_ORIGINS` 必須包含 `http://localhost:4173`。API request timeout 為 12 秒；失敗時顯示可重試錯誤，不會偽造已保存資料。
+`API_BASE_URL` 是公開設定，必須以 `/api/` 結尾。API 的 `ALLOWED_ORIGINS` 必須包含 `http://localhost:4173`。AI request timeout 為 20 秒，其餘 API 為 12 秒；失敗時顯示可重試錯誤，不會偽造已保存資料。
 
 ## Docker／Coolify
 
@@ -95,3 +95,13 @@ iOS Client 本身只使用系統 HTTPS／TLS，沒有實作自訂或非豁免加
 本機編譯驗證：`bash tool/build_ios_validation.sh`。正式簽章：先由已確認的 Apple 帳號在 Xcode Runner 設定 Team，填妥已忽略的 `.env.appstore.local`（格式見 `.env.appstore.example`），再於獲授權後執行 `bash tool/build_ios_release.sh`。腳本驗證 Runner 的 bundle ID、Team、iPhone 裝置與 production 公開設定，然後在隔離副本排除 integration_test 插件。輸出在 `build/release-ios/`，不覆寫原始測試依賴。未簽章產物不能上傳 App Store。
 
 直接 `flutter build web --release` 必須附正確 production defines；本機／CI 可以明確指定 `--dart-define=BUILD_ENV=validation`，此模式產物只供驗證。正式 Docker build 先執行相同 ReleaseConfig 檢查，placeholder 網域與缺少營運者資訊會失敗。
+
+## 服務資格、資料與本機提醒
+
+保留既有布局與視覺元件，補上年齡聲明、Email／監護人等待與撤回狀態，所有 onboarding 狀態提供登出、刪除、求助／重試。正式最低 15 歲，15–17 歲另需監護人信件確認；未滿 15 歲可選合成訪客。監護人確認、家庭摘要及 provider AI 同意獨立；AI 政策變動需重新明確啟用，拒絕仍能手動輸入與看受控教材。
+
+訂閱合約可建立／編輯／停止，可另外記實付或採用舊付款；相同保存意圖沿用 key 重試，合約及付款不重複入帳。紀錄採 cursor 分頁，摘要不依目前頁數；設定可匯出本人 JSON。內容 source 明示手動／AI／合成來源，月預算學習規劃與微課按需使用，無每週背景推課。
+
+iPhone 使用 native MethodChannel／UserNotifications 本機提醒，使用者啟用才詢問 permission；台北續訂前一天 09:00，排最早 60 筆未來提醒，payload 不含訂閱名稱／金額。CRUD、resume／同步後重排；登出、刪除與切換帳號清除。其他裝置修改需同步才會反映。Web／Android 只有 App 內提醒，無 APNs。需在簽章 iPhone／TestFlight 另驗 notification permission、點擊、時區及重登入，不把 unit tests 當實機驗收。
+
+拒絕／撤回 AI 授權或目前唯讀時，學習頁可經 `/api/education/catalog` 讀取固定受控教材；不產生外部 AI 請求。Catalog 不含個人摘要，完成標記僅在當前 Client 記憶體，不保存於帳戶；AI 個人化選題仍需當前資格及授權。

@@ -5,6 +5,7 @@ import 'package:http/http.dart' as http;
 
 import '../core/future_mint_repository.dart';
 import '../core/models.dart';
+import '../core/launch_models.dart';
 
 class ApiException implements Exception {
   const ApiException({
@@ -21,7 +22,11 @@ class ApiException implements Exception {
   String toString() => message;
 }
 
-class ApiRepository implements FutureMintRepository {
+class ApiRepository
+    implements
+        FutureMintRepository,
+        LaunchRepository,
+        ControlledEducationRepository {
   ApiRepository({
     required this.baseUri,
     this.accessToken,
@@ -49,8 +54,9 @@ class ApiRepository implements FutureMintRepository {
         ? baseUri.path
         : '${baseUri.path}/';
     return baseUri.replace(
-      path: '$prefix${path.startsWith('/') ? path.substring(1) : path}',
-      query: null,
+      path:
+          '$prefix${Uri.parse(path).path.startsWith('/') ? Uri.parse(path).path.substring(1) : Uri.parse(path).path}',
+      query: Uri.parse(path).query.isEmpty ? null : Uri.parse(path).query,
       fragment: null,
     );
   }
@@ -70,7 +76,16 @@ class ApiRepository implements FutureMintRepository {
         'DELETE' => _client.delete(_uri(path), headers: headers),
         _ => _client.post(_uri(path), headers: headers, body: encoded),
       };
-      response = await request.timeout(requestTimeout);
+      final ai =
+          path == 'captures/parse' ||
+          path == 'coach/chat' ||
+          path == 'lessons/generate' ||
+          path == 'learning-plan';
+      response = await request.timeout(
+        ai && requestTimeout == const Duration(seconds: 12)
+            ? const Duration(seconds: 20)
+            : requestTimeout,
+      );
     } on TimeoutException {
       throw const ApiException(
         code: 'request_timeout',
@@ -102,7 +117,9 @@ class ApiRepository implements FutureMintRepository {
         message: response.statusCode == 401
             ? '登入已過期，請重新登入。'
             : decoded['message'] as String? ?? '目前無法完成請求。',
-        retryable: decoded['retryable'] as bool? ?? false,
+        retryable:
+            response.statusCode >= 500 ||
+            (decoded['retryable'] as bool? ?? false),
       );
     }
     return decoded['data'];
@@ -194,6 +211,7 @@ class ApiRepository implements FutureMintRepository {
                 'spendingIntent': draft.spendingIntent!.name,
               if (draft.intentReason != null)
                 'intentReason': draft.intentReason,
+              if (draft.source == CaptureSource.manual) 'source': 'manual',
               'confirmed': true,
               'idempotencyKey': idempotencyKey,
             },
@@ -224,7 +242,9 @@ class ApiRepository implements FutureMintRepository {
       if (draft.spendingIntent != null)
         'spendingIntent': draft.spendingIntent!.name,
       if (draft.intentReason != null) 'intentReason': draft.intentReason,
+      if (draft.source == CaptureSource.manual) 'source': 'manual',
       'confirmed': true,
+      if (draft.subscriptionId != null) 'subscriptionId': draft.subscriptionId,
     };
   }
 
@@ -244,23 +264,27 @@ class ApiRepository implements FutureMintRepository {
 
   @override
   Future<SubscriptionComparison?> compareSubscriptions() async {
-    final events = await listMoneyEvents();
-    final subscriptions = events
-        .where((event) => event.type == MoneyEventType.subscription)
-        .toList();
-    subscriptions.sort((a, b) => b.occurredAt.compareTo(a.occurredAt));
-    final current = subscriptions.isEmpty ? null : subscriptions.first;
-    if (current == null) return null;
+    final collection = await getSubscriptions();
+    final active = collection.items.where((s) => s.active).lastOrNull;
+    final legacy = [...collection.legacyCandidates]
+      ..sort((a, b) => b.occurredAt.compareTo(a.occurredAt));
+    final current = legacy.firstOrNull;
+    if (active == null && current == null) return null;
     final json =
         await _send(
               'POST',
               'subscriptions/compare',
               body: {
-                'currentName': current.merchant ?? '未命名訂閱',
-                'currentPriceMinor': current.effectiveAmountMinor,
+                'currentName': active?.name ?? current!.merchant ?? '未命名訂閱',
+                'currentPriceMinor':
+                    active?.amountMinor ?? current!.effectiveAmountMinor,
                 'currentBillingCycle':
-                    current.recurrence?.billingCycle.name ?? 'monthly',
-                'members': current.split?.participants ?? 1,
+                    active?.billingCycle.name ??
+                    current!.recurrence?.billingCycle.name ??
+                    'monthly',
+                'members': active != null
+                    ? 1
+                    : current!.split?.participants ?? 1,
                 'isStudent': true,
               },
             )
@@ -283,6 +307,15 @@ class ApiRepository implements FutureMintRepository {
       }).toList(),
       disclaimer: json['disclaimer'] as String,
     );
+  }
+
+  @override
+  Future<Lesson> getControlledLesson() async {
+    final catalog =
+        await _send('GET', 'education/catalog') as Map<String, dynamic>;
+    final items = catalog['items'] as List<dynamic>;
+    if (items.isEmpty) throw const FormatException('教材暫時無法載入，請稍後再試。');
+    return Lesson.fromJson(items.first as Map<String, dynamic>);
   }
 
   @override
@@ -446,6 +479,72 @@ class ApiRepository implements FutureMintRepository {
     await _send('POST', 'investment-lab/dice', body: {'rollIndex': rollIndex})
         as Map<String, dynamic>,
   );
+
+  @override
+  Future<MoneyEventPage> listMoneyEventPage({String? cursor}) async {
+    final j =
+        await _send(
+              'GET',
+              'money-events?limit=50${cursor == null ? '' : '&cursor=${Uri.encodeQueryComponent(cursor)}'}',
+            )
+            as Map<String, dynamic>;
+    return MoneyEventPage(
+      (j['items'] as List)
+          .map((v) => MoneyEvent.fromJson(v as Map<String, dynamic>))
+          .toList(),
+      j['nextCursor'] as String?,
+    );
+  }
+
+  @override
+  Future<SubscriptionCollection> getSubscriptions() async {
+    final j = await _send('GET', 'subscriptions') as Map<String, dynamic>;
+    return SubscriptionCollection(
+      items: (j['items'] as List)
+          .map((v) => ActiveSubscription.fromJson(v as Map<String, dynamic>))
+          .toList(),
+      legacyCandidates: (j['legacyCandidates'] as List)
+          .map((v) => MoneyEvent.fromJson(v as Map<String, dynamic>))
+          .toList(),
+    );
+  }
+
+  @override
+  Future<void> createSubscription(
+    SubscriptionInput input, {
+    required String idempotencyKey,
+    String? legacyPaymentId,
+    CaptureDraft? initialPayment,
+  }) async {
+    await _send(
+      'POST',
+      'subscriptions',
+      body: {
+        ...input.toJson(),
+        'idempotencyKey': idempotencyKey,
+        'legacyPaymentId': ?legacyPaymentId,
+        if (initialPayment != null)
+          'initialPayment': {
+            ..._moneyEventPayload(initialPayment),
+            'idempotencyKey': 'subscription-payment-${initialPayment.draftId}',
+          },
+      },
+    );
+  }
+
+  @override
+  Future<void> updateSubscription(String id, SubscriptionInput input) async {
+    await _send('PUT', 'subscriptions/$id', body: input.toJson());
+  }
+
+  @override
+  Future<void> deactivateSubscription(String id) async {
+    await _send('DELETE', 'subscriptions/$id');
+  }
+
+  @override
+  Future<Map<String, dynamic>> exportSelf() async =>
+      await _send('GET', 'privacy/export') as Map<String, dynamic>;
 
   @override
   Future<void> resetDemo() async {

@@ -30,7 +30,13 @@ class _SecureTokenStore implements SecureTokenPersistence {
       _storage.write(key: key, value: value);
 }
 
-class SessionStore implements SessionPersistence {
+abstract interface class PendingIntentPersistence {
+  Future<String?> readPending(String accountId);
+  Future<void> writePending(String accountId, String value);
+  Future<void> clearPending(String accountId);
+}
+
+class SessionStore implements SessionPersistence, PendingIntentPersistence {
   SessionStore._({
     required this.preferences,
     required SecureTokenPersistence secureStore,
@@ -62,6 +68,44 @@ class SessionStore implements SessionPersistence {
         ),
     useWebStorage: useWebStorage ?? kIsWeb,
   );
+
+  Future<void> _pendingQueue = Future<void>.value();
+  String _pendingKey(String id) =>
+      'futuremint.pending-intents.v1.${Uri.encodeComponent(id)}';
+  Future<void> _pendingWrite(Future<void> Function() action) {
+    final next = _pendingQueue.then((_) => action());
+    _pendingQueue = next.catchError((Object _) {});
+    return next;
+  }
+
+  @override
+  Future<String?> readPending(String accountId) async {
+    await _pendingQueue;
+    final key = _pendingKey(accountId);
+    return _useWebStorage ? preferences.getString(key) : _secureStore.read(key);
+  }
+
+  @override
+  Future<void> writePending(String accountId, String value) =>
+      _pendingWrite(() async {
+        final key = _pendingKey(accountId);
+        if (_useWebStorage) {
+          if (!await preferences.setString(key, value)) {
+            throw StateError('Unable to persist pending intent');
+          }
+        } else {
+          await _secureStore.write(key, value);
+        }
+      });
+  @override
+  Future<void> clearPending(String accountId) => _pendingWrite(() async {
+    final key = _pendingKey(accountId);
+    if (_useWebStorage) {
+      await preferences.remove(key);
+    } else {
+      await _secureStore.delete(key);
+    }
+  });
 
   @override
   Future<String?> readToken() async {

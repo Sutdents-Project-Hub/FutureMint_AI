@@ -2,13 +2,13 @@ import { createHash } from "node:crypto";
 import { describe, expect, it } from "vitest";
 import { InMemoryRepository } from "../../src/adapters/inMemoryRepository";
 import { AuthService } from "../../src/auth/authService";
-import type { AccountMailPurpose } from "../../src/auth/accountMailer";
+import type { MailPurpose } from "../../src/auth/accountMailer";
 
 const credentials = { email: "student@example.com", password: "futuremint2026" };
 const hash = (token: string) => createHash("sha256").update(token).digest("base64url");
 function fixture() {
   const repository = new InMemoryRepository();
-  const mail: Array<{ to: string; purpose: AccountMailPurpose; token: string }> = [];
+  const mail: Array<{ to: string; purpose: MailPurpose; token: string }> = [];
   let current = new Date("2026-09-01T00:00:00Z");
   const service = new AuthService(repository, () => current, {
     requireEmailVerification: true,

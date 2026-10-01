@@ -36,7 +36,7 @@ flowchart LR
 - `lib/core/`：models、API client、session 與 repository 介面。
 - `lib/features/`：Authentication、Home、Capture、Records Analysis、Notifications、Subscriptions、Learning、FutureSeed、Settings Support。
 - `lib/design/`：Design System tokens 與 components。
-- 瀏覽器 bundle 只含公開的 `API_BASE_URL`，不含 AI／database secret。
+- 瀏覽器 bundle 只含 API URL、公開政策／支援網址及營運者等非秘密 build 設定，不含 AI／database secret。
 - 登入模式呼叫 API；訪客模式只用當次記憶體，沒有背景同步或偽造 API 成功。
 
 ### Fastify API
@@ -49,13 +49,13 @@ flowchart LR
 - `http/`：routes、CORS、rate limit、安全 headers、錯誤 envelope。
 - `migrations/`：版本化 PostgreSQL schema。
 
-Runtime 要求明確設定 `AI_PROVIDER=demo|liangjie` 與 `DATA_PROVIDER=memory|postgres`。不合法或缺少必要秘密時啟動失敗，不會靜默切換 provider。Production 固定使用 `liangjie + postgres`；`demo + memory` 僅供離線展示與自動化測試。
+Runtime 必填 `AI_PROVIDER=demo|liangjie|openai`，正式預設選用量界，`DATA_PROVIDER=memory|postgres` 明確設定。Production 僅接受量界或官方 OpenAI 配合 PostgreSQL，缺少秘密／政策確認時啟動失敗；Demo／Memory 僅供展示與測試，不自動 failover。設定先經 pure preflight 驗證，再 migration、建構服務及 listen。
 
 ## 主要資料流程
 
 ### Register／login
 
-1. Client 送出 email/password。
+1. Client 送出 email/password 與 `ageDeclaration`（`ageBand`、當前政策版本、`accepted:true`）；production 未滿 15 歲拒正式註冊，15–17 歲另需監護人確認。
 2. API 以 Zod 驗證，password 用 scrypt 與隨機 salt hash。
 3. PostgreSQL 保存 account；session 只保存 token hash，明文 token 只回傳一次給 Client。
 4. 後續 API 從 Bearer session 推導 account，不接受前端指定 user ID。
@@ -65,9 +65,9 @@ Runtime 要求明確設定 `AI_PROVIDER=demo|liangjie` 與 `DATA_PROVIDER=memory
 ### Quick Capture
 
 1. Client 送出原始文字、locale 與 reference time。
-2. API 驗證 session、長度、格式與 allowed fields；量界 runtime 還必須先確認當前 policy version 已明確授權。
+2. API 驗證 session、長度、格式與 allowed fields；所有外部 AI runtime 還必須先確認服務資格與當前供應商 policy version 已明確授權，再取得共享每日額度及 concurrency lease。
 3. Provider 最多回傳五筆草稿與可修改的需要／想要建議：量界回覆先抽取 JSON，再經 Zod 與語意規則驗證；Demo provider 使用可重現規則。
-4. 回覆來源標示 `liangjie-ai` 或 `deterministic-demo`。
+4. 回覆來源標示 `liangjie-ai`、`openai-ai` 或 `deterministic-demo`。
 5. 解析不寫資料庫；使用者修正並確認後才 POST MoneyEvent。已保存紀錄可由該帳號以 `PUT` 完整修改或以 `DELETE` 刪除，Client 隨後重載摘要。
 6. PostgreSQL 以 `(user_id, idempotency_key)` unique constraint 避免重複寫入。
 
@@ -116,7 +116,7 @@ Runtime 要求明確設定 `AI_PROVIDER=demo|liangjie` 與 `DATA_PROVIDER=memory
 
 ## 部署狀態
 
-Dockerfiles、Nginx、migration、health check 與本機容器流程已實作。尚未建立 Coolify resources、private GitHub integration、production domains、TLS、正式 PostgreSQL backup 或量界真實連線；不得描述成已上線。詳見 [部署說明](deployment.md)與[測試證據](testing-and-evidence.md)。
+使用者確認既有 Coolify 三 Resources 曾成功部署；目前 live health、DNS／TLS、runtime 設定與完整使用者流程尚未在本輪驗證。本次程式變更需由使用者自行重新部署並驗收， 詳見 [部署說明](deployment.md)與[測試證據](testing-and-evidence.md)。
 
 ## 正式產品安全與帳號恢復
 
@@ -125,3 +125,11 @@ AuthService 管理 Email 驗證與密碼重設；SMTP adapter 只在 API 持有�
 `withUsersTransaction` 以固定順序取得帳號鎖，並將 transaction-scoped repository 傳入 service；不得用 Pool.query 混用 transaction。家庭權限與虛擬交易依此保護跨 instance 並行操作。RateLimitStore 由相同 PostgreSQL resource 提供原子計數，沒有新增 Redis resource。
 
 量界的教育功能只選擇教材 ID／順序，正文由 `educationCatalog.ts` 提供；自由問題仍可作選題輸入，但不生成任意理財建議。實際資料類別及安全限制以 [安全與隱私](security-and-privacy.md) 為準。
+
+## 訂閱、分頁與跨 instance 一致性
+
+訂閱是獨立合約；付款仍屬 MoneyEvent，可透過 `subscriptionId` 關聯。POST 合約與可選首次付款／舊付款關聯共用交易，完整 payload fingerprint 保護重試；GET 訂閱分開回傳合約、月承諾成本與舊付款候選。紀錄使用 cursor 分頁，dashboard／insights 仍以全量資料計算。
+
+虛擬訂單以資料庫鎖內的 `executionSequence` 重建執行順序，不能使用交易開始時間判斷先後；家庭摘要在鎖定前擷取的成員集合若已變動，回 409 要求重試。日期型訂閱保留 PostgreSQL DATE 的原日曆，不經 UTC 轉換；近零報酬率複利使用穩定公式。
+
+拒絕／撤回 AI 授權或目前唯讀時，學習頁可經 `/api/education/catalog` 讀取固定受控教材；不產生外部 AI 請求。Catalog 不含個人摘要，完成標記僅在當前 Client 記憶體，不保存於帳戶；AI 個人化選題仍需當前資格及授權。

@@ -42,6 +42,7 @@ const moneyEventFieldsSchema = z.object({
     currency: z.literal("TWD").default("TWD"),
     category: z.enum(moneyCategories),
     merchant: z.string().trim().min(1).max(80).optional(),
+    subscriptionId: z.string().trim().min(1).max(120).optional(),
     occurredAt: isoDateTime,
     recurrence: z
       .object({
@@ -52,6 +53,7 @@ const moneyEventFieldsSchema = z.object({
     split: splitDetailsSchema.optional(),
     spendingIntent: z.enum(spendingIntents).optional(),
     intentReason: z.string().trim().min(1).max(160).optional(),
+    source: z.enum(["manual","liangjie-ai","openai-ai","deterministic-demo"]).optional(),
     confirmed: z.literal(true),
     idempotencyKey: z.string().min(8).max(120),
   });
@@ -60,6 +62,7 @@ type MoneyEventValidationInput = {
   type: string;
   category: string;
   recurrence?: unknown;
+  subscriptionId?: string;
   split?: unknown;
   spendingIntent?: unknown;
 };
@@ -67,6 +70,7 @@ type MoneyEventValidationInput = {
 const validateMoneyEvent = (
   event: MoneyEventValidationInput,
   context: z.RefinementCtx,
+  resolvingExistingLink = false,
 ) => {
     const validCategory =
       (event.type === "income" && event.category === "income") ||
@@ -81,7 +85,7 @@ const validateMoneyEvent = (
         message: "交易類型與分類不一致。",
       });
     }
-    if (event.type === "subscription" && !event.recurrence) {
+    if (!resolvingExistingLink && event.type === "subscription" && !event.recurrence && !event.subscriptionId) {
       context.addIssue({
         code: "custom",
         path: ["recurrence"],
@@ -94,6 +98,9 @@ const validateMoneyEvent = (
         path: ["recurrence"],
         message: "只有訂閱可以設定計費週期。",
       });
+    }
+    if (event.subscriptionId && event.type !== "subscription") {
+      context.addIssue({ code: "custom", path: ["subscriptionId"], message: "只有訂閱付款可以連結訂閱。" });
     }
     if (event.type === "income" && event.split) {
       context.addIssue({
@@ -117,7 +124,10 @@ export const moneyEventInputSchema = moneyEventFieldsSchema.superRefine(
 
 export const moneyEventUpdateSchema = moneyEventFieldsSchema
   .omit({ idempotencyKey: true })
-  .superRefine(validateMoneyEvent);
+  .superRefine((event, context) => validateMoneyEvent({
+    ...event,
+    subscriptionId: event.type === "subscription" ? event.subscriptionId : undefined,
+  }, context, true));
 
 export const moneyEventIdParamsSchema = z.object({
   eventId: z.string().trim().min(1).max(120),
@@ -203,3 +213,23 @@ export const subscriptionCompareInputSchema = z.object({
   members: z.number().int().min(1).max(20),
   isStudent: z.boolean(),
 });
+
+export const subscriptionInputSchema = z.object({
+  name: z.string().trim().min(1).max(80),
+  amountMinor: positiveMoney,
+  currency: z.literal("TWD").default("TWD"),
+  billingCycle: z.enum(billingCycles),
+  anchorDate: z.string().date(),
+}).strict();
+export const subscriptionCreateInputSchema = subscriptionInputSchema.extend({
+  idempotencyKey: z.string().min(8).max(120),
+  legacyPaymentId: z.string().trim().min(1).max(120).optional(),
+  initialPayment: moneyEventFieldsSchema.superRefine((event,context)=>validateMoneyEvent({...event,subscriptionId:"new"},context)).optional(),
+}).strict().refine((input)=>!input.initialPayment || !input.legacyPaymentId,{path:["legacyPaymentId"],message:"首次付款與舊付款採用只能擇一。"});
+export const subscriptionIdParamsSchema = z.object({ subscriptionId: z.string().trim().min(1).max(120) });
+export const moneyEventPageQuerySchema = z.object({
+  type: z.enum(moneyEventTypes).optional(),
+  from: isoDateTime.optional(), to: isoDateTime.optional(),
+  limit: z.coerce.number().int().min(1).max(100).default(50),
+  cursor: z.string().min(1).max(600).optional(),
+}).strict().refine(({from,to}) => !from || !to || new Date(from) <= new Date(to), {path:["from"], message:"from 不得晚於 to。"});

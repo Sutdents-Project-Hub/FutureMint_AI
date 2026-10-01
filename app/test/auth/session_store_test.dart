@@ -17,6 +17,21 @@ class _SecureStore implements SecureTokenPersistence {
   Future<void> delete(String key) async => value = null;
 }
 
+class _KeyedSecureStore implements SecureTokenPersistence {
+  final values = <String, String>{};
+  @override
+  Future<String?> read(String key) async => values[key];
+  @override
+  Future<void> write(String key, String value) async {
+    values[key] = value;
+  }
+
+  @override
+  Future<void> delete(String key) async {
+    values.remove(key);
+  }
+}
+
 void main() {
   TestWidgetsFlutterBinding.ensureInitialized();
   test(
@@ -62,6 +77,47 @@ void main() {
       await web.writeToken('browser');
       expect(await web.readToken(), 'browser');
       expect(secure.value, 'native');
+    },
+  );
+  test(
+    'native pending intents use secure storage, remain account bound and survive logout token clearing',
+    () async {
+      SharedPreferences.setMockInitialValues({});
+      final preferences = await SharedPreferences.getInstance(),
+          secure = _KeyedSecureStore();
+      final store = await SessionStore.create(
+        preferences: preferences,
+        secureStore: secure,
+        useWebStorage: false,
+      );
+      await store.writeToken('synthetic-token');
+      await store.writePending('account-1', 'synthetic-pending-json');
+      expect(preferences.getKeys(), isEmpty);
+      expect(await store.readPending('account-2'), isNull);
+      await store.clearToken();
+      expect(await store.readPending('account-1'), 'synthetic-pending-json');
+      expect(await store.readToken(), isNull);
+      await store.clearPending('account-1');
+      expect(secure.values, isEmpty);
+    },
+  );
+  test(
+    'web pending intents use existing browser storage and isolate different accounts',
+    () async {
+      SharedPreferences.setMockInitialValues({});
+      final preferences = await SharedPreferences.getInstance(),
+          secure = _KeyedSecureStore();
+      final store = await SessionStore.create(
+        preferences: preferences,
+        secureStore: secure,
+        useWebStorage: true,
+      );
+      await store.writePending('account-1', 'synthetic-one');
+      await store.writePending('account-2', 'synthetic-two');
+      expect(secure.values, isEmpty);
+      expect(await store.readPending('account-1'), 'synthetic-one');
+      await store.clearPending('account-1');
+      expect(await store.readPending('account-2'), 'synthetic-two');
     },
   );
 }

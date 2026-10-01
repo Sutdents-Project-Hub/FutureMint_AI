@@ -94,6 +94,23 @@ class _InvestmentLabScreenState extends State<InvestmentLabScreen> {
               accent: FutureMintTokens.teal,
             ),
             const SizedBox(height: FutureMintTokens.space5),
+            if (controller.hasPendingOrder) ...[
+              SoftCard(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.stretch,
+                  children: [
+                    const Text('上一筆虛擬訂單尚待確認。重試將使用同一筆原始訂單，不會建立新的操作。'),
+                    OutlinedButton(
+                      onPressed: controller.busy || !controller.canWrite
+                          ? null
+                          : controller.retryPendingOrder,
+                      child: const Text('重試原訂單'),
+                    ),
+                  ],
+                ),
+              ),
+              const SizedBox(height: FutureMintTokens.space3),
+            ],
             if (lab == null)
               _LoadingState(
                 busy: controller.busy,

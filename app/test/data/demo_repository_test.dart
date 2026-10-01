@@ -203,7 +203,7 @@ void main() {
   );
 
   test('uses the recorded subscription share as the current cost', () async {
-    final comparison = await repository.compareSubscriptions();
+    final comparison = (await repository.compareSubscriptions())!;
 
     expect(comparison.currentName, '影音訂閱');
     expect(comparison.currentMonthlyCostMinor, 98);
@@ -227,7 +227,7 @@ void main() {
         idempotencyKey: 'single-member-subscription',
       );
 
-      final comparison = await repository.compareSubscriptions();
+      final comparison = (await repository.compareSubscriptions())!;
       final shared = comparison.options.first;
 
       expect(shared.eligible, isFalse);

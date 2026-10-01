@@ -184,11 +184,12 @@ class _DraftEditorState extends State<DraftEditor> {
                 Chip(
                   visualDensity: VisualDensity.compact,
                   avatar: const Icon(Icons.rule_rounded, size: 16),
-                  label: Text(
-                    widget.draft.source == CaptureSource.liangjieAi
-                        ? '量界智算 AI 解析'
-                        : '離線規則解析',
-                  ),
+                  label: Text(switch (widget.draft.source) {
+                    CaptureSource.liangjieAi ||
+                    CaptureSource.openaiAi => 'AI 解析',
+                    CaptureSource.manual => '手動輸入',
+                    CaptureSource.deterministicDemo => '離線規則解析',
+                  }),
                 ),
             ],
           ),

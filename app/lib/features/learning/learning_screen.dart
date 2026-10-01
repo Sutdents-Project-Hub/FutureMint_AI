@@ -305,7 +305,7 @@ class _LearningPlanCard extends StatelessWidget {
     final sourceChip = Chip(
       visualDensity: VisualDensity.compact,
       avatar: const Icon(Icons.auto_awesome_outlined, size: 16),
-      label: Text(plan.source == CaptureSource.liangjieAi ? 'AI 選題' : '離線規劃'),
+      label: Text(plan.source.isAi ? 'AI 選題' : '離線規劃'),
     );
 
     if (compact) {
@@ -530,8 +530,10 @@ class _LessonContent extends StatelessWidget {
                         visualDensity: VisualDensity.compact,
                         avatar: const Icon(Icons.school_outlined, size: 16),
                         label: Text(
-                          lesson.source == CaptureSource.liangjieAi
+                          lesson.source.isAi
                               ? 'AI 選題・教學資料庫'
+                              : lesson.source == CaptureSource.manual
+                              ? '受控教材'
                               : '離線示範內容',
                         ),
                       ),

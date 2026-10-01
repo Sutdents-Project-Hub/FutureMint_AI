@@ -12,6 +12,10 @@ import type {
   Lesson,
   LearningPlan,
   MoneyEvent,
+  MoneyEventPage,
+  MoneyEventPageQuery,
+  Subscription,
+  SubscriptionInput,
   SaveInvestmentOrderInput,
   SessionRecord,
   UserProfile,
@@ -53,12 +57,19 @@ export interface ConfirmedMoneyEventInput {
   category: MoneyEvent["category"];
   merchant?: string;
   occurredAt: string;
+  subscriptionId?: string;
   recurrence?: MoneyEvent["recurrence"];
   split?: MoneyEvent["split"];
   spendingIntent?: MoneyEvent["spendingIntent"];
   intentReason?: MoneyEvent["intentReason"];
+  source?: MoneyEvent["source"];
   confirmed: true;
   idempotencyKey: string;
+}
+
+export interface SubscriptionCreateRecordInput extends SubscriptionInput {
+  idempotencyKey: string;
+  requestFingerprint: string;
 }
 
 export type EditableMoneyEventInput = Omit<
@@ -74,6 +85,12 @@ export interface FutureMintRepository {
   getProfile(userId: string): Promise<UserProfile>;
   saveProfile(profile: UserProfile): Promise<UserProfile>;
   listMoneyEvents(userId: string): Promise<MoneyEvent[]>;
+  listMoneyEventsPage(userId: string, query: MoneyEventPageQuery): Promise<MoneyEventPage>;
+  listSubscriptions(userId: string): Promise<Subscription[]>;
+  getSubscription(userId: string, subscriptionId: string): Promise<Subscription | null>;
+  createSubscription(userId: string, input: SubscriptionCreateRecordInput): Promise<Subscription>;
+  updateSubscription(userId: string, subscriptionId: string, input: SubscriptionInput): Promise<Subscription>;
+  deactivateSubscription(userId: string, subscriptionId: string): Promise<Subscription>;
   saveMoneyEvent(
     userId: string,
     input: ConfirmedMoneyEventInput,
@@ -84,6 +101,7 @@ export interface FutureMintRepository {
     input: EditableMoneyEventInput,
   ): Promise<MoneyEvent>;
   deleteMoneyEvent(userId: string, eventId: string): Promise<void>;
+  listLessons(userId: string): Promise<Lesson[]>;
   getLesson(userId: string, lessonId: string): Promise<Lesson | null>;
   getLatestLesson(userId: string): Promise<Lesson | null>;
   saveLesson(lesson: Lesson): Promise<Lesson>;

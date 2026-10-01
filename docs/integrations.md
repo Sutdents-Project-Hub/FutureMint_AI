@@ -6,8 +6,8 @@
 |---|---|---|---|
 | 量界智算 | OpenAI-compatible adapter、timeout／429／schema handling、JSON fence 容錯 | fake client unit tests | 正式 key、model access、quota、內容品質、production latency |
 | PostgreSQL | accounts／sessions／profiles／events／lessons repository、migration、idempotency | PostgreSQL 17 本機容器與 API 重啟持久化 | Coolify internal URL、backup／restore、production capacity |
-| Coolify | 兩個 Dockerfile、ports、health checks、三 Resource 設定文件 | 本機 image／container 驗證 | Private GitHub App、webhook、domains、TLS、rollback |
-| GitHub | private repository `main`、`.github/workflows/ci.yml` CI | workflow 已加入 repository；本機可執行相同檢查 | 尚未在 GitHub hosted runner 執行，也尚未連 Coolify 或驗證 Auto Deploy |
+| Coolify | 兩個 Dockerfile、ports、health checks、三 Resource 設定文件 | 使用者確認既有三 Resources 曾部署成功 | 本輪 live health、runtime／domain／SMTP、重新部署與完整主線待驗收 |
+| GitHub | private repository `main`、`.github/workflows/ci.yml` CI | 基線 `af7a5df` CI 成功：122 API／121 Flutter、未簽章 iOS 與 images | 本輪新狀態尚未執行遠端 CI；Auto Deploy 新狀態待驗收 |
 | 家庭帳號 | PostgreSQL family groups／members、邀請碼與摘要權限 | InMemory／PostgreSQL repository 契約與 service tests | 尚未做 production 多帳號實機驗收；已實作更新／停用，未提供家庭所有權轉移 |
 | 第三方 AI 同意 | App 內 disclosure、啟用／撤回、versioned PostgreSQL state、量界 route server gate | Auth／HTTP／Flutter unit 與 widget tests | 量界／上游條款、retention、training、subprocessors 與 production E2E |
 | TWSE 市場資料 | 官方 OpenAPI adapter、timeout、schema、15 分鐘 cache、明確 fallback | 本機實際取得 2026-07-14 每日成交快照 | Coolify outbound HTTPS、上游可用性與長期欄位穩定性 |
@@ -21,9 +21,9 @@
 - 本機 Compose 預設選擇 deterministic demo；要驗證真實量界連線時，僅在 ignored 根目錄 `.env` 設定 `AI_PROVIDER=liangjie` 與量界 runtime values，再重建 API。不得將 key 放進 `compose.yaml`、Docker build argument 或前端設定。
 - Adapter 使用 OpenAI-compatible chat completions。因 relay 不保證所有 provider-specific parameters，程式以 prompt 要求 JSON，再自行去除 Markdown fence、抽取 object、做 schema 與語意驗證。
 - Lesson、learning plan、coach、capture 的使用者可見文字會再驗證繁體中文與常見簡體字；schema 失敗時回 `ai_invalid_output`，不把英文內容直接顯示給使用者。Coach 另接受 `brief`、`example`、`steps` 個人化回答方式。
-- Timeout 與 429 依既有 budget 處理；invalid JSON 或 schema mismatch 時，adapter 會以相同最小化 context 重新要求一次完整合規 JSON，仍不合格才回安全且可觀察的 domain error。不記錄 prompt、原文、key 或完整 provider body。
+- 單次操作共用總 deadline（預設 12 秒），最多兩次上游嘗試、預設最多 2048 output tokens，429 與修復重試皆消耗同一 budget；invalid JSON 或 schema mismatch 時，adapter 會以相同最小化 context 重新要求一次完整合規 JSON，仍不合格才回安全且可觀察的 domain error。不記錄 prompt、原文、key 或完整 provider body。
 - 不自動 fallback 到 deterministic provider，避免把 Demo 結果冒充即時 AI。
-- 只有當前 `third-party-ai-v1` 明確授權才可進入量界 provider；parse、lesson、learning plan 與 coach 的 HTTP routes 都在呼叫 provider 前檢查，未授權回 `ai_consent_required`。
+- 只有當前由公開政策 fingerprint 產生的 `third-party-ai-v2-<fingerprint>` 明確授權才可進入外部 AI provider；parse、lesson、learning plan 與 coach 的 HTTP routes 都在呼叫 provider 前檢查，未授權回 `ai_consent_required`。
 
 量界智算是第三方 relay。部署前需確認帳號、模型供應來源、資料處理條款、費率、額度、內容政策、穩定性與競賽規則；不應假設它等同原模型供應商的 SLA 或隱私承諾。
 
@@ -60,14 +60,24 @@ API 只透過 parameterized SQL 存取 Coolify PostgreSQL。`DATABASE_URL` 只�
 
 Coolify 應以 GitHub App（只授權 `FutureMint_AI` private repository）或該 repository 的唯讀 Deploy Key 取得程式碼。啟用 webhook／automatic deployment 後，`main` push 會觸發前端與 API applications 重新 build；PostgreSQL Resource 不從 GitHub build。
 
-目前 workspace 已設定 remote，但本次功能尚未 push，也沒有在 Coolify 建立 App。詳細設定見 [部署說明](deployment.md)。
+使用者確認既有 Coolify 三 Resources 曾成功部署；目前 live health、DNS／TLS、runtime 設定與完整使用者流程尚未在本輪驗證。本次程式變更需由使用者自行重新部署並驗收，詳細設定見 [部署說明](deployment.md)。
 
 ## 明確不整合
 
-不整合支付、銀行、電子發票、證券下單、Apple Pay、LINE Pay、Email、SMS、圖片上傳／OCR 或真實未成年人金融服務。TWSE OpenAPI 只提供公開延遲行情，不會建立真實證券帳戶或交易。主辦方 Azure 關閉後，runtime 也不再依賴任何 Azure service。
+不整合支付、銀行、電子發票、證券下單、Apple Pay、LINE Pay、SMS、圖片上傳／OCR 或真實未成年人金融服務。TWSE OpenAPI 只提供公開延遲行情，不會建立真實證券帳戶或交易。主辦方 Azure 關閉後，runtime 也不再依賴任何 Azure service。
 
 ## SMTP 與教育選題更新
 
 SMTP adapter 已實作 TLS、一次性驗證／密碼重設信與 sanitized error；只以 fake mailer 測試，沒有寄出真實信件。正式 mail host／sender、DNS SPF／DKIM／DMARC、送達率、帳號權限及費用仍待確認。
 
 量界教育功能改為 strict topic ID selection，教學內容來自受控教材；parse 仍抽取事件結構，金額需使用者確認。公開 `/privacy` 由營運設定提供第三方資料條款，未確認不得發布。
+
+## 官方 OpenAI 與共享請求門檻
+
+量界為預設選擇；使用者核准可透過 `AI_PROVIDER=openai` 明確切換官方 OpenAI，固定 `https://api.openai.com/v1`，拒任意 OpenAI base URL。使用 `OPENAI_MODEL`、`OPENAI_API_KEY`、`OPENAI_DATA_RECIPIENTS`、`OPENAI_DATA_TERMS_DISCLOSURE`、`OPENAI_DATA_TERMS_REVIEWED` 與共用 `PRIVACY_POLICY_VERSION`。量界使用相同 `LIANGJIE_` 前綴公開政策欄位。Secrets 只在 API runtime。實際 allowlist 以 `backend/src/config/aiConfig.ts` 為準，官方 adapter 使用 strict Structured Outputs；固定模型 snapshot 優先，加入新模型需先確認能力。
+
+所有外部 provider 經共享 admission gate：台北每日 user 30／global 300 次，最多 5 個 operation leases；上限可由 `AI_DAILY_USER_LIMIT`、`AI_DAILY_GLOBAL_LIMIT`、`AI_MAX_CONCURRENCY` 設定。PostgreSQL 原子計數跨 instances 共用，lease 釋放失敗會到期回收，額度／資料庫確認失敗時阻擋請求，不放行。Client AI 20 秒，其餘 API 12 秒；server `AI_OPERATION_TIMEOUT_MS` 預設 12000、`AI_MAX_OUTPUT_TOKENS` 預設 2048。
+
+本輪不使用真實 key 或供應商請求；本機 fake-client 結果不代表正式模型品質、費率或條款已驗收。GitHub Models 於 2026-07-30 退役，未列入替代供應商：[GitHub 官方文件](https://docs.github.com/en/github-models)。官方能力依據：[Structured Outputs](https://developers.openai.com/api/docs/guides/structured-outputs)、[GPT-4.1 mini](https://developers.openai.com/api/docs/models/gpt-4.1-mini)。
+
+拒絕／撤回 AI 授權或目前唯讀時，學習頁可經 `/api/education/catalog` 讀取固定受控教材；不產生外部 AI 請求。Catalog 不含個人摘要，完成標記僅在當前 Client 記憶體，不保存於帳戶；AI 個人化選題仍需當前資格及授權。

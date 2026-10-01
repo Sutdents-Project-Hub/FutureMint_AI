@@ -32,7 +32,7 @@ export const buildInvestmentLab = (
   let cashMinor = account.startingCashMinor;
 
   for (const order of [...orders].sort((a, b) =>
-    a.createdAt.localeCompare(b.createdAt),
+    (a.executionSequence ?? 0) - (b.executionSequence ?? 0) || a.createdAt.localeCompare(b.createdAt) || a.id.localeCompare(b.id),
   )) {
     const current = positions.get(order.symbol) ?? {
       symbol: order.symbol,
@@ -130,7 +130,7 @@ export const buildInvestmentLab = (
     learningSummary,
     holdings,
     orders: [...orders].sort((a, b) =>
-      b.createdAt.localeCompare(a.createdAt),
+      (b.executionSequence ?? 0) - (a.executionSequence ?? 0) || b.createdAt.localeCompare(a.createdAt) || b.id.localeCompare(a.id),
     ),
     market,
     disclaimer:

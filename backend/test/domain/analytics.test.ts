@@ -59,7 +59,7 @@ describe("calculateFinancialInsights", () => {
     );
   });
 
-  it("only calls a subscription a review reminder when renewal data exists", () => {
+  it("uses active subscriptions for renewal reminders independently of payments", () => {
     const subscription = {
       ...event(
         "subscription",
@@ -78,6 +78,7 @@ describe("calculateFinancialInsights", () => {
       profile,
       [subscription],
       new Date("2026-07-15T12:00:00+08:00"),
+      [{id:"active",userId:"student",name:"影音訂閱",amountMinor:390,currency:"TWD",billingCycle:"monthly",anchorDate:"2026-06-20",originalBillingDay:20,originalBillingMonth:6,nextBillingDate:"2026-07-20",active:true,createdAt:"2026-06-20T00:00:00Z",updatedAt:"2026-06-20T00:00:00Z"}],
     );
 
     expect(insights.notices[0]).toMatchObject({

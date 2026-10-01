@@ -41,8 +41,10 @@ void main() {
       final protected = AppController(
         repository: ApiRepository(
           baseUri: Uri.parse('https://example.test/api/'),
-          client: MockClient((_) async {
+          client: MockClient((request) async {
             requests += 1;
+            expect(request.method, 'GET');
+            expect(request.url.path, '/api/education/catalog');
             return http.Response('{}', 500);
           }),
         ),
@@ -55,7 +57,7 @@ void main() {
       await protected.askCoach(topic: 'saving', question: '怎麼開始？');
       await protected.askLearningCoach(topic: 'budget', question: '如何分配？');
 
-      expect(requests, 0);
+      expect(requests, 1);
       expect(protected.errorMessage, contains('尚未啟用 AI'));
     },
   );
@@ -80,8 +82,9 @@ void main() {
       expect(consentController.aiConsent.granted, isFalse);
       expect(consentController.lesson, isNull);
       await consentController.loadLesson();
-      expect(consentController.lesson, isNull);
-      expect(consentController.errorMessage, contains('尚未啟用 AI'));
+      expect(consentController.lesson?.source, CaptureSource.manual);
+      expect(consentController.lesson?.id, startsWith('catalog-'));
+      expect(consentController.errorMessage, isNull);
     },
   );
 

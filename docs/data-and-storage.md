@@ -10,7 +10,7 @@
 
 ## PostgreSQL schema
 
-Schema 由 `backend/migrations/001_initial.sql`、`002_roles_and_intents.sql`、`003_investment_lab.sql`、`004_family_accounts.sql` 與 `005_ai_consents.sql` 管理：
+Schema 由 `backend/migrations/001` 至 `011` 的版本化 SQL 管理；008 新增訂閱與執行順序、009 新增服務資格／監護人 token、010 新增共享 AI 額度／leases，011 新增最小帳號刪除 journal。既有檔案 checksum 不變：
 
 | Table | 內容 | 重要約束 |
 |---|---|---|
@@ -19,7 +19,7 @@ Schema 由 `backend/migrations/001_initial.sql`、`002_roles_and_intents.sql`、
 | `ai_consents` | 第三方 AI policy version、當前授權狀態、最近授權／撤回時間 | 一個 user 一筆；account cascade delete；非 append-only ledger |
 | `profiles` | 月／週預算、目標、偏好語氣、孩子／家長內容角色 | 一個 user 一筆；金額、tone、account role checks |
 | `money_events` | 收入、支出、訂閱、日期、recurrence、split、需要／想要判斷與理由 | `(user_id, idempotency_key)` unique；收入不得有 spending intent |
-| `lessons` | 個人化課程、options、action、完成狀態、來源 | user FK；source 只允許量界或 demo |
+| `lessons` | 個人化課程、options、action、完成狀態、來源 | user FK；source 支援量界、官方 OpenAI、demo 與 manual；metadata 保存選題依據 |
 | `virtual_investment_accounts` | 每個登入帳號的起始虛擬現金 | 一個 user 一筆；起始金額不可為負 |
 | `virtual_investment_orders` | 教學標的、買賣方向、數量、成交快照價格／來源／日期 | `(user_id, idempotency_key)` unique；方向、數量與來源 checks |
 | `family_groups` | 家庭關聯、24 字元隨機邀請碼的 hash／到期／有效狀態 | hash unique；建立者 FK；cascade delete |
@@ -40,7 +40,7 @@ Schema 由 `backend/migrations/001_initial.sql`、`002_roles_and_intents.sql`、
 4. 依檔名執行尚未套用的 SQL，每個檔案使用 transaction。
 5. 記錄檔名與 checksum；既有 migration 被改動時拒絕啟動。
 
-API Docker image 在 `DATA_PROVIDER=postgres` 時會於 Fastify 啟動前自動執行 migration。Migration 失敗時 container 退出，由 Coolify 保留先前可用 deployment；不要直接修改已上 production 的 migration，應新增下一號 SQL。
+API Docker image 先做不連資料庫或 SMTP 的 pure preflight，通過後在 `DATA_PROVIDER=postgres` 時於 Fastify 啟動前執行 migration。Migration 失敗時 container 退出，由 Coolify 保留先前可用 deployment；不要直接修改已上 production 的 migration，應新增下一號 SQL。
 
 ## Connection
 
@@ -54,21 +54,24 @@ Pool 目前上限 10 connections，connection／idle timeout 由 repository 設�
 
 ## 備份、還原與保留
 
-部署前必須在 Coolify 為 PostgreSQL 設定 scheduled backup 到團隊控制的 S3-compatible storage，並完成至少一次實際 restore rehearsal。只有看到 backup job 成功不等於可還原。
+目標為每日備份、最多保存 30 天、存到團隊控制的異地儲存。排程／儲存整合與隔離還原演練尚未驗證；macOS credential store 及 Discord 通知不是已完成整合。還原需處理刪除紀錄，避免已刪帳號復活；backup job 成功不能代替此驗收。
 
-尚待決定：
-
-- 備份頻率、保留天數與異地儲存。
-- 備份中的帳號刪除保留／到期清理、資料匯出與清理排程容量監控。
-- Competition environment 結束後的整庫刪除日期。
-- 真實未成年人資料的同意、年齡、家長、存取與 incident response 流程。
-
-帳號刪除已有 App UI 與 API：使用者需再驗證目前密碼，成功後即時刪除 live PostgreSQL 中的 account 與 cascade 資料。這不等於備份已同步清除；backup retention、帳號刪除後備份排除／到期清除與實際回復流程仍待 production 治理定案。
-
-已實作忘記密碼、Email 驗證與自動 session cleanup。Production retention 需由營運者設定並實際落實備份清除；未成年人營運條件仍待確認，不提供真實金融服務。
+帳號刪除需目前密碼，同 transaction 保存 SHA-256 account ID 雜湊／刪除時間至 `deleted_account_journal`，成功後刪除 live account 與 cascade 資料（含訂閱、資格、監護人 token、個人 AI 計數／leases）。備份到期清理及實際還原仍需營運落實。個人 JSON 匯出只包含本人資料、資格及同意狀態，不包含密碼、session/token、秘密或其他家庭成員明細。
 
 ## 006／007 migration 與部署影響
 
 `006_concurrency_and_family_hardening.sql` 將既有短邀請碼停用並清除明文，保留家庭成員；家長必須更新新碼。依家庭建立者修正歷史角色（建立者為 parent，其餘成員為 child），並對齊 profile，避免保留過去角色競態造成的錯誤權限；新增邀請 hash／到期／有效狀態、成員角色快照與角色一致性 trigger，以及 `rate_limit_counters`。`007_auth_recovery.sql` 新增帳號 Email 驗證時間與 `account_action_tokens`（hash、用途、到期、account FK cascade）。舊帳號不會自動宣稱 Email 已驗證，啟用 SMTP 後需完成驗證。
 
 部署前先備份並在隔離 DB 跑 migration 與還原演練。不可直接切回依賴明文邀請碼的舊 API；應 forward-fix 或經核准還原完整備份。自動清理僅處理過期認證／限流資料，不刪除使用者帳務。
+
+## 008／009／010／011 additive migrations 與資料契約
+
+`subscriptions` 保存穩定 ID／owner、名稱、TWD 整數金額、月／年週期、anchor DATE、原扣款日／月、active、idempotency key 及完整請求 fingerprint。續訂日由日曆確定計算並保證在未來；不存在月份的日期先截至月末，下一週期仍使用原扣款日。`money_events.subscription_id` 使用複合 owner FK；合約停止不刪除歷史實付。
+
+`service_eligibilities` 保存 age band、政策版本、監護人狀態與 revision；`guardian_action_tokens` 只保存 token hash／用途／到期／revision。既有帳號不會自動填成年聲明。`ai_usage_daily` 以台北日曆及雜湊 user subject 原子計數，`ai_operation_leases` 支援跨 instance 並行上限及到期回收。
+
+`virtual_investment_orders.execution_sequence` 在帳號鎖內遞增，重建依此序列；008 為舊資料回填序列。升級前先備份並在隔離資料庫確認 migration／restore；不修改舊 migration，不以舊 API rollback 宣稱完整新資料語意。
+
+最小刪除 journal 不含 Email、帳務或密碼，無 account FK；保留到所有舊備份副本到期銷毀，供隔離還原對帳。011 之前的刪除沒有此紀錄。工具／防呆／最後切換前對帳流程見 [部署文件](deployment.md#9-隔離還原與刪除帳號對帳)；本機合成測試不代表正式備份已配置。
+
+Client 為重試一致性保存帳號綁定的待確認訂閱／虛擬訂單 payload 與 key；原生系統安全儲存、Web browser storage。同帳號重新登入／重啟恢復原操作，登出保留，App 內刪除帳號清除；儲存失敗會停止首次送出，不以新 key 繼續不確定操作。

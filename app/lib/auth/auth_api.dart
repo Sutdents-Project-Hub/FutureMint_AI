@@ -5,8 +5,28 @@ import 'package:http/http.dart' as http;
 
 import '../data/api_repository.dart';
 import 'auth_models.dart';
+import 'service_policy.dart';
 
 abstract class AuthGateway {
+  Future<AuthSession> registerWithAge({
+    required String email,
+    required String password,
+    required String ageBand,
+  }) => register(email: email, password: password);
+  Future<ServicePolicy?> getServicePolicy() async => null;
+  Future<EligibilityStatus?> getEligibility(String token) async => null;
+  Future<void> declareAge(String token, String ageBand) async =>
+      throw UnimplementedError();
+  Future<void> requestGuardian(String token, String email) async =>
+      throw UnimplementedError();
+  Future<void> withdrawGuardian(String token) async =>
+      throw UnimplementedError();
+  Future<AiConsentStatus> updateVersionedAiConsent({
+    required String token,
+    required bool granted,
+    String? policyVersion,
+  }) => updateAiConsent(token: token, granted: granted);
+
   Future<AuthSession> register({
     required String email,
     required String password,
@@ -113,6 +133,84 @@ class AuthApi implements AuthGateway {
     }
     return decoded['data'];
   }
+
+  @override
+  Future<AuthSession> registerWithAge({
+    required String email,
+    required String password,
+    required String ageBand,
+  }) async => AuthSession.fromJson(
+    await _send(
+          'POST',
+          'auth/register',
+          body: {
+            'email': email,
+            'password': password,
+            'ageDeclaration': {
+              'ageBand': ageBand,
+              'policyVersion': agePolicyVersion,
+              'accepted': true,
+            },
+          },
+        )
+        as Map<String, dynamic>,
+  );
+  @override
+  Future<ServicePolicy?> getServicePolicy() async => ServicePolicy.fromJson(
+    await _send('GET', 'service-policy') as Map<String, dynamic>,
+  );
+  @override
+  Future<EligibilityStatus?> getEligibility(String token) async =>
+      EligibilityStatus.fromJson(
+        await _send('GET', 'privacy/eligibility', token: token)
+            as Map<String, dynamic>,
+      );
+  @override
+  Future<void> declareAge(String token, String ageBand) async {
+    await _send(
+      'PUT',
+      'privacy/age-declaration',
+      token: token,
+      body: {
+        'ageBand': ageBand,
+        'policyVersion': agePolicyVersion,
+        'accepted': true,
+      },
+    );
+  }
+
+  @override
+  Future<void> requestGuardian(String token, String email) async {
+    await _send(
+      'POST',
+      'privacy/guardian-consent/request',
+      token: token,
+      body: {'email': email},
+    );
+  }
+
+  @override
+  Future<void> withdrawGuardian(String token) async {
+    await _send('DELETE', 'privacy/guardian-consent', token: token);
+  }
+
+  @override
+  Future<AiConsentStatus> updateVersionedAiConsent({
+    required String token,
+    required bool granted,
+    String? policyVersion,
+  }) async => AiConsentStatus.fromJson(
+    await _send(
+          'PUT',
+          'privacy/ai-consent',
+          token: token,
+          body: {
+            'granted': granted,
+            if (granted) 'policyVersion': policyVersion,
+          },
+        )
+        as Map<String, dynamic>,
+  );
 
   @override
   Future<AuthSession> register({

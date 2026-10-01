@@ -8,7 +8,7 @@
 - Repository name：`FutureMint_AI`
 - Project slug：`futuremint-ai`
 - Local Docker Compose project：`futuremint_ai`
-- Coolify project：目標命名為 `futuremint-ai`；先前文件曾稱位於 `Student Project / production`，但沒有本輪平台證據，現況統一標為尚未部署與驗收。
+- Coolify project：`futuremint-ai`。使用者確認既有 Coolify 三 Resources 曾成功部署；目前 live health、DNS／TLS、runtime 設定與完整使用者流程尚未在本輪驗證。本次程式變更需由使用者自行重新部署並驗收，
 - Coolify services：`futuremint-ai-web`、`futuremint-ai-api`、`futuremint-ai-postgres`
 - Stage：正式產品準備（2026-09-06 使用者核准）；競賽原型為既有來源
 - Product type：`hybrid`
@@ -62,7 +62,11 @@
 
 - 正式 domains、VPS sizing、監控、磁碟與現場網路備援。
 - 量界 model、quota、費率、資料處理與比賽規則確認。
-- PostgreSQL backup retention 與 restore rehearsal。
-- 青少年使用年齡、同意政策、資料地區及供應商條款的營運確認；Email／SMTP 實際送達驗收。
+- 每日備份保留 30 天的排程、異地目的地、隔離還原及刪除不復活驗收。
+- 臺灣 15 歲門檻與 15–17 歲監護人確認已實作；法定代理人身分查核／客服更正、資料地區、供應商條款及 Email／SMTP 實際送達仍需營運驗收。
 - 訂閱方案資料授權。
 - Android 實機與 iOS signing。
+
+## 本輪產品準備範圍
+
+新增訂閱合約／實付分離、分頁與手動紀錄、年齡／監護人資格、版本化供應商同意、官方 OpenAI 可選設定、跨 API instance AI 額度、個人匯出與 iPhone 本機提醒。分類為新能力、缺陷修正及釐清，保持 hybrid／executable、既有 Flutter／Fastify 與三 Resource 邊界。完整行為見 [產品範圍](project-overview.md)。

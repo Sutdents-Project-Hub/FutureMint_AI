@@ -6,6 +6,8 @@ import '../design/theme.dart';
 import '../features/auth/auth_screen.dart';
 import '../features/auth/email_verification_screen.dart';
 import '../features/auth/onboarding_screen.dart';
+import '../features/auth/eligibility_screen.dart';
+import '../features/auth/account_safety_actions.dart';
 import '../state/app_controller.dart';
 import '../state/session_controller.dart';
 import 'app_router.dart';
@@ -22,8 +24,54 @@ class FutureMintApp extends StatefulWidget {
   State<FutureMintApp> createState() => _FutureMintAppState();
 }
 
-class _FutureMintAppState extends State<FutureMintApp> {
+class _FutureMintAppState extends State<FutureMintApp>
+    with WidgetsBindingObserver {
   late final router = createAppRouter();
+  String? _pendingReminderOwner;
+  void _onSessionChanged() {
+    final session = widget.session;
+    if (!mounted || session == null) return;
+    if (session.status == SessionStatus.authenticated &&
+        session.account?.id == _pendingReminderOwner) {
+      _pendingReminderOwner = null;
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        if (mounted && session.status == SessionStatus.authenticated) {
+          router.go('/subscriptions');
+        }
+      });
+    } else if (session.status == SessionStatus.signedOut ||
+        session.status == SessionStatus.guest) {
+      _pendingReminderOwner = null;
+    }
+  }
+
+  @override
+  void initState() {
+    super.initState();
+    WidgetsBinding.instance.addObserver(this);
+    widget.session?.addListener(_onSessionChanged);
+    widget.session?.reminders.onOpen = (owner) async {
+      final session = widget.session;
+      if (session?.account?.id != owner) return;
+      _pendingReminderOwner = owner;
+      if (!session!.busy) await session.resume();
+      _onSessionChanged();
+    };
+  }
+
+  @override
+  void didChangeAppLifecycleState(AppLifecycleState state) {
+    if (state == AppLifecycleState.resumed) widget.session?.resume();
+  }
+
+  @override
+  void dispose() {
+    WidgetsBinding.instance.removeObserver(this);
+    widget.session?.removeListener(_onSessionChanged);
+    widget.session?.reminders.onOpen = null;
+    router.dispose();
+    super.dispose();
+  }
 
   static const _supportedLocales = [Locale('zh', 'TW')];
   static const _localizationsDelegates = [
@@ -69,10 +117,12 @@ class _FutureMintAppState extends State<FutureMintApp> {
               busy: session.busy,
               onRetry: session.start,
               onUseAnotherAccount: session.discardStoredSession,
+              session: session,
             ),
             SessionStatus.verificationRequired =>
               const EmailVerificationScreen(),
             SessionStatus.onboarding => const OnboardingScreen(),
+            SessionStatus.eligibilityRequired => const EligibilityScreen(),
             SessionStatus.authenticated || SessionStatus.guest => null,
           };
           if (home != null) {
@@ -125,12 +175,14 @@ class _SessionRecoveryScreen extends StatelessWidget {
     required this.busy,
     required this.onRetry,
     required this.onUseAnotherAccount,
+    required this.session,
   });
 
   final String? message;
   final bool busy;
   final Future<void> Function() onRetry;
   final Future<void> Function() onUseAnotherAccount;
+  final SessionController session;
 
   @override
   Widget build(BuildContext context) => Scaffold(
@@ -140,39 +192,42 @@ class _SessionRecoveryScreen extends StatelessWidget {
           constraints: const BoxConstraints(maxWidth: 440),
           child: Padding(
             padding: const EdgeInsets.all(24),
-            child: Column(
-              mainAxisSize: MainAxisSize.min,
-              crossAxisAlignment: CrossAxisAlignment.stretch,
-              children: [
-                const Icon(Icons.cloud_off_outlined, size: 48),
-                const SizedBox(height: 16),
-                Text(
-                  '暫時無法恢復登入',
-                  textAlign: TextAlign.center,
-                  style: Theme.of(context).textTheme.headlineSmall,
-                ),
-                const SizedBox(height: 8),
-                Text(
-                  message ?? '請確認網路後再試一次；你的登入資訊仍保留在這台裝置。',
-                  textAlign: TextAlign.center,
-                ),
-                const SizedBox(height: 24),
-                FilledButton.icon(
-                  onPressed: busy ? null : onRetry,
-                  icon: busy
-                      ? const SizedBox.square(
-                          dimension: 18,
-                          child: CircularProgressIndicator(strokeWidth: 2),
-                        )
-                      : const Icon(Icons.refresh_rounded),
-                  label: Text(busy ? '正在重試…' : '重新連線'),
-                ),
-                const SizedBox(height: 8),
-                OutlinedButton(
-                  onPressed: busy ? null : onUseAnotherAccount,
-                  child: const Text('改用其他帳號'),
-                ),
-              ],
+            child: SingleChildScrollView(
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                crossAxisAlignment: CrossAxisAlignment.stretch,
+                children: [
+                  const Icon(Icons.cloud_off_outlined, size: 48),
+                  const SizedBox(height: 16),
+                  Text(
+                    '暫時無法恢復登入',
+                    textAlign: TextAlign.center,
+                    style: Theme.of(context).textTheme.headlineSmall,
+                  ),
+                  const SizedBox(height: 8),
+                  Text(
+                    message ?? '請確認網路後再試一次；你的登入資訊仍保留在這台裝置。',
+                    textAlign: TextAlign.center,
+                  ),
+                  const SizedBox(height: 24),
+                  FilledButton.icon(
+                    onPressed: busy ? null : onRetry,
+                    icon: busy
+                        ? const SizedBox.square(
+                            dimension: 18,
+                            child: CircularProgressIndicator(strokeWidth: 2),
+                          )
+                        : const Icon(Icons.refresh_rounded),
+                    label: Text(busy ? '正在重試…' : '重新連線'),
+                  ),
+                  const SizedBox(height: 8),
+                  OutlinedButton(
+                    onPressed: busy ? null : onUseAnotherAccount,
+                    child: const Text('改用其他帳號'),
+                  ),
+                  AccountSafetyActions(session: session),
+                ],
+              ),
             ),
           ),
         ),

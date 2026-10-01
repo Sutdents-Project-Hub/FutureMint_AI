@@ -4,6 +4,8 @@ import 'package:provider/provider.dart';
 import '../../design/soft_components.dart';
 import '../../design/tokens.dart';
 import '../../state/session_controller.dart';
+import '../settings/help_sheets.dart';
+import '../../shared/public_links.dart';
 
 class EmailVerificationScreen extends StatelessWidget {
   const EmailVerificationScreen({super.key});
@@ -185,6 +187,12 @@ class EmailVerificationScreen extends StatelessWidget {
                       label: const Text('重新寄驗證信'),
                     ),
                     const SizedBox(height: FutureMintTokens.space3),
+                    const PrivacySupportLinks(),
+                    TextButton.icon(
+                      onPressed: () => showSupportBot(context),
+                      icon: const Icon(Icons.support_agent),
+                      label: const Text('使用說明與協助'),
+                    ),
                     TextButton.icon(
                       onPressed: session.busy ? null : session.logout,
                       icon: const Icon(Icons.logout_rounded),

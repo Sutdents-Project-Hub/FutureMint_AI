@@ -1,5 +1,35 @@
 # 測試與證據
 
+## 本輪證據界線（2026-10-01）
+
+分類：新能力、缺陷修正與釐清。下方歷史測試數量僅對應各自日期／狀態。基線 `af7a5df` 的 GitHub CI 已確認成功：122 API tests、121 Flutter tests、未簽章 iOS 與 Web／API images；本輪新變更尚未跑遠端 CI，最新本機驗證結果需按本輪實際指令記錄。
+
+使用者確認既有 Coolify 三 Resources 曾成功部署；目前 live health、DNS／TLS、runtime 設定與完整使用者流程尚未在本輪驗證。本次程式變更需由使用者自行重新部署並驗收。
+
+本輪已覆蓋訂閱同交易／完整 payload 重試、舊付款採用、分頁全量統計、owner 隔離、臺灣年齡／監護人 token／撤回、provider fingerprint 再授權／雙供應商 gate、共享 AI 額度／lease、preflight 先於 migration、DATE／近零複利、虛擬執行順序及家庭捕獲成員變動 409。Client 本機測試另覆蓋手動流程／同 key retry、所有 onboarding 退出／刪除／help/retry、iPhone 提醒 permission／時區／清除／resume。測試通過只能證明被測的本機狀態；未使用真實 provider key。
+
+未驗收：SMTP／domain／正式 AI 條款與品質、每日備份保留 30 天／隔離還原／刪除不復活、Apple Team／signed TestFlight／通知實機、App Privacy／年齡問卷。既有 CI 或未簽章產物不取代這些外部證據。
+
+### 最終本機執行結果（2026-10-01）
+
+| 項目 | 結果及界線 |
+|---|---|
+| API Node.js 22 | `npm test` 31 files／224 tests 全通過，含 localhost PostgreSQL 17 隔離 schema 整合；`npm run typecheck`、`npm run build` 通過 |
+| PostgreSQL | 001–011 migrations 在空白測試 DB 套用成功；舊 001–007 checksum／源檔不變。覆蓋跨 Pool 交易、families、角色、DATE、訂閱採用／重試／owner、資格與 AI 額度。011 對帳測試驗證 preview 無變更、apply 清除已刪帳號及 sessions／profile、保留其他使用者、重跑與非法 journal；沒有執行 production restore |
+| 啟動配置 | CLI demo 正例 exit 0；缺 production 設定 exit 1，只列階段及變數名稱；Docker 執行 preflight 後才套 11 migrations／啟動 API |
+| Capture evaluation | deterministic-demo 30/30 合成案例、schema 30/30、欄位 225/225，未呼叫真實 AI |
+| 依賴稽核 | `npm audit --json` 所有等級 0；修補 Fastify、Nodemailer、fast-uri、Vitest、brace-expansion 相容版本，未做無關 major upgrade。結果對應當下 npm 官方公告 |
+| Flutter | `dart format --output=none --set-exit-if-changed lib test integration_test`：73 files／0 changed；`flutter analyze --no-pub`：0 issues；`flutter test --no-pub`：152/152，包含 OpenAI provenance 解析／UI 標籤與拒絕 AI／唯讀的受控教材及本機答題回歸 |
+| Swift／Simulator | iPhone simulator debug 編譯成功；`xcodebuild test ... -only-testing:RunnerTests CODE_SIGNING_ALLOWED=NO`：2/2，驗證 Taipei calendar／generic content／account-bound tap。不是實機通知驗收 |
+| iPhone unsigned Release | 最終 `bash app/tool/build_ios_validation.sh` 通過；31.0 MB，`UIDeviceFamily=[1]`、SDK `iphoneos26.4`、bundle `tw.futuremint.futuremintApp`、1.0.0（1）、4 privacy manifests、無 integration_test framework。未簽章、不作 App Store 產物 |
+| Docker API／Web | 最終兩個 images 本機建置成功；Web 使用 BUILD_ENV=validation，Flutter Web Release／Wasm dry run 成功；Nginx 首頁／deep links 200、no-store。未推送 images、未驗證遠端平台 |
+| 實際跨元件契約 | 用 App 實際 Dart `AuthApi`／`ApiRepository` 對 localhost Docker API＋PostgreSQL：年齡聲明、service policy、UTF-8 受控教材、訂閱＋初次付款同 key 重試、commitment、付款連結、分頁、JSON 匯出、停用保留付款、刪除帳號通過。不是 SMTP／真實 AI／production 驗收 |
+| 安全與審查 | 全部非忽略文字檔高信心 private key／token／webhook patterns 0 命中；未讀真實 `.env` 或掃完整 history。`git diff --check` 通過。獨立來源審查發現的付款連結、partial refresh、resume retry、唯讀刪除與 restore URL 問題已修正／複驗 |
+
+日誌：`/tmp/futuremint-launch-backend-tests.log`、`/tmp/client-tests.log`、`/tmp/client-analyze.log`、`/tmp/client-native-tests.log`、`/tmp/futuremint-launch-ios-release.log`、`/tmp/futuremint-launch-api-docker.log`、`/tmp/futuremint-launch-web-docker.log`。最終 iPhone artifact：`app/build/release-ios/futuremint-ios.Vl8A1H/iphoneos/Runner.app`；均為忽略的本機產物。
+
+本輪專用 API、Web、PostgreSQL 測試容器及匿名測試 volume 已清除；其他容器／資料卷未變更。當前工作在 `main`，本輪程式／文件未 commit／push，未執行遠端 CI、Coolify 部署、真實 SMTP／AI、Apple 簽章／上傳或送審。
+
 ## 2026-09-30 iPhone 手機版 UI 優化驗證
 
 分類：缺陷修正（深色／亮色對比）與已核准範圍內的手機版面調整；不變更資料、API、權限或商業邏輯。工作於 branch `style/mobile-ui-polish`；本次未涉及部署。
@@ -164,7 +194,7 @@
 
 本機 Docker 是 ARM64；最終 Dockerfiles 使用 multi-architecture Debian／Node／Nginx base，Flutter SDK 依建置主機下載相符 toolchain，但仍需在實際 Coolify VPS architecture 完成一次正式 build。
 
-## 測試覆蓋重點
+## 歷史測試覆蓋重點（本輪新增覆蓋見開頭）
 
 ### API
 
@@ -205,8 +235,8 @@ Fixture：`backend/test/fixtures/capture-evaluation.json`；報告：
 ## 尚未驗證
 
 - 量界正式環境的費率、quota、資料條款、真實使用情境 output quality、P95 latency 與 outage 行為。
-- GitHub App、webhook／Auto Deploy；workspace 已有 remote，但本次尚未 push 或連接 Coolify。
-- GitHub Actions workflow 已加入，但本次尚未在 GitHub hosted runner 實際執行；需下一次 push／Pull Request 觀察。
+- 本輪重新部署的 GitHub App、webhook／Auto Deploy 仍需驗收；既有 Coolify 曾成功部署，不據此推定新程式已在平台運作。
+- 基線 `af7a5df` 已在 GitHub hosted runner 成功；本輪新狀態需於後續 push／Pull Request 重新觀察。
 - 實際 Coolify VPS 的 AMD64／ARM64 image build、domains、TLS、CORS、health routing、resource limits 與 rollback。
 - Coolify PostgreSQL internal URL、production capacity、scheduled S3 backup 與隔離 restore。
 - Production log retention、磁碟告警與 server／Coolify 自身備份。

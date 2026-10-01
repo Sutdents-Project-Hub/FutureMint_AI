@@ -11,7 +11,7 @@ const balanceForMonths = (
   const monthlyRate = annualRatePercent / 100 / 12;
   return Math.round(
     monthlyContributionMinor *
-      ((Math.pow(1 + monthlyRate, months) - 1) / monthlyRate),
+      (Math.expm1(months * Math.log1p(monthlyRate)) / monthlyRate),
   );
 };
 

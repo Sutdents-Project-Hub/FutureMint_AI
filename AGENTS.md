@@ -4,7 +4,7 @@
 
 - 本檔適用於整個 `FutureMint AI` repository；子目錄若有更具體的 `AGENTS.md`，只在該範圍內補充本檔。
 - 依序遵守使用者當次指示、本檔、根目錄 `README.md`、`docs/` 與元件 README；內容衝突時先停止並確認。
-- 目前階段：由第六屆中學生黑客松決賽原型轉為正式產品準備（使用者於 2026-09-06 核准）。主辦方 Azure 環境已關閉；目前目標是由私人 GitHub repository 自動部署到團隊 VPS 的 Coolify，尚未部署。
+- 目前階段：由第六屆中學生黑客松決賽原型轉為正式產品準備（使用者於 2026-09-06 核准）。主辦方 Azure 環境已關閉；使用者確認既有 Coolify 三 Resources 曾部署成功，本輪版本、runtime 設定與正式使用流程仍需重新部署及驗收。
 - Git repository 名稱：`FutureMint_AI`。全新專案的初始 branch 為 `main`。
 - Project slug：`futuremint-ai`。
 - 本機 Docker Compose project：`futuremint_ai`；主要 `compose.yaml` 必須明確設定頂層 `name: futuremint_ai`。
@@ -30,7 +30,7 @@
 
 ### 假設與未決事項
 
-- 主 Persona 是開始管理零用錢與數位消費的中學生；已實作帳號與家庭摘要分享，正式未成年人營運條件仍待確認。
+- 主 Persona 是開始管理零用錢與數位消費的中學生；正式服務採臺灣 15+，15–17 歲需監護人 Email 確認。服務資格、家庭摘要分享與 AI 授權各自獨立；Email 不證明法定代理人身分，正式未成年人營運條件仍待查核。
 - 主要 Demo 面保留 Flutter Web 或 Android；正式 iOS 僅支援 iPhone。Apple 簽章、正式 domain、SMTP 與 VPS 備份仍待確認。
 - 訂閱方案資料來源及青少年可用性測試的同意／去識別方式尚待團隊定案。
 
@@ -42,13 +42,13 @@
 - `design/` 是沒有 runtime、manifest 或部署生命週期的設計支援資產；`docs/` 是產品、架構、競賽、測試與部署依據，兩者不冒充 executable component。
 - 專案結構採公司慣例的固定 component roots：`app/`、`backend/`、`design/` 與 `docs/`；`app/`、`backend/` 本身就是 framework root，manifest 直接位於 component 根目錄，不得再建立 project-name 或 framework-name wrapper。
 - Flutter、Fastify、Node.js 22 與 npm 是已實作且可驗證的學生技術選型；除非另行核准遷移，不為了套用公司新專案基線而更換框架、runtime 或 package manager。
-- 已選定 Coolify 三 Resource 架構：Flutter Web Application、Fastify API Application、PostgreSQL Database；AI 僅由 API 呼叫量界智算的 OpenAI-compatible endpoint。尚未建立的 VPS、Coolify、DNS、資料庫與外部 AI 連線不得描述成已完成。
+- 已選定 Coolify 三 Resource 架構：Flutter Web Application、Fastify API Application、PostgreSQL Database；AI 僅由 API 呼叫，量界智算為主，可明確設定官方 OpenAI，不自動切換。供應商／模型／公開條款變更須重新授權；未驗收的 DNS、資料庫、SMTP、備份與外部 AI 連線不得描述成已完成。
 - Repository 與專案根目錄名稱維持 `FutureMint_AI`；Coolify resources 與新技術識別優先使用 `futuremint-ai` 或平台既有命名慣例。
 - 新 component id、路徑與一般文件名使用能表達責任的 lowercase kebab-case；固定角色優先使用 `app`、`web`、`cms`、`backend`、`packages`、`design` 與 `docs`。
 - 保留現有且可工作的框架慣例；新增 executable component 時直接建立在對應固定 root，不新增無必要的分類包層。
 - 不建立未使用的 component root 或部署資源；若需求確實需要非標準結構，必須在 `docs/project-profile.md` 記錄理由、影響與核准狀態。
 - 不把不同執行環境、依賴或部署生命週期硬塞進同一元件；需要共用程式碼時，先確認至少有兩個真實使用者。
-- Flutter／Web 不得直接持有量界智算 API key 或 PostgreSQL connection string；模型與資料存取一律經 Fastify API。AI 回覆必須經 schema／範圍驗證，金額、期限與複利使用確定性程式計算。
+- Flutter／Web 不得直接持有任何 AI provider API key 或 PostgreSQL connection string；模型與資料存取一律經 Fastify API。AI 回覆必須經 schema／範圍驗證，金額、期限與複利使用確定性程式計算。
 - Flutter UI 以 `design/futuremint-ai/MASTER.md` 為共用視覺、響應式與可及性依據；實作與規範衝突時先確認需求並同步兩邊，不靜默漂移。
 
 ## 工作方式

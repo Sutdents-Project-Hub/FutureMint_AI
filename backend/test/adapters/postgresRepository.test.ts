@@ -1,6 +1,7 @@
 import { readFileSync } from "node:fs";
 import { resolve } from "node:path";
 
+import { Pool } from "pg";
 import { describe, expect, it } from "vitest";
 
 import {
@@ -28,6 +29,7 @@ class FakeSqlClient implements SqlClient {
     values?: unknown[],
   ): Promise<{ rows: T[]; rowCount?: number }> {
     this.queries.push({ text, values });
+    if (["BEGIN","COMMIT","ROLLBACK"].includes(text) || text.includes("pg_advisory_xact_lock")) return {rows:[],rowCount:0};
     const result = this.results.shift() ?? { rows: [], rowCount: 0 };
     return { rows: result.rows as T[], rowCount: result.rowCount };
   }
@@ -56,6 +58,12 @@ const accountRow = {
 };
 
 describe("PostgresRepository", () => {
+  it("exposes only the owned pool for shared stores",async()=>{
+    const pool=new Pool();
+    expect(new PostgresRepository(pool).getPool()).toBe(pool);
+    expect(()=>new PostgresRepository(new FakeSqlClient()).getPool()).toThrow("does not own");
+    await pool.end();
+  });
   it("maps account rows without exposing SQL column naming", async () => {
     const client = new FakeSqlClient();
     client.enqueue([accountRow]);
@@ -146,9 +154,7 @@ describe("PostgresRepository", () => {
       idempotencyKey: "drink-20260715",
       spendingIntent: "want",
     });
-    expect(client.queries[0].text).toContain(
-      "ON CONFLICT (user_id, idempotency_key)",
-    );
+    expect(client.queries.find((query)=>query.text.includes("INSERT INTO money_events"))!.text).toContain("ON CONFLICT (user_id, idempotency_key)");
   });
 
   it("includes user ownership when deriving the global event id", async () => {
@@ -186,8 +192,8 @@ describe("PostgresRepository", () => {
     await new PostgresRepository(firstClient).saveMoneyEvent("user-1", input);
     await new PostgresRepository(secondClient).saveMoneyEvent("user-2", input);
 
-    expect(firstClient.queries[0].values?.[0]).not.toBe(
-      secondClient.queries[0].values?.[0],
+    expect(firstClient.queries.find((query)=>query.text.includes("INSERT INTO money_events"))!.values?.[0]).not.toBe(
+      secondClient.queries.find((query)=>query.text.includes("INSERT INTO money_events"))!.values?.[0],
     );
   });
 

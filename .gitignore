@@ -42,3 +42,8 @@ local.settings.json
 # IDE
 .idea/
 *.swp
+
+# Backup artifacts and restore deletion journals
+*.deletion-journal.json
+*.dump
+*.sql.gz

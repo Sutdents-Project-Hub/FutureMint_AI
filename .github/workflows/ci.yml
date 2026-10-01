@@ -41,6 +41,8 @@ jobs:
           cache-dependency-path: backend/package-lock.json
       - name: Install API dependencies
         run: npm ci
+      - name: Audit production dependencies
+        run: npm run audit:production
       - name: Run API tests
         run: npm test
       - name: Typecheck API

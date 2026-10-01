@@ -1,3 +1,4 @@
+import { AsyncLocalStorage } from "node:async_hooks";
 import { randomUUID } from "node:crypto";
 
 import type {
@@ -8,6 +9,9 @@ import type {
   FamilyMemberRecord,
   Lesson,
   MoneyEvent,
+  MoneyEventPageQuery,
+  Subscription,
+  SubscriptionInput,
   SaveInvestmentOrderInput,
   SessionRecord,
   UserProfile,
@@ -15,13 +19,20 @@ import type {
   VirtualInvestmentOrder,
 } from "../contracts/models";
 import { DomainError } from "../contracts/errors";
+import { moneyEventPageQuerySchema } from "../contracts/schemas";
 import type {
   AuthRepository,
   ConfirmedMoneyEventInput,
   EditableMoneyEventInput,
   FutureMintRepository,
   RateLimitStore,
+  SubscriptionCreateRecordInput,
 } from "../application/ports";
+
+import { subscriptionAnchor, withNextBillingDate } from "../domain/subscriptionSchedule";
+import { assertSameOrderRequest, moneyRequestFingerprint, idempotencyConflict } from "../domain/idempotency";
+import { resolveMoneyEventUpdate } from "../domain/moneyEventUpdate";
+import { filterMoneyEventPage } from "../domain/moneyEventPage";
 
 const profileSeed = (): UserProfile => ({
   userId: "demo-user",
@@ -102,6 +113,9 @@ export class InMemoryRepository
 {
   private profiles = new Map<string, UserProfile>();
   private events = new Map<string, MoneyEvent[]>();
+  private subscriptionRequests=new Map<string,{id:string;fingerprint:string}>();
+  private subscriptions = new Map<string, Subscription[]>();
+  private moneyFingerprints = new Map<string, string>();
   private lessons = new Map<string, Lesson[]>();
   private investmentAccounts = new Map<string, VirtualInvestmentAccount>();
   private investmentOrders = new Map<string, VirtualInvestmentOrder[]>();
@@ -114,6 +128,7 @@ export class InMemoryRepository
   private familyMembers = new Map<string, FamilyMemberRecord>();
   private accountActionTokens = new Map<string, AccountActionToken>();
   private rateLimits = new Map<string, { current: number; expiresAt: number }>();
+  private readonly transactionUsers = new AsyncLocalStorage<Set<string>>();
   private userLocks = new Map<string, Promise<void>>();
 
   constructor() {
@@ -121,11 +136,14 @@ export class InMemoryRepository
   }
 
   private seed(userId: string): void {
+    for(const item of this.events.get(userId) ?? []) this.moneyFingerprints.delete(`${userId}:${item.id}`);
+    for(const key of this.subscriptionRequests.keys()) if(key.startsWith(`${userId}:`)) this.subscriptionRequests.delete(key);
     const profile = { ...profileSeed(), userId };
     const events = eventSeed().map((event) => ({ ...event, userId }));
     this.profiles.set(userId, profile);
     this.events.set(userId, events);
     this.lessons.set(userId, []);
+    this.subscriptions.set(userId, []);
     this.investmentAccounts.delete(userId);
     this.investmentOrders.set(userId, []);
   }
@@ -157,9 +175,29 @@ export class InMemoryRepository
     operation: (repository: FutureMintRepository) => Promise<T>,
   ): Promise<T> {
     const ordered = [...new Set(userIds)].sort();
+    const currentUsers=this.transactionUsers.getStore();
+    if(currentUsers) {
+      if(ordered.every((id)=>currentUsers.has(id))) return operation(this);
+      throw new Error("Cannot expand an existing user transaction");
+    }
     const acquire = (index: number): Promise<T> =>
       index >= ordered.length
-        ? operation(this)
+        ? (async()=>{
+          const snapshots=ordered.map((id)=>({id,events:structuredClone(this.events.get(id)),subscriptions:structuredClone(this.subscriptions.get(id))}));
+          const fingerprints=new Map(this.moneyFingerprints);
+          const subscriptionRequests=new Map([...this.subscriptionRequests].filter(([key])=>ordered.some((id)=>key.startsWith(`${id}:`))));
+          try { return await this.transactionUsers.run(new Set(ordered),()=>operation(this)); } catch(error) {
+            for (const item of snapshots) {
+              for(const event of this.events.get(item.id) ?? []) this.moneyFingerprints.delete(`${item.id}:${event.id}`);
+              if (item.events) this.events.set(item.id,item.events); else this.events.delete(item.id);
+              if (item.subscriptions) this.subscriptions.set(item.id,item.subscriptions); else this.subscriptions.delete(item.id);
+              for (const event of this.events.get(item.id) ?? []) { const value=fingerprints.get(`${item.id}:${event.id}`); if(value) this.moneyFingerprints.set(`${item.id}:${event.id}`,value); }
+            }
+            for(const key of this.subscriptionRequests.keys()) if(ordered.some((id)=>key.startsWith(`${id}:`))) this.subscriptionRequests.delete(key);
+            for(const [key,value] of subscriptionRequests) this.subscriptionRequests.set(key,value);
+            throw error;
+          }
+        })()
         : this.withUserLock(ordered[index], () => acquire(index + 1));
     return acquire(0);
   }
@@ -189,16 +227,63 @@ export class InMemoryRepository
     return [...(this.events.get(userId) ?? [])].map((event) => ({ ...event }));
   }
 
+  async listMoneyEventsPage(userId: string, query: MoneyEventPageQuery = {}) {
+    query=moneyEventPageQuerySchema.parse(query);
+    return filterMoneyEventPage(await this.listMoneyEvents(userId),query);
+  }
+
+  async listSubscriptions(userId: string): Promise<Subscription[]> {
+    return (this.subscriptions.get(userId) ?? []).map((item) => withNextBillingDate({...item}));
+  }
+  async getSubscription(userId: string, subscriptionId: string): Promise<Subscription | null> {
+    return (await this.listSubscriptions(userId)).find((item) => item.id === subscriptionId) ?? null;
+  }
+  async createSubscription(userId: string, input: SubscriptionCreateRecordInput): Promise<Subscription> {
+    const key=`${userId}:${input.idempotencyKey}`;
+    const existing=this.subscriptionRequests.get(key);
+    if(existing) {
+      if(existing.fingerprint!==input.requestFingerprint) throw idempotencyConflict();
+      return (await this.getSubscription(userId,existing.id))!;
+    }
+    const {idempotencyKey,requestFingerprint,...fields}=input;
+    const now = new Date().toISOString();
+    const item = withNextBillingDate({id:randomUUID(),userId,...fields,...subscriptionAnchor(fields),nextBillingDate:input.anchorDate,active:true,createdAt:now,updatedAt:now});
+    const items=this.subscriptions.get(userId) ?? []; items.push(item); this.subscriptions.set(userId,items);
+    this.subscriptionRequests.set(key,{id:item.id,fingerprint:requestFingerprint});
+    return {...item};
+  }
+  async updateSubscription(userId: string, subscriptionId: string, input: SubscriptionInput): Promise<Subscription> {
+    const item = await this.getSubscription(userId,subscriptionId);
+    if (!item) throw new DomainError("subscription_not_found","找不到這項訂閱。",404);
+    const updated=withNextBillingDate({...item,...input,...subscriptionAnchor(input),updatedAt:new Date().toISOString()});
+    this.subscriptions.set(userId,(this.subscriptions.get(userId) ?? []).map((existing)=>existing.id===subscriptionId ? updated : existing));
+    return {...updated};
+  }
+  async deactivateSubscription(userId: string, subscriptionId: string): Promise<Subscription> {
+    const item=await this.getSubscription(userId,subscriptionId);
+    if (!item) throw new DomainError("subscription_not_found","找不到這項訂閱。",404);
+    const updated={...item,active:false,updatedAt:new Date().toISOString()};
+    this.subscriptions.set(userId,(this.subscriptions.get(userId) ?? []).map((existing)=>existing.id===subscriptionId ? updated : existing));
+    return {...updated};
+  }
+  private async assertSubscriptionOwner(userId:string, input:EditableMoneyEventInput):Promise<void> {
+    if (input.subscriptionId && !await this.getSubscription(userId,input.subscriptionId)) throw new DomainError("subscription_not_found","找不到這項訂閱。",404);
+  }
+
   async saveMoneyEvent(
     userId: string,
     input: ConfirmedMoneyEventInput,
   ): Promise<MoneyEvent> {
+    if(!this.transactionUsers.getStore()?.has(userId)) return this.withUsersTransaction([userId],(repository)=>repository.saveMoneyEvent(userId,input));
     const events = this.events.get(userId) ?? [];
     const existing = events.find(
       (event) => event.idempotencyKey === input.idempotencyKey,
     );
-    if (existing) return { ...existing };
-
+    if (existing) {
+      if ((this.moneyFingerprints.get(`${userId}:${existing.id}`) ?? moneyRequestFingerprint(existing)) !== moneyRequestFingerprint(input)) throw idempotencyConflict();
+      return {...existing};
+    }
+    await this.assertSubscriptionOwner(userId,input);
     const now = new Date().toISOString();
     const event: MoneyEvent = {
       id: randomUUID(),
@@ -209,6 +294,8 @@ export class InMemoryRepository
       category: input.category,
       merchant: input.merchant,
       occurredAt: input.occurredAt,
+      source: input.source,
+      subscriptionId: input.subscriptionId,
       recurrence: input.recurrence,
       split: input.split,
       spendingIntent: input.spendingIntent,
@@ -217,6 +304,7 @@ export class InMemoryRepository
       createdAt: now,
       updatedAt: now,
     };
+    this.moneyFingerprints.set(`${userId}:${event.id}`,moneyRequestFingerprint(input));
     events.push(event);
     this.events.set(userId, events);
     return { ...event };
@@ -227,12 +315,16 @@ export class InMemoryRepository
     eventId: string,
     input: EditableMoneyEventInput,
   ): Promise<MoneyEvent> {
+    if(!this.transactionUsers.getStore()?.has(userId)) return this.withUsersTransaction([userId],(repository)=>repository.updateMoneyEvent(userId,eventId,input));
     const events = this.events.get(userId) ?? [];
     const index = events.findIndex((event) => event.id === eventId);
     if (index < 0) {
       throw new DomainError("money_event_not_found", "找不到這筆紀錄。", 404);
     }
     const existing = events[index];
+    if(!this.moneyFingerprints.has(`${userId}:${existing.id}`)) this.moneyFingerprints.set(`${userId}:${existing.id}`,moneyRequestFingerprint(existing));
+    await this.assertSubscriptionOwner(userId,input);
+    input=resolveMoneyEventUpdate(existing,input);
     const updated: MoneyEvent = {
       ...existing,
       type: input.type,
@@ -241,6 +333,8 @@ export class InMemoryRepository
       category: input.category,
       merchant: input.merchant,
       occurredAt: input.occurredAt,
+      source: input.source,
+      subscriptionId: input.subscriptionId,
       recurrence: input.recurrence,
       split: input.split,
       spendingIntent: input.spendingIntent,
@@ -258,9 +352,12 @@ export class InMemoryRepository
     if (index < 0) {
       throw new DomainError("money_event_not_found", "找不到這筆紀錄。", 404);
     }
+    this.moneyFingerprints.delete(`${userId}:${events[index].id}`);
     events.splice(index, 1);
     this.events.set(userId, events);
   }
+
+  async listLessons(userId:string):Promise<Lesson[]> { return (this.lessons.get(userId) ?? []).map((item)=>({...item})); }
 
   async getLesson(userId: string, lessonId: string): Promise<Lesson | null> {
     return (
@@ -313,11 +410,12 @@ export class InMemoryRepository
     const existing = orders.find(
       (order) => order.idempotencyKey === input.idempotencyKey,
     );
-    if (existing) return { ...existing };
+    if (existing) { assertSameOrderRequest(existing,input); return {...existing}; }
     const order: VirtualInvestmentOrder = {
       id: randomUUID(),
       userId,
       ...input,
+      executionSequence: Math.max(0,...orders.map((order)=>order.executionSequence ?? 0))+1,
       createdAt: new Date().toISOString(),
     };
     orders.push(order);
@@ -701,7 +799,15 @@ export class InMemoryRepository
   async deleteAccount(userId: string, expectedPasswordHash?: string): Promise<void> {
     const membership = this.familyMembers.get(userId);
     const parentId = membership && this.familyGroups.get(membership.familyId)?.createdBy;
-    return this.withUsersTransaction([userId, ...(parentId ? [parentId] : [])], () => this.deleteAccountLocked(userId, expectedPasswordHash));
+    const members=membership ? await this.listFamilyMembers(membership.familyId) : [];
+    return this.withUsersTransaction([userId, ...members.map((item)=>item.userId), ...(parentId ? [parentId] : [])], async () => {
+      if (this.familyMembers.get(userId)?.familyId !== membership?.familyId) throw new DomainError("family_changed","家庭關聯已更新，請重新載入。",409,true);
+      if(membership && parentId===userId) {
+        const currentMembers=await this.listFamilyMembers(membership.familyId);
+        if(currentMembers.map((item)=>item.userId).sort().join("|")!==members.map((item)=>item.userId).sort().join("|")) throw new DomainError("family_changed","家庭關聯已更新，請重新載入。",409,true);
+      }
+      return this.deleteAccountLocked(userId, expectedPasswordHash);
+    });
   }
 
   private async deleteAccountLocked(userId: string, expectedPasswordHash?: string): Promise<void> {
@@ -719,7 +825,10 @@ export class InMemoryRepository
     }
     this.familyMembers.delete(userId);
     this.profiles.delete(userId);
+    for(const event of this.events.get(userId) ?? []) this.moneyFingerprints.delete(`${userId}:${event.id}`);
     this.events.delete(userId);
+    this.subscriptions.delete(userId);
+    for(const key of this.subscriptionRequests.keys()) if(key.startsWith(`${userId}:`)) this.subscriptionRequests.delete(key);
     this.lessons.delete(userId);
     this.investmentAccounts.delete(userId);
     this.investmentOrders.delete(userId);

@@ -3,8 +3,11 @@ import type {
   InsightNotice,
   MoneyEvent,
   SpendingIntent,
+  Subscription,
   UserProfile,
 } from "../contracts/models";
+
+import { monthlySubscriptionCommitment, withNextBillingDate } from "./subscriptionSchedule";
 
 const taipeiYearMonth = (value: Date): string => {
   const parts = new Intl.DateTimeFormat("en-CA", {
@@ -29,13 +32,6 @@ const recentMonthKeys = (now: Date, count: number): string[] => {
 const effectiveAmount = (event: MoneyEvent): number =>
   event.split?.userShareMinor ?? event.amountMinor;
 
-const monthlySubscriptionAmount = (event: MoneyEvent): number => {
-  const amount = effectiveAmount(event);
-  return event.recurrence?.billingCycle === "yearly"
-    ? Math.round(amount / 12)
-    : amount;
-};
-
 const intentOf = (event: MoneyEvent): SpendingIntent =>
   event.spendingIntent ?? "uncertain";
 
@@ -43,6 +39,7 @@ export const calculateFinancialInsights = (
   profile: UserProfile,
   events: MoneyEvent[],
   now = new Date(),
+  activeSubscriptions: Subscription[] = [],
 ): FinancialInsights => {
   const monthKeys = recentMonthKeys(now, 6);
   const currentMonth = monthKeys[monthKeys.length - 1];
@@ -89,40 +86,13 @@ export const calculateFinancialInsights = (
     intentTotals[intentOf(event)] += effectiveAmount(event);
   }
 
-  const subscriptions = events.filter(
-    (event) => event.type === "subscription",
-  );
-  const subscriptionMinor = subscriptions.reduce(
-    (sum, event) => sum + monthlySubscriptionAmount(event),
-    0,
-  );
-  const notices: InsightNotice[] = [];
-  const upcoming = subscriptions
-    .map((event) => ({ event, next: event.recurrence?.nextBillingAt }))
-    .filter(
-      (item): item is { event: MoneyEvent; next: string } =>
-        typeof item.next === "string",
-    )
-    .map((item) => ({
-      ...item,
-      days: Math.ceil(
-        (new Date(item.next).getTime() - now.getTime()) / 86_400_000,
-      ),
-    }))
-    .filter((item) => item.days >= 0 && item.days <= 30)
-    .sort((a, b) => a.days - b.days)[0];
-  if (upcoming) {
-    notices.push({
-      id: `subscription-renewal-${upcoming.event.id}`,
-      kind: "subscription",
-      level: "attention",
-      title: "續訂前先問一次：最近真的有在用嗎？",
-      message: `${upcoming.event.merchant ?? "這項訂閱"}預計在 ${upcoming.days} 天內續訂；這是檢查提醒，不代表它一定浪費。`,
-      actionPath: "/subscriptions",
-      amountMinor: monthlySubscriptionAmount(upcoming.event),
-    });
-  }
-  if (subscriptionMinor > profile.monthlyBudgetMinor * 0.15) {
+  const subscriptions=activeSubscriptions.filter((item)=>item.active).map((item)=>withNextBillingDate(item,now));
+  const subscriptionMinor=currentEvents.filter((item)=>item.type==="subscription").reduce((sum,item)=>sum+effectiveAmount(item),0);
+  const monthlyCommitmentMinor=monthlySubscriptionCommitment(subscriptions);
+  const notices: InsightNotice[]=[];
+  const upcoming=subscriptions.map((item)=>({item,days:Math.ceil((new Date(`${item.nextBillingDate}T23:59:59+08:00`).getTime()-now.getTime())/86_400_000)})).filter(({days})=>days>=0 && days<=30).sort((a,b)=>a.days-b.days)[0];
+  if(upcoming) notices.push({id:`subscription-renewal-${upcoming.item.id}`,kind:"subscription",level:"attention",title:"續訂前先問一次：最近真的有在用嗎？",message:`${upcoming.item.name}預計在 ${upcoming.days} 天內續訂；這是檢查提醒，不代表它一定浪費。`,actionPath:"/subscriptions",amountMinor:upcoming.item.amountMinor});
+  if (monthlyCommitmentMinor > profile.monthlyBudgetMinor * 0.15) {
     notices.push({
       id: `subscription-share-${currentMonth}`,
       kind: "subscription",
@@ -130,7 +100,7 @@ export const calculateFinancialInsights = (
       title: "訂閱占預算的比例值得檢查",
       message: "先確認使用頻率、是否重複，再決定保留或調整，不用急著取消。",
       actionPath: "/subscriptions",
-      amountMinor: subscriptionMinor,
+      amountMinor: monthlyCommitmentMinor,
     });
   }
   if (intentTotals.want > intentTotals.need && intentTotals.want > 0) {
@@ -179,6 +149,7 @@ export const calculateFinancialInsights = (
     wantMinor: intentTotals.want,
     uncertainMinor: intentTotals.uncertain,
     subscriptionMinor,
+    monthlyCommitmentMinor,
     summary,
     notices,
   };

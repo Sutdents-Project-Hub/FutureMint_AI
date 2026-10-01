@@ -157,6 +157,15 @@ class _RecordsScreenState extends State<RecordsScreen> {
                               ],
                             ),
                     ),
+                    if (controller.nextEventsCursor != null)
+                      TextButton.icon(
+                        key: const Key('load-more-records'),
+                        onPressed: controller.busy
+                            ? null
+                            : controller.loadMoreEvents,
+                        icon: const Icon(Icons.expand_more),
+                        label: Text(controller.busy ? '載入中…' : '載入更多紀錄'),
+                      ),
                     // The illustration band closes the list as a card footer,
                     // so filters lead straight into the transactions.
                     const SizedBox(height: FutureMintTokens.space4),
@@ -473,13 +482,14 @@ CaptureDraft _draftFromEvent(MoneyEvent event) => CaptureDraft(
   merchant: event.merchant,
   occurredAt: event.occurredAt,
   recurrence: event.recurrence,
+  subscriptionId: event.subscriptionId,
   split: event.split,
   spendingIntent: event.spendingIntent,
   intentReason: event.intentReason,
   confidence: 1,
   missingFields: const [],
   needsConfirmation: true,
-  source: CaptureSource.deterministicDemo,
+  source: event.source ?? CaptureSource.manual,
 );
 
 Future<void> _showEditEventSheet(BuildContext context, MoneyEvent event) =>

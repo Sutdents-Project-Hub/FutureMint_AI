@@ -5,11 +5,15 @@ import Fastify, {
   type FastifyRequest,
 } from "fastify";
 import { z, ZodError } from "zod";
+import { parseAllowedOrigins } from "../config/httpConfig";
+export { parseAllowedOrigins } from "../config/httpConfig";
+import { servicePolicyVersion, providerAiPolicyVersion, guardianConfirmationSchema } from "../contracts/servicePolicy";
 
 import { parseTrustedProxies } from "../config/publicConfig";
 import { sharedRateLimitStore, rateLimitKey } from "./sharedRateLimit";
 import { registerPublicPages } from "./publicPages";
 import { DomainError } from "../contracts/errors";
+import { catalogLesson, educationTopics } from "../adapters/educationCatalog";
 import {
   authCredentialsSchema,
   lessonCompletionInputSchema,
@@ -23,40 +27,6 @@ interface BuildServerOptions {
   allowedOrigins?: string[];
   logger?: boolean;
 }
-
-export const parseAllowedOrigins = (
-  value: string | undefined,
-  requireSecure = process.env.NODE_ENV === "production",
-): string[] => {
-  const origins = (value ?? "")
-    .split(",")
-    .map((origin) => origin.trim())
-    .filter(Boolean);
-
-  if (requireSecure && origins.length === 0) {
-    throw new Error("ALLOWED_ORIGINS is required in production");
-  }
-
-  return origins.map((origin) => {
-    let url: URL;
-    try {
-      url = new URL(origin);
-    } catch {
-      throw new Error("ALLOWED_ORIGINS must contain valid HTTPS origin values");
-    }
-    const protocolAllowed = requireSecure
-      ? url.protocol === "https:"
-      : url.protocol === "https:" || url.protocol === "http:";
-    if (!protocolAllowed || url.origin !== origin) {
-      throw new Error(
-        requireSecure
-          ? "ALLOWED_ORIGINS must contain valid HTTPS origin values"
-          : "ALLOWED_ORIGINS must contain valid HTTP(S) origin values",
-      );
-    }
-    return origin;
-  });
-};
 
 const configuredOrigins = (): string[] =>
   parseAllowedOrigins(process.env.ALLOWED_ORIGINS);
@@ -92,7 +62,7 @@ export const buildServer = async (
   });
 
   await app.register(rateLimit, {
-    global: true,
+    global: false,
     ...(runtime.rateLimitStore ? { store: sharedRateLimitStore(runtime.rateLimitStore) } : {}),
     max: 120,
     timeWindow: "1 minute",
@@ -103,6 +73,21 @@ export const buildServer = async (
       requestId: request.id,
       retryable: true,
     }),
+  });
+
+  const aggregateCounters = new Map<string, { current: number; expires: number }>();
+  app.addHook("onRequest", async (request) => {
+    if (request.url.split("?")[0] === "/api/health") return;
+    const key = rateLimitKey("aggregate-ip", request.ip);
+    let current: number;
+    if (runtime.rateLimitStore) current = (await runtime.rateLimitStore.consumeRateLimit(key, 60000)).current;
+    else {
+      const now = Date.now();
+      for (const [id, value] of aggregateCounters) if (value.expires <= now) aggregateCounters.delete(id);
+      const counter = aggregateCounters.get(key) ?? { current: 0, expires: now + 60000 };
+      current = ++counter.current; aggregateCounters.set(key, counter);
+    }
+    if (current > 120) throw new DomainError("rate_limited", "請求過於頻繁，請稍後再試。", 429, true);
   });
 
   app.addHook("onRequest", async (request, reply) => {
@@ -171,6 +156,9 @@ export const buildServer = async (
         message: "請求過於頻繁，請稍後再試。",
         retryable: true,
       });
+    }
+    if (fastifyError.statusCode === 415 || fastifyError.code === "FST_ERR_CTP_INVALID_MEDIA_TYPE") {
+      return problem(request, reply, 415, { code: "unsupported_media_type", message: "請使用 JSON 格式提交資料。", retryable: false });
     }
     if (
       fastifyError.statusCode === 413 ||
@@ -242,8 +230,9 @@ export const buildServer = async (
     preHandler: async (request: FastifyRequest) => {
       if (!runtime.rateLimitStore) return;
       const body = request.body as { email?: unknown } | undefined;
-      const identity = typeof body?.email === "string"
-        ? body.email.trim().toLowerCase()
+      const guardianBody = request.body as { accountEmail?: unknown; guardianEmail?: unknown } | undefined;
+      const identity = typeof body?.email === "string" ? body.email.trim().toLowerCase()
+        : typeof guardianBody?.accountEmail === "string" ? guardianBody.accountEmail.trim().toLowerCase()
         : request.headers.authorization;
       if (!identity) return;
       const result = await runtime.rateLimitStore.consumeRateLimit(rateLimitKey("auth-account", identity), 60000);
@@ -316,7 +305,59 @@ export const buildServer = async (
     await runtime.authService.resetPassword(body.token, body.password);
     return success(request, reply, { reset: true });
   });
-  registerPublicPages(app, runtime.publicConfig);
+  const ai = runtime.aiPolicy;
+  const servicePolicy = {
+    servicePolicyVersion, minimumAge: 15, country: "TW", guardianRequiredUnder18: true, eligibilityRequired: runtime.eligibilityRequired ?? false,
+    privacyPolicyVersion: runtime.publicConfig?.policyVersion ?? "",
+    ai: { provider: runtime.aiProvider, displayName: ai?.providerName ?? (runtime.aiProvider === "openai" ? "OpenAI" : runtime.aiProvider === "liangjie" ? "量界智算" : "離線展示"),
+      model: ai?.model ?? "", policyVersion: ai?.policyVersion ?? providerAiPolicyVersion,
+      dataRecipients: ai?.recipients ?? [], dataTerms: ai?.dataTerms ?? "", reviewed: ai?.reviewed ?? false },
+  };
+  app.get("/api/service-policy", async (request, reply) => success(request, reply, servicePolicy));
+  registerPublicPages(app, runtime.publicConfig, servicePolicy);
+  const writableUser = async (request: FastifyRequest) => {
+    const account = await requireAuthenticatedUser(request, runtime);
+    await runtime.authService.requireServiceEligibility(account.id);
+    return account;
+  };
+  const aiOperation = async <T>(request: FastifyRequest, operation: () => Promise<T>): Promise<T> => {
+    const account = await writableUser(request);
+    if (runtime.aiProvider === "demo") return operation();
+    await runtime.authService.requireAiConsent(account.id);
+    const release = await runtime.aiGate?.acquire(account.id);
+    try { return await operation(); }
+    finally { try { await release?.(); } catch { request.log.warn({ requestId: request.id }, "AI admission lease cleanup failed; lease will expire"); } }
+  };
+  app.get("/api/privacy/eligibility", async (request, reply) => {
+    const account = await requireAuthenticatedUser(request, runtime, true);
+    return success(request, reply, await runtime.authService.getEligibility(account.id));
+  });
+  app.put("/api/privacy/age-declaration", authRateLimit, async (request, reply) => {
+    const account = await requireAuthenticatedUser(request, runtime, true);
+    return success(request, reply, await runtime.authService.declareAge(account.id, request.body as never));
+  });
+  app.post("/api/privacy/guardian-consent/request", authRateLimit, async (request, reply) => {
+    const account = await requireAuthenticatedUser(request, runtime);
+    return success(request, reply, await runtime.authService.requestGuardian(account.id, request.body as never));
+  });
+  app.post("/api/privacy/guardian-consent/confirm", authRateLimit, async (request, reply) =>
+    success(request, reply, await runtime.authService.confirmGuardian(guardianConfirmationSchema.parse(request.body))));
+  app.post("/api/privacy/guardian-consent/withdraw", authRateLimit, async (request, reply) =>
+    success(request, reply, await runtime.authService.withdrawGuardian(request.body as never)));
+  app.post("/api/privacy/guardian-consent/withdrawal-request", authRateLimit, async (request, reply) => {
+    const input = z.object({ accountEmail: z.string().trim().email().max(254), guardianEmail: z.string().trim().email().max(254) }).parse(request.body);
+    return success(request, reply, await runtime.authService.requestGuardianWithdrawal(input));
+  });
+  app.delete("/api/privacy/guardian-consent", authRateLimit, async (request, reply) => {
+    const account = await requireAuthenticatedUser(request, runtime, true);
+    return success(request, reply, await runtime.authService.withdrawGuardianByAccount(account.id));
+  });
+  app.get("/api/privacy/export", authRateLimit, async (request, reply) => {
+    const account = await requireAuthenticatedUser(request, runtime, true);
+    const personal = await runtime.service.exportUserData(account.id);
+    return success(request, reply, { version: 1, exportedAt: new Date().toISOString(), account: { id: account.id, email: account.email, createdAt: account.createdAt, emailVerified: account.emailVerified },
+      eligibility: await runtime.authService.getEligibility(account.id), aiConsent: await runtime.authService.getAiConsent(account.id), ...personal });
+  });
 
   app.get("/api/privacy/ai-consent", async (request, reply) => {
     const account = await requireAuthenticatedUser(request, runtime);
@@ -340,7 +381,7 @@ export const buildServer = async (
     return success(request, reply, await runtime.service.getProfile(account.id));
   });
   app.put("/api/profile", async (request, reply) => {
-    const account = await requireAuthenticatedUser(request, runtime);
+    const account = await writableUser(request);
     const profile = await runtime.service.updateProfile(
       account.id,
       request.body as never,
@@ -358,7 +399,7 @@ export const buildServer = async (
     );
   });
   app.post("/api/family/invite", async (request, reply) => {
-    const account = await requireAuthenticatedUser(request, runtime);
+    const account = await writableUser(request);
     return success(
       request,
       reply,
@@ -367,7 +408,7 @@ export const buildServer = async (
     );
   });
   app.post("/api/family/invite/rotate", authRateLimit, async (request, reply) => {
-    const account = await requireAuthenticatedUser(request, runtime);
+    const account = await writableUser(request);
     return success(request, reply, await runtime.service.rotateFamilyInvite(account.id));
   });
   app.delete("/api/family/invite", authRateLimit, async (request, reply) => {
@@ -375,7 +416,7 @@ export const buildServer = async (
     return success(request, reply, await runtime.service.revokeFamilyInvite(account.id));
   });
   app.post("/api/family/join", async (request, reply) => {
-    const account = await requireAuthenticatedUser(request, runtime);
+    const account = await writableUser(request);
     return success(
       request,
       reply,
@@ -390,27 +431,22 @@ export const buildServer = async (
 
   app.post("/api/captures/parse", aiRateLimit, async (request, reply) => {
     const account = await requireAuthenticatedUser(request, runtime);
-    if (runtime.aiProvider === "liangjie") {
-      await runtime.authService.requireAiConsent(account.id);
-    }
     return success(
       request,
       reply,
-      await runtime.service.parseCapture(account.id, request.body as never),
+      await aiOperation(request, () => runtime.service.parseCapture(account.id, request.body as never)),
     );
   });
 
   app.get("/api/money-events", async (request, reply) => {
     const account = await requireAuthenticatedUser(request, runtime);
-    const query = request.query as { type?: string; from?: string; to?: string };
-    return success(
-      request,
-      reply,
-      await runtime.service.listMoneyEvents(account.id, query),
-    );
+    const query = request.query as { type?: string; from?: string; to?: string; limit?: string; cursor?: string };
+    return success(request, reply, query.limit !== undefined || query.cursor !== undefined
+      ? await runtime.service.listMoneyEventsPage(account.id, query as never)
+      : await runtime.service.listMoneyEvents(account.id, query));
   });
   app.post("/api/money-events", async (request, reply) => {
-    const account = await requireAuthenticatedUser(request, runtime);
+    const account = await writableUser(request);
     return success(
       request,
       reply,
@@ -419,7 +455,7 @@ export const buildServer = async (
     );
   });
   app.put("/api/money-events/:eventId", async (request, reply) => {
-    const account = await requireAuthenticatedUser(request, runtime);
+    const account = await writableUser(request);
     const { eventId } = moneyEventIdParamsSchema.parse(request.params);
     return success(
       request,
@@ -463,6 +499,21 @@ export const buildServer = async (
       await runtime.service.getSubscriptions(account.id),
     );
   });
+  app.post("/api/subscriptions", async (request, reply) => {
+    const account = await writableUser(request);
+    return success(request, reply, await runtime.service.createSubscription(account.id, request.body as never), 201);
+  });
+  app.put("/api/subscriptions/:subscriptionId", async (request, reply) => {
+    const account = await writableUser(request);
+    const { subscriptionId } = z.object({ subscriptionId: z.string().uuid() }).parse(request.params);
+    return success(request, reply, await runtime.service.updateSubscription(account.id, subscriptionId, request.body as never));
+  });
+  app.delete("/api/subscriptions/:subscriptionId", async (request, reply) => {
+    const account = await requireAuthenticatedUser(request, runtime);
+    const { subscriptionId } = z.object({ subscriptionId: z.string().uuid() }).parse(request.params);
+    return success(request, reply, await runtime.service.deactivateSubscription(account.id, subscriptionId));
+  });
+
   app.post("/api/subscriptions/compare", async (request, reply) => {
     await requireAuthenticatedUser(request, runtime);
     return success(
@@ -472,15 +523,22 @@ export const buildServer = async (
     );
   });
 
+  // Static reviewed education is readable without age/AI consent, accounts or
+  // provider calls. Completion of catalog items stays on the client.
+  app.get("/api/education/catalog", async (request, reply) => success(request, reply, {
+    version: "controlled-education-2026-10-v1",
+    items: educationTopics.map((topic) => ({
+      ...catalogLesson(topic), id: `catalog-${topic}`, userId: "education-catalog",
+      sourceEventIds: [], source: "manual", createdAt: "2026-10-01T00:00:00Z",
+      disclaimer: "內容來自受控金融教育資料庫，不使用第三方 AI；不推薦投資標的，也不保證報酬。",
+    })),
+  }));
   app.post("/api/lessons/generate", aiRateLimit, async (request, reply) => {
     const account = await requireAuthenticatedUser(request, runtime);
-    if (runtime.aiProvider === "liangjie") {
-      await runtime.authService.requireAiConsent(account.id);
-    }
     return success(
       request,
       reply,
-      await runtime.service.generateLesson(account.id),
+      await aiOperation(request, () => runtime.service.generateLesson(account.id)),
     );
   });
   app.get("/api/lessons/current", async (request, reply) => {
@@ -492,7 +550,7 @@ export const buildServer = async (
     );
   });
   app.patch("/api/lessons/:lessonId", async (request, reply) => {
-    const account = await requireAuthenticatedUser(request, runtime);
+    const account = await writableUser(request);
     const { lessonId } = request.params as { lessonId: string };
     const body = lessonCompletionInputSchema.parse(request.body);
     return success(
@@ -507,13 +565,10 @@ export const buildServer = async (
   });
   app.get("/api/learning-plan", aiRateLimit, async (request, reply) => {
     const account = await requireAuthenticatedUser(request, runtime);
-    if (runtime.aiProvider === "liangjie") {
-      await runtime.authService.requireAiConsent(account.id);
-    }
     return success(
       request,
       reply,
-      await runtime.service.getLearningPlan(account.id),
+      await aiOperation(request, () => runtime.service.getLearningPlan(account.id)),
     );
   });
 
@@ -535,13 +590,10 @@ export const buildServer = async (
   });
   app.post("/api/coach/chat", aiRateLimit, async (request, reply) => {
     const account = await requireAuthenticatedUser(request, runtime);
-    if (runtime.aiProvider === "liangjie") {
-      await runtime.authService.requireAiConsent(account.id);
-    }
     return success(
       request,
       reply,
-      await runtime.service.coach(request.body as never),
+      await aiOperation(request, () => runtime.service.coach(request.body as never)),
     );
   });
 
@@ -561,7 +613,7 @@ export const buildServer = async (
     );
   });
   app.post("/api/investment-lab/orders", async (request, reply) => {
-    const account = await requireAuthenticatedUser(request, runtime);
+    const account = await writableUser(request);
     return success(
       request,
       reply,

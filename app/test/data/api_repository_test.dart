@@ -195,26 +195,29 @@ void main() {
       final repository = ApiRepository(
         baseUri: Uri.parse('https://example.test/api'),
         client: MockClient((request) async {
-          if (request.url.path.endsWith('/money-events')) {
+          if (request.url.path.endsWith('/subscriptions')) {
             return http.Response(
               jsonEncode({
                 'requestId': 'request-events',
-                'data': [
-                  {
-                    'id': 'subscription-1',
-                    'userId': 'demo-user',
-                    'type': 'subscription',
-                    'amountMinor': 480,
-                    'currency': 'TWD',
-                    'category': 'subscription',
-                    'merchant': '合成音樂',
-                    'occurredAt': '2026-07-13T12:00:00+08:00',
-                    'recurrence': {'billingCycle': 'monthly'},
-                    'split': {'participants': 4, 'userShareMinor': 120},
-                    'createdAt': '2026-07-13T12:00:00+08:00',
-                    'updatedAt': '2026-07-13T12:00:00+08:00',
-                  },
-                ],
+                'data': {
+                  'items': [],
+                  'legacyCandidates': [
+                    {
+                      'id': 'subscription-1',
+                      'userId': 'demo-user',
+                      'type': 'subscription',
+                      'amountMinor': 480,
+                      'currency': 'TWD',
+                      'category': 'subscription',
+                      'merchant': '合成音樂',
+                      'occurredAt': '2026-07-13T12:00:00+08:00',
+                      'recurrence': {'billingCycle': 'monthly'},
+                      'split': {'participants': 4, 'userShareMinor': 120},
+                      'createdAt': '2026-07-13T12:00:00+08:00',
+                      'updatedAt': '2026-07-13T12:00:00+08:00',
+                    },
+                  ],
+                },
               }),
               200,
               headers: {'content-type': 'application/json; charset=utf-8'},
@@ -254,7 +257,10 @@ void main() {
       baseUri: Uri.parse('https://example.test/api'),
       client: MockClient(
         (_) async => http.Response(
-          jsonEncode({'requestId': 'empty-events', 'data': <Object>[]}),
+          jsonEncode({
+            'requestId': 'empty-events',
+            'data': {'items': [], 'legacyCandidates': []},
+          }),
           200,
           headers: {'content-type': 'application/json; charset=utf-8'},
         ),

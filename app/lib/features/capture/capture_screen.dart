@@ -168,8 +168,17 @@ class _CaptureScreenState extends State<CaptureScreen> {
                     ],
                   ),
                   const SizedBox(height: FutureMintTokens.space4),
-                  FilledButton.icon(
+                  OutlinedButton.icon(
+                    key: const Key('manual-capture'),
                     onPressed: controller.busy
+                        ? null
+                        : () => controller.startManualCapture(),
+                    icon: const Icon(Icons.edit_outlined),
+                    label: const Text('手動記一筆'),
+                  ),
+                  const SizedBox(height: FutureMintTokens.space2),
+                  FilledButton.icon(
+                    onPressed: controller.busy || !controller.isAiEnabled
                         ? null
                         : () => _parse(controller),
                     icon: controller.busy

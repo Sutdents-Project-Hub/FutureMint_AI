@@ -8,7 +8,7 @@
 - Session 七天到期；logout 設 revoked timestamp。
 - API 每次從 session 推導 account，所有 repository query 都依 account `user_id`；不接受 Client 指定 ownership。
 - 已保存的 MoneyEvent 只能由擁有該 session 的帳號完整更新或刪除；更新不接受／改寫建立時的 idempotency key，查無該帳號紀錄時回相同 404。
-- App 內帳號刪除需目前密碼再驗證與文字二次確認；成功後刪除 live account 及 FK cascade 資料、使現有 sessions 失效並清除 Client token。
+- App 內帳號刪除需目前密碼再驗證與文字二次確認；成功後以同 transaction 保存僅含 account ID 雜湊與時間的最小刪除 journal，再刪除 live account 及 FK cascade 資料、使現有 sessions 失效並清除 Client token。
 
 帳號流程已補上 Email ownership verification、一次性 password reset 及重設後所有 session 失效；production 必須設定 SMTP，未驗證帳號只能恢復驗證、讀取自身帳號、登出或刪除帳號。仍未提供 MFA、獨立的所有裝置登出、breached-password screening 或家庭所有權轉移；這些功能不等於正式未成年人營運條件已獲確認。
 
@@ -57,13 +57,11 @@
 
 ## 隱私與外部 AI
 
-量界智算會收到單次文字 capture 原文；目前不提供圖片上傳或 OCR。學習規劃只送分類與目標是否存在等布林摘要，陪讀只送使用者問題與主題，不送完整流水或密碼。它仍是外部資料處理邊界。
+當前外部供應商會收到單次 capture 文字；學習規劃只送分類、月預算及目標是否存在等最小摘要，陪讀只送問題與主題，不送完整流水或密碼。文字／貼上是唯一入口，沒有圖片或 OCR；原文不持久化，但傳送外部仍需明確授權。
 
-已登入 Client 在首次啟用前會列出第三方名稱、資料類別、用途、拒絕後可用功能與撤回入口。同意以 `third-party-ai-v1` 保存；Client 未同意時不發出 AI request，量界 API routes 仍在 server-side 呼叫 provider 前強制檢查，撤回後立即恢復阻擋。
+Client 顯示目前 provider、requested model、接收方與資料條款；API 的 `aiConfig.ts` 對 provider、model、base URL、recipients、terms 及 `PRIVACY_POLICY_VERSION` 產生 `third-party-ai-v2-<fingerprint>`，不包含 key 或其他 secrets。授權必須附當前 `policyVersion`；任一公開政策欄位變動後舊授權失效，量界與官方 OpenAI 四個入口均在 provider 前攔截。不自動切換 provider，拒絕／撤回後仍可使用手動功能及受控教材。
 
-以上機制只處理產品內的明確同意與撤回，不等於量界／上游供應商條款、保留、訓練使用、subprocessors、資料地區或刪除能力已確認。比賽只輸入合成資料。任何真實未成年人資料使用前，都必須再確認 relay／上游模型的資料條款、設定保留與刪除流程，並完成法遵與 incident response。
-
-TWSE OpenAPI 是另一個外部可用性邊界，但 request 只要求公開市場資料，不傳帳號、持倉、訂單或任何個資。內建標的與事件骰子都必須標示為教育範例，不得以推薦、勝率、排名或獎勵高風險交易的方式呈現。
+撤回會阻止新請求；已完成資格／授權 admission 的請求可能完成，不能承諾中途取消上游。供應商條款、保留、訓練、subprocessors、地區及刪除能力需營運查核，程式內同意不代表已法遵。TWSE request 只取公開市場資料，不送帳號、持倉或訂單。
 
 ## 部署 checklist
 
@@ -85,3 +83,17 @@ TWSE OpenAPI 是另一個外部可用性邊界，但 request 只要求公開市�
 API 啟動及每小時分批清理到期／撤銷 sessions、到期 action tokens 與限流 counters（每類每輪最多 1000）。清理失敗只記安全訊息，下一輪重試；即使尚未清除，驗證仍立即拒絕過期 token。大量累積時需監控積壓與調整維運排程。
 
 公開政策由設定產生；缺少營運者、客服、資料地區、備份期限、最低年齡、未成年人同意揭露、AI 資料條款或 `PRIVACY_POLICY_REVIEWED=true` 時 production 拒絕啟動。此旗標代表營運者確認，程式不會自行宣稱法遵完成。
+
+## 臺灣年齡、監護人與資料權利
+
+首次正式註冊提交 `ageDeclaration:{ageBand,policyVersion,accepted:true}`，版本為 `tw-service-age-15-v1`。`under-15` 拒正式帳號、可合成訪客體驗；`15-17` 完成 Email 驗證後仍需監護人確認；`18-plus` 自行聲明。既有帳號缺資料即為待補聲明，不能預設成年。已聲明年齡分組不可直接覆寫；更正需客服查核，目前未提供後端 admin console，正式操作流程仍待營運建立。
+
+監護人信件標示 requester Email；接收者須確認已滿 18 歲、為法定代理人並接受政策。核准與撤回為單次 fragment token，資料庫只存 hash／revision，GET 不消耗、POST 才消耗；重寄會使舊 token 失效。Email 控制權及聲明不證明合法監護人身分，不可把家庭 parent role 或邀請碼当成監護人確認。家庭分享與 AI 授權需各自選擇。
+
+待聲明／監護人未核准／撤回後，阻止新的正式寫入與外部 AI；本人仍可登入、讀取／匯出、求助、重試與刪除。匯出只含自己 JSON，不含密碼、session/token、秘密或其他家庭成員明細。所有 onboarding 狀態保留登出、刪除及 help/retry 入口。
+
+iPhone 提醒只在本機排程、不使用 APNs；notification payload 不包含金額、訂閱名稱或帳務。登出／刪除／帳號切換清除 pending reminders；別台變動只能在同步後重排。備份與還原的刪除不復活仍是外部驗收條件。
+
+刪除 journal 用於防止舊備份還原後帳號復活，不含 Email、帳務、password／session。限制存取及加密異地保存，保留到所有早於刪除的備份副本銷毀；營運者確認銷毀後才可依保留政策清理。011 前的刪除不會自動補出紀錄；production 備份／隔離還原仍待驗收。
+
+訂閱建立與虛擬訂單的待確認意圖在 HTTP 前保存原請求／冪等鍵，按帳號 ID 隔離；原生使用 Keychain 等系統安全儲存，Web 使用該瀏覽器 storage。登出保留待確認意圖，供同帳號重新登入確認結果；App 內刪除帳號會清除本機該帳號意圖，若清除失敗顯示提示。這不包含 session token、模型 key 或自然語言原文；清除裝置資料亦會移除意圖。
