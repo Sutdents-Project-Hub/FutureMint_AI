@@ -1,7 +1,7 @@
 import { parseAiConfig, AiConfigurationError } from "./aiConfig";
-import { readPublicConfig, parseTrustedProxies } from "./publicConfig";
+import { readPublicConfig, parseTrustedProxies, publicPolicyDefaults } from "./publicConfig";
 import { parseRuntimeConfig } from "./runtimeConfig";
-import { parseAllowedOrigins } from "./httpConfig";
+import { readAllowedOrigins } from "./httpConfig";
 import { validateMailerConfig } from "../auth/accountMailer";
 import { readAiLimits } from "../application/aiRequestGate";
 
@@ -32,19 +32,20 @@ export const validateStartupConfig = (env: NodeJS.ProcessEnv = process.env): voi
   inspect("PROVIDERS", () => parseRuntimeConfig(env));
   inspect("AI_CONFIGURATION", () => parseAiConfig(env));
   if (env.NODE_ENV === "production") {
-    for (const name of ["PUBLIC_BASE_URL", "SERVICE_OPERATOR", "SUPPORT_EMAIL", "PRIVACY_POLICY_VERSION", "DATA_REGION", "BACKUP_RETENTION_DAYS", "MINIMUM_AGE", "MINOR_CONSENT_DISCLOSURE", "AI_DATA_TERMS_DISCLOSURE", "ALLOWED_ORIGINS"]) {
+    for (const name of ["PUBLIC_BASE_URL", "SERVICE_OPERATOR", "SUPPORT_EMAIL", "DATA_REGION"]) {
       if (!env[name]?.trim()) add(name, "missing");
     }
-    const retention = Number(env.BACKUP_RETENTION_DAYS);
-    if (!Number.isInteger(retention) || retention < 1 || retention > 3650) add("BACKUP_RETENTION_DAYS");
-    if (env.MINIMUM_AGE !== "15") add("MINIMUM_AGE");
+    const retention = Number(env.BACKUP_RETENTION_DAYS?.trim() || publicPolicyDefaults.BACKUP_RETENTION_DAYS);
+    if (!Number.isInteger(retention) || retention < 0 || retention > 3650) add("BACKUP_RETENTION_DAYS");
+    if ((env.MINIMUM_AGE?.trim() || publicPolicyDefaults.MINIMUM_AGE) !== "15") add("MINIMUM_AGE");
     if (env.PRIVACY_POLICY_REVIEWED !== "true") add("PRIVACY_POLICY_REVIEWED");
-    if (env.MAIL_PROVIDER !== "smtp") add("MAIL_PROVIDER");
-    for (const name of ["SMTP_HOST", "SMTP_USER", "SMTP_PASSWORD", "SMTP_FROM"]) if (!env[name]?.trim()) add(name, "missing");
+    if (env.MAIL_PROVIDER === "smtp") {
+      for (const name of ["SMTP_HOST", "SMTP_USER", "SMTP_PASSWORD", "SMTP_FROM"]) if (!env[name]?.trim()) add(name, "missing");
+    }
   }
   inspect("PUBLIC_POLICY_CONFIGURATION", () => readPublicConfig(env));
   inspect("MAIL_CONFIGURATION", () => validateMailerConfig(env));
-  inspect("ALLOWED_ORIGINS", () => parseAllowedOrigins(env.ALLOWED_ORIGINS, env.NODE_ENV === "production"));
+  inspect("ALLOWED_ORIGINS", () => readAllowedOrigins(env));
   inspect("TRUSTED_PROXY_CIDRS", () => parseTrustedProxies(env.TRUSTED_PROXY_CIDRS));
   inspect("AI_LIMITS", () => readAiLimits(env));
   const port = Number(env.PORT || 3000);

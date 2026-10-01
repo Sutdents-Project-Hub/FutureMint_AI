@@ -10,7 +10,7 @@
 - 已保存的 MoneyEvent 只能由擁有該 session 的帳號完整更新或刪除；更新不接受／改寫建立時的 idempotency key，查無該帳號紀錄時回相同 404。
 - App 內帳號刪除需目前密碼再驗證與文字二次確認；成功後以同 transaction 保存僅含 account ID 雜湊與時間的最小刪除 journal，再刪除 live account 及 FK cascade 資料、使現有 sessions 失效並清除 Client token。
 
-帳號流程已補上 Email ownership verification、一次性 password reset 及重設後所有 session 失效；production 必須設定 SMTP，未驗證帳號只能恢復驗證、讀取自身帳號、登出或刪除帳號。仍未提供 MFA、獨立的所有裝置登出、breached-password screening 或家庭所有權轉移；這些功能不等於正式未成年人營運條件已獲確認。
+帳號流程已補上 Email ownership verification、一次性 password reset 及重設後所有 session 失效；production 可不設定 SMTP，此時新註冊與新的寄信流程停用；既有未驗證帳號只能恢復驗證、讀取自身帳號、登出或刪除帳號。仍未提供 MFA、獨立的所有裝置登出、breached-password screening 或家庭所有權轉移；這些功能不等於正式未成年人營運條件已獲確認。
 
 ### 家庭關聯與資料權限
 
@@ -23,7 +23,7 @@
 ## API 邊界
 
 - Fastify body limit 32 KiB；Zod 驗證 request。
-- CORS 僅允許 `ALLOWED_ORIGINS` 完整 origins；production 只放正式 frontend HTTPS domain，缺少、帶 path／尾端 `/` 或格式錯誤即拒絕啟動。
+- CORS 僅允許 `ALLOWED_ORIGINS` 完整 origins；未填時使用 PUBLIC_BASE_URL 的 API自身origin；production 只接受 HTTPS origin，帶 path／尾端 `/` 或格式錯誤即拒絕啟動。
 - 全域 rate limit 120 requests／minute；auth routes 10 requests／minute；AI 產生／陪讀 routes 20 requests／minute。正式 PostgreSQL adapter 使用跨 instance 原子計數；另外限制同一 email 的帳號請求與同一 user 的 AI 請求，key 只存 hash。`TRUSTED_PROXY_CIDRS` 只接受實際連入的 proxy IP／CIDR，空值不信任 forwarding headers；不得用 hop count。VPS firewall 不得公開 container port。
 - Response 使用 no-store、nosniff、frame deny、referrer policy 與 restrictive CSP。
 - PostgreSQL query 全部使用 parameter placeholders。
@@ -69,7 +69,7 @@ Client 顯示目前 provider、requested model、接收方與資料條款；API 
 - PostgreSQL 不公開 port；使用 internal URL 與唯一高強度 credentials。
 - Frontend／API 強制 HTTPS；`ALLOWED_ORIGINS` 不含 `*` 或 preview wildcard。
 - Secret 只設 runtime，部署或截圖前遮蔽。
-- Scheduled backup 寫入團隊控制的 S3-compatible storage，並實際 restore。
+- 本輪不建立定期備份；若日後啟用，排程寫入受控 storage 並實際驗收 restore，不把設定天數當成已備份證據。
 - 上線前輪替任何曾貼在聊天、截圖、PDF 或 log 的測試 key。
 
 ## 帳號恢復與並行保護
@@ -82,7 +82,7 @@ Client 顯示目前 provider、requested model、接收方與資料條款；API 
 
 API 啟動及每小時分批清理到期／撤銷 sessions、到期 action tokens 與限流 counters（每類每輪最多 1000）。清理失敗只記安全訊息，下一輪重試；即使尚未清除，驗證仍立即拒絕過期 token。大量累積時需監控積壓與調整維運排程。
 
-公開政策由設定產生；缺少營運者、客服、資料地區、備份期限、最低年齡、未成年人同意揭露、AI 資料條款或 `PRIVACY_POLICY_REVIEWED=true` 時 production 拒絕啟動。此旗標代表營運者確認，程式不會自行宣稱法遵完成。
+公開政策由設定產生；缺少真實營運者、客服、資料地區、API origin 或 PRIVACY_POLICY_REVIEWED=true 時 production 拒絕啟動；政策版本、備份0、最低年齡15與通用說明有內建預設。供應商說明缺少／未確認時 API 可啟動，但外部AI授權與呼叫均阻擋。此旗標代表營運者確認，程式不會自行宣稱法遵完成。
 
 ## 臺灣年齡、監護人與資料權利
 
@@ -97,3 +97,9 @@ iPhone 提醒只在本機排程、不使用 APNs；notification payload 不包�
 刪除 journal 用於防止舊備份還原後帳號復活，不含 Email、帳務、password／session。限制存取及加密異地保存，保留到所有早於刪除的備份副本銷毀；營運者確認銷毀後才可依保留政策清理。011 前的刪除不會自動補出紀錄；production 備份／隔離還原仍待驗收。
 
 訂閱建立與虛擬訂單的待確認意圖在 HTTP 前保存原請求／冪等鍵，按帳號 ID 隔離；原生使用 Keychain 等系統安全儲存，Web 使用該瀏覽器 storage。登出保留待確認意圖，供同帳號重新登入確認結果；App 內刪除帳號會清除本機該帳號意圖，若清除失敗顯示提示。這不包含 session token、模型 key 或自然語言原文；清除裝置資料亦會移除意圖。
+
+## 可選設定的安全界線
+
+寄信未啟用時，在查帳號前就明確回 mail_disabled，避免忘記密碼畫面宣稱已寄出；實際 SMTP 送達失敗仍採 generic accepted 避免帳號探測。新註冊回 registration_disabled，既有 production 帳號保留 Email ownership／監護人資格檢查；不以設定簡化降低權限。
+
+供應商說明可維護於版本化 providerPolicies.ts；初始未確認，不宣稱量界上游、保存或訓練政策已查核。未確認政策的舊AI授權亦不放行；必須補完整說明並確認，再由使用者同意當前 fingerprint。公開隱私頁按備份0／寄信狀態顯示實際模式，原生UIUX不變。

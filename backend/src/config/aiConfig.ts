@@ -1,5 +1,6 @@
 import { createHash } from "node:crypto";
-import { validatedHttpsUrl } from "./publicConfig";
+import { publicPolicyDefaults, validatedHttpsUrl } from "./publicConfig";
+import { providerDeclarations } from "./providerPolicies";
 
 export type AiProviderName = "demo" | "liangjie" | "openai";
 export interface AiPolicyMetadata {
@@ -45,9 +46,8 @@ export const parseAiConfig = (environment: Record<string, string | undefined> = 
   const choice = environment.AI_PROVIDER?.trim() || "liangjie";
   if (!["demo", "liangjie", "openai"].includes(choice)) invalid.push("AI_PROVIDER");
   const aiProvider = choice as AiProviderName;
-  const production = environment.NODE_ENV === "production";
   const value = (name: string, required = false): string => {
-    const text = environment[name]?.trim() ?? "";
+    const text = environment[name]?.trim() || (name === "PRIVACY_POLICY_VERSION" ? publicPolicyDefaults.PRIVACY_POLICY_VERSION : "");
     if (required && !text) missing.push(name);
     return text;
   };
@@ -75,20 +75,22 @@ export const parseAiConfig = (environment: Record<string, string | undefined> = 
     catch { invalid.push("LIANGJIE_BASE_URL"); }
   }
   const providerName = aiProvider === "openai" ? "OpenAI" : aiProvider === "liangjie" ? "量界智算" : "離線展示";
-  const recipientsText = live ? value(`${prefix}_DATA_RECIPIENTS`, production) : "";
+  const declaration = live ? providerDeclarations[aiProvider as Exclude<AiProviderName, "demo">] : undefined;
+  const recipientsText = live ? value(`${prefix}_DATA_RECIPIENTS`) || declaration?.recipients.join(",") || "" : "";
   const recipients = live ? [...new Set([providerName, ...recipientsText.split(/[,，\n]/u).map((item) => item.trim()).filter(Boolean)])].sort() : [];
-  const dataTerms = live ? value(`${prefix}_DATA_TERMS_DISCLOSURE`, production) : "資料只在本機示範處理，不傳送第三方 AI。";
-  const declarationVersion = value("PRIVACY_POLICY_VERSION", production && live);
-  const reviewedText = live ? value(`${prefix}_DATA_TERMS_REVIEWED`, production) : "true";
+  const declaredTerms = live ? value(`${prefix}_DATA_TERMS_DISCLOSURE`) || declaration?.dataTerms || "" : "";
+  const dataTerms = live ? declaredTerms || "供應商資料處理說明尚未完成，此外部 AI 功能目前停用；仍可使用手動功能及固定教材。" : "資料只在本機示範處理，不傳送第三方 AI。";
+  const declarationVersion = value("PRIVACY_POLICY_VERSION");
+  const policyOverridden = Boolean(value(`${prefix}_DATA_RECIPIENTS`) || value(`${prefix}_DATA_TERMS_DISCLOSURE`));
+  const reviewedText = live ? value(`${prefix}_DATA_TERMS_REVIEWED`) || (!policyOverridden && declaration?.reviewed ? "true" : "false") : "true";
   if (reviewedText && !["true", "false"].includes(reviewedText)) invalid.push(`${prefix}_DATA_TERMS_REVIEWED`);
-  const configured = Boolean(recipientsText && dataTerms && declarationVersion);
+  const configured = Boolean(recipientsText && declaredTerms && declarationVersion);
   const reviewed = !live || (reviewedText === "true" && configured);
-  if (live && (production || reviewedText === "true")) {
-    for (const [name, text] of [[`${prefix}_DATA_RECIPIENTS`, recipientsText], [`${prefix}_DATA_TERMS_DISCLOSURE`, dataTerms], ["PRIVACY_POLICY_VERSION", declarationVersion]]) {
+  if (live && reviewedText === "true") {
+    for (const [name, text] of [[`${prefix}_DATA_RECIPIENTS`, recipientsText], [`${prefix}_DATA_TERMS_DISCLOSURE`, declaredTerms], ["PRIVACY_POLICY_VERSION", declarationVersion]]) {
       if (!text && !missing.includes(name)) missing.push(name);
       if (text && /[<>]|待定|待確認|未定|未設定|未確認|placeholder/iu.test(text)) invalid.push(name);
     }
-    if (production && !reviewed) invalid.push(`${prefix}_DATA_TERMS_REVIEWED`);
   }
   if (recipients.length > 20 || recipients.some((item) => item.length > 200)) invalid.push(`${prefix}_DATA_RECIPIENTS`);
   if (dataTerms.length > 4000) invalid.push(`${prefix}_DATA_TERMS_DISCLOSURE`);

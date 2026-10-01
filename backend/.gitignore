@@ -6,6 +6,7 @@ reports/*.tmp
 .env
 .env.*
 !.env.example
+!.env.coolify.example
 local.settings.json
 
 *.log

@@ -54,7 +54,7 @@ Pool 目前上限 10 connections，connection／idle timeout 由 repository 設�
 
 ## 備份、還原與保留
 
-目標為每日備份、最多保存 30 天、存到團隊控制的異地儲存。排程／儲存整合與隔離還原演練尚未驗證；macOS credential store 及 Discord 通知不是已完成整合。還原需處理刪除紀錄，避免已刪帳號復活；backup job 成功不能代替此驗收。
+本輪使用者選擇不建立定期資料庫備份，BACKUP_RETENTION_DAYS 預設0；不刪除既有資料卷、備份或最小刪除journal。日後若啟用備份，需設定符合實際排程的保留期限與受控儲存。排程／儲存整合與隔離還原演練尚未驗證；macOS credential store 及 Discord 通知不是已完成整合。還原需處理刪除紀錄，避免已刪帳號復活；backup job 成功不能代替此驗收。
 
 帳號刪除需目前密碼，同 transaction 保存 SHA-256 account ID 雜湊／刪除時間至 `deleted_account_journal`，成功後刪除 live account 與 cascade 資料（含訂閱、資格、監護人 token、個人 AI 計數／leases）。備份到期清理及實際還原仍需營運落實。個人 JSON 匯出只包含本人資料、資格及同意狀態，不包含密碼、session/token、秘密或其他家庭成員明細。
 
@@ -62,7 +62,7 @@ Pool 目前上限 10 connections，connection／idle timeout 由 repository 設�
 
 `006_concurrency_and_family_hardening.sql` 將既有短邀請碼停用並清除明文，保留家庭成員；家長必須更新新碼。依家庭建立者修正歷史角色（建立者為 parent，其餘成員為 child），並對齊 profile，避免保留過去角色競態造成的錯誤權限；新增邀請 hash／到期／有效狀態、成員角色快照與角色一致性 trigger，以及 `rate_limit_counters`。`007_auth_recovery.sql` 新增帳號 Email 驗證時間與 `account_action_tokens`（hash、用途、到期、account FK cascade）。舊帳號不會自動宣稱 Email 已驗證，啟用 SMTP 後需完成驗證。
 
-部署前先備份並在隔離 DB 跑 migration 與還原演練。不可直接切回依賴明文邀請碼的舊 API；應 forward-fix 或經核准還原完整備份。自動清理僅處理過期認證／限流資料，不刪除使用者帳務。
+本輪不備份；migration 維持既有 checksum 與向前相容，不刪原資料卷。若日後採備份還原方案，先在隔離 DB 跑 migration 與還原演練。不可直接切回依賴明文邀請碼的舊 API；應 forward-fix 或經核准還原完整備份。自動清理僅處理過期認證／限流資料，不刪除使用者帳務。
 
 ## 008／009／010／011 additive migrations 與資料契約
 
@@ -70,8 +70,10 @@ Pool 目前上限 10 connections，connection／idle timeout 由 repository 設�
 
 `service_eligibilities` 保存 age band、政策版本、監護人狀態與 revision；`guardian_action_tokens` 只保存 token hash／用途／到期／revision。既有帳號不會自動填成年聲明。`ai_usage_daily` 以台北日曆及雜湊 user subject 原子計數，`ai_operation_leases` 支援跨 instance 並行上限及到期回收。
 
-`virtual_investment_orders.execution_sequence` 在帳號鎖內遞增，重建依此序列；008 為舊資料回填序列。升級前先備份並在隔離資料庫確認 migration／restore；不修改舊 migration，不以舊 API rollback 宣稱完整新資料語意。
+`virtual_investment_orders.execution_sequence` 在帳號鎖內遞增，重建依此序列；008 為舊資料回填序列。日後若啟用備份，升級前需在隔離資料庫確認 migration／restore；不修改舊 migration，不以舊 API rollback 宣稱完整新資料語意。
 
 最小刪除 journal 不含 Email、帳務或密碼，無 account FK；保留到所有舊備份副本到期銷毀，供隔離還原對帳。011 之前的刪除沒有此紀錄。工具／防呆／最後切換前對帳流程見 [部署文件](deployment.md#9-隔離還原與刪除帳號對帳)；本機合成測試不代表正式備份已配置。
 
 Client 為重試一致性保存帳號綁定的待確認訂閱／虛擬訂單 payload 與 key；原生系統安全儲存、Web browser storage。同帳號重新登入／重啟恢復原操作，登出保留，App 內刪除帳號清除；儲存失敗會停止首次送出，不以新 key 繼續不確定操作。
+
+SMTP 關閉不會刪除既有驗證／監護人 token 或改寫帳號驗證狀態。寄信與供應商說明的可選設定不新增 migration，也不改 schema、秘密或資料保存邊界。備份0不代表最小刪除journal立即清除；仍需涵蓋尚存的舊備份副本。

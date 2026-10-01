@@ -12,7 +12,6 @@ export interface AccountMailer {
 
 export const validateMailerConfig = (env: NodeJS.ProcessEnv = process.env): void => {
   if (env.MAIL_PROVIDER !== "smtp") {
-    if (env.NODE_ENV === "production") throw new Error("Production requires MAIL_PROVIDER=smtp");
     if (env.MAIL_PROVIDER && env.MAIL_PROVIDER !== "disabled") throw new Error("Invalid MAIL_PROVIDER");
     return;
   }

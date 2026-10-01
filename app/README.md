@@ -105,3 +105,9 @@ iOS Client 本身只使用系統 HTTPS／TLS，沒有實作自訂或非豁免加
 iPhone 使用 native MethodChannel／UserNotifications 本機提醒，使用者啟用才詢問 permission；台北續訂前一天 09:00，排最早 60 筆未來提醒，payload 不含訂閱名稱／金額。CRUD、resume／同步後重排；登出、刪除與切換帳號清除。其他裝置修改需同步才會反映。Web／Android 只有 App 內提醒，無 APNs。需在簽章 iPhone／TestFlight 另驗 notification permission、點擊、時區及重登入，不把 unit tests 當實機驗收。
 
 拒絕／撤回 AI 授權或目前唯讀時，學習頁可經 `/api/education/catalog` 讀取固定受控教材；不產生外部 AI 請求。Catalog 不含個人摘要，完成標記僅在當前 Client 記憶體，不保存於帳戶；AI 個人化選題仍需當前資格及授權。
+
+## iPhone 正式入口與簡化 API
+
+原生 iPhone 直接連 HTTPS API，不需要部署 Flutter Web。app/.env.appstore.local 的 API_BASE_URL、PRIVACY_POLICY_URL、SUPPORT_URL 指向同一 API 的 /api/、/privacy、/support；仍需公開客服／營運者及 Apple Team、Bundle ID、build number 與簽章。Web 只供選用測試。
+
+API 未設定 SMTP 時新註冊與新的寄信功能未開放，App 使用現有錯誤訊息與訪客入口；既有帳號仍維持驗證／年齡門檻。未完成供應商公開說明時外部 AI 停用，手動功能及固定教材仍可用。此輪不變更前端 UIUX 或 App 建置產物。

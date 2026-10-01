@@ -8,7 +8,7 @@ const page = (title: string, content: string, script = false): string => `<!doct
 <body><main><a href="/support">FutureMint AI</a><h1>${title}</h1>${content}<footer><a href="/privacy">隱私權政策</a> · <a href="/support">聯絡支援</a></footer></main></body></html>`;
 const publicCsp = "default-src 'none'; script-src 'self'; style-src 'self'; connect-src 'self'; form-action 'none'; base-uri 'none'; frame-ancestors 'none'";
 
-export interface PublicServicePolicy { servicePolicyVersion: string; ai: { displayName: string; dataRecipients: string[]; dataTerms: string; }; }
+export interface PublicServicePolicy { servicePolicyVersion: string; mailEnabled?: boolean; registrationEnabled?: boolean; ai: { displayName: string; dataRecipients: string[]; dataTerms: string; }; }
 export const registerPublicPages = (app: FastifyInstance, config?: PublicConfig, policy?: PublicServicePolicy): void => {
   const providerName = escapeHtml(policy?.ai.displayName ?? "量界智算");
   const recipients = escapeHtml(policy?.ai.dataRecipients.join("、") ?? "量界智算及已揭露的上游");
@@ -24,12 +24,18 @@ export const registerPublicPages = (app: FastifyInstance, config?: PublicConfig,
     html("/support", "服務準備中", "<p>公開客服與營運資訊尚未完成設定，請勿在此環境輸入真實個人資料。</p>", 503);
   } else {
     const e = escapeHtml;
-    html("/support", "聯絡支援", `<p>營運者：${e(config.operator)}</p><p>客服信箱：<a href="mailto:${e(config.supportEmail)}">${e(config.supportEmail)}</a></p><h2>登入與帳號</h2><p>忘記密碼時，請在 App 登入畫面選擇「忘記密碼」。驗證信或重設信的連結有效期限為 30 分鐘；重新申請後請使用最新的一封。</p><h2>刪除帳號</h2><p>在 App 設定選擇刪除帳號，輸入目前密碼並確認，即可刪除帳號及其個人資料。無法登入時請先重設密碼，或聯絡客服協助確認身分。</p><p>請提供發生問題的步驟及 App 版本；請勿寄送密碼、驗證連結或完整交易明細。</p>`);
+    const backupDisclosure = config.backupRetentionDays > 0
+      ? `備份最多保留 ${config.backupRetentionDays} 天。`
+      : "此部署不建立定期資料庫備份。";
+    const accountHelp = policy?.mailEnabled
+      ? "忘記密碼時，請在 App 登入畫面選擇「忘記密碼」。驗證信或重設信的連結有效期限為 30 分鐘；重新申請後請使用最新的一封。"
+      : "此部署未啟用寄信及新帳號註冊。可先使用訪客模式；既有帳號仍可登入，但未驗證的帳號仍須完成驗證。無法寄送新的驗證、密碼重設或監護人確認信，請聯絡客服。";
+    html("/support", "聯絡支援", `<p>營運者：${e(config.operator)}</p><p>客服信箱：<a href="mailto:${e(config.supportEmail)}">${e(config.supportEmail)}</a></p><h2>登入與帳號</h2><p>${accountHelp}</p><h2>刪除帳號</h2><p>在 App 設定選擇刪除帳號，輸入目前密碼並確認，即可刪除帳號及其個人資料。無法登入時請聯絡客服協助確認身分。</p><p>請提供發生問題的步驟及 App 版本；請勿寄送密碼、驗證連結或完整交易明細。</p>`);
     html("/privacy", "隱私權政策", `<p>版本：${e(config.policyVersion)}</p><p>營運者：${e(config.operator)}；聯絡方式：<a href="mailto:${e(config.supportEmail)}">${e(config.supportEmail)}</a></p>
 <h2>資料與用途</h2><p>帳號功能保存電子郵件、加鹽雜湊密碼、驗證狀態及登入工作階段。預算、目標、主動確認的收入／支出／訂閱、課程進度、虛擬投資資料與家庭關聯，用於提供你選擇的功能。系統不串接銀行、支付、電子發票或真實交易。</p>
 <h2>AI 資料處理</h2><p>啟用第三方 AI 前會另外徵求同意。解析功能將你輸入的文字、語系及參考時間送往${providerName}；教育選題只送出分類摘要與目標是否存在等資訊；陪讀選題會送出你輸入的問題及主題。請勿輸入姓名、聯絡方式或其他人的資料。</p><p>模型只為教育內容選題，畫面教學文字由受控教材提供。數值由程式計算，並非投資建議。你可在設定撤回 AI 同意；撤回後停止新的第三方 AI 請求，不影響手動記錄與已保存資料。</p><p>現行資料接收者：${recipients}。</p><p>${e(policy?.ai.dataTerms ?? "")}</p><p>${e(config.aiDataTerms)}</p>
 <h2>家庭分享與未成年人</h2><p>孩子使用家長分享的邀請碼加入後，該家長可讀取預算、目標、可用金額與提醒數量摘要，不會取得逐筆交易；孩子可離開家庭停止後續分享。邀請碼有效期限為 24 小時，可由家長更新或停用。</p><p>臺灣服務最低使用年齡：15 歲。15–17 歲需另外完成監護人同意；申請時會寄送使用者帳號電子郵件給指定監護人以辨識申請。監護人確認信箱控制權並聲明成年及法定代理人身分，Email 確認本身不證明合法監護身分。家庭分享與 AI 同意各自獨立。${e(config.minorConsent)}</p>
-<h2>保存與刪除</h2><p>資料存放地區：${e(config.dataRegion)}。帳號及業務資料保存至你刪除帳號；刪除後從使用中的資料庫移除，備份最多保留 ${config.backupRetentionDays} 天。為避免舊備份還原後帳號復活，另保存不含 Email 或帳務的帳號 ID 雜湊及刪除時間，直到相關舊備份副本已銷毀。登入憑證有效期限為 7 天；過期或撤回的憑證、一次性連結與限流記錄以定期維護分批清除。</p><p>iPhone 本機續費提醒須由使用者啟用；鎖定畫面不顯示金額或交易內容。遠端變更需回到 App 同步後才更新。原生 App 登入憑證存放於系統安全儲存空間；網頁版存於該瀏覽器。為確認未收到回應的操作，裝置另保存依帳號分隔的待確認訂閱或虛擬訂單；登出保留原操作，於同帳號再次登入確認，App 內刪除帳號時清除。訪客模式的理財資料僅在記憶體，結束或重新整理後清除。帳號刪除亦刪除家庭關聯，家長刪除帳號時解散其家庭。</p>
+<h2>保存與刪除</h2><p>資料存放地區：${e(config.dataRegion)}。帳號及業務資料保存至你刪除帳號；刪除後從使用中的資料庫移除，${backupDisclosure}為避免舊備份還原後帳號復活，另保存不含 Email 或帳務的帳號 ID 雜湊及刪除時間，直到相關舊備份副本已銷毀。登入憑證有效期限為 7 天；過期或撤回的憑證、一次性連結與限流記錄以定期維護分批清除。</p><p>iPhone 本機續費提醒須由使用者啟用；鎖定畫面不顯示金額或交易內容。遠端變更需回到 App 同步後才更新。原生 App 登入憑證存放於系統安全儲存空間；網頁版存於該瀏覽器。為確認未收到回應的操作，裝置另保存依帳號分隔的待確認訂閱或虛擬訂單；登出保留原操作，於同帳號再次登入確認，App 內刪除帳號時清除。訪客模式的理財資料僅在記憶體，結束或重新整理後清除。帳號刪除亦刪除家庭關聯，家長刪除帳號時解散其家庭。</p>
 <h2>安全、權利與聯絡</h2><p>傳輸使用 HTTPS，後端驗證帳號與資料權限；請求限制用雜湊識別值降低濫用。應用程式不使用廣告追蹤。你可以在 App 查看、修改、匯出或刪除自己的資料；未完成監護人同意仍可讀取、匯出及刪除自己的既有資料。撤回 AI 或監護人同意會阻擋新的相關請求，已開始的操作可能完成；其他資料請求或隱私疑問請聯絡上述客服。</p>`);
   }
   html("/account/verify", "驗證電子郵件", '<p>請點擊下方按鈕確認這是你的電子郵件地址。</p><form id="action-form" data-action="email-verification"><button type="submit">確認驗證</button></form><p id="status" role="status" aria-live="polite"></p>', 200, true);

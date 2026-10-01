@@ -26,10 +26,10 @@ describe("AI configuration and consent policy identity", () => {
   it.each(["https://relay.example/v1", "http://api.openai.com/v1"])("refuses OpenAI endpoint overrides: %s", (OPENAI_BASE_URL) => {
     expect(() => parseAiConfig({ ...openai, OPENAI_BASE_URL })).toThrow("OPENAI_BASE_URL");
   });
-  it("requires reviewed provider-specific recipient and terms declarations in production", () => {
-    expect(() => parseAiConfig({ ...openai, NODE_ENV: "production", AI_DATA_TERMS_DISCLOSURE: "generic text" })).toThrow("OPENAI_DATA_RECIPIENTS");
+  it("keeps external AI unreviewed when production provider declarations are incomplete", () => {
+    expect(parseAiConfig({ ...openai, NODE_ENV: "production", AI_DATA_TERMS_DISCLOSURE: "generic text" }).policy.reviewed).toBe(false);
     expect(parseAiConfig({ ...openai, ...terms, NODE_ENV: "production" }).policy.reviewed).toBe(true);
-    expect(() => parseAiConfig({ ...openai, ...terms, NODE_ENV: "production", OPENAI_DATA_TERMS_REVIEWED: "false" })).toThrow("OPENAI_DATA_TERMS_REVIEWED");
+    expect(parseAiConfig({ ...openai, ...terms, NODE_ENV: "production", OPENAI_DATA_TERMS_REVIEWED: "false" }).policy.reviewed).toBe(false);
     expect(() => parseAiConfig({ ...openai, ...terms, NODE_ENV: "production", OPENAI_DATA_TERMS_DISCLOSURE: "待確認" })).toThrow("OPENAI_DATA_TERMS_DISCLOSURE");
   });
   it("rotates policy identity for provider, model, recipients, data terms and privacy version changes", () => {

@@ -24,6 +24,8 @@ export interface Runtime {
   aiPolicy?: AiPolicyMetadata;
   aiGate?: AiRequestGate;
   eligibilityRequired?: boolean;
+  mailEnabled?: boolean;
+  registrationEnabled?: boolean;
   dataProvider: "memory" | "postgres";
   service: FutureMintService;
   authService: AuthService;
@@ -70,6 +72,8 @@ export const createRuntime = (): Runtime => {
     aiPolicy: aiConfig.policy,
     aiGate,
     eligibilityRequired: process.env.NODE_ENV === "production",
+    mailEnabled: Boolean(mailer),
+    registrationEnabled: process.env.NODE_ENV !== "production" || Boolean(mailer),
     rateLimitStore: repository,
     maintenance,
     service: new Service(
@@ -78,7 +82,8 @@ export const createRuntime = (): Runtime => {
       demoCatalog,
       marketDataProvider,
     ),
-    authService: new AuthService(repository, undefined, { mailer, requireEmailVerification: Boolean(mailer),
+    authService: new AuthService(repository, undefined, { mailer, requireEmailVerification: process.env.NODE_ENV === "production" || Boolean(mailer),
+      registrationEnabled: process.env.NODE_ENV !== "production" || Boolean(mailer), aiPolicyReviewed: aiConfig.policy.reviewed,
       eligibilityStore, requireEligibility: process.env.NODE_ENV === "production", aiPolicyVersion: aiConfig.policy.policyVersion }),
     healthCheck: postgresRepository
       ? () => postgresRepository.ping()

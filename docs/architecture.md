@@ -2,7 +2,7 @@
 
 ## 目前架構
 
-FutureMint AI 採三個 Coolify Resource，前端與 API 分離部署，PostgreSQL 僅存在於 Coolify private network。主辦方 Azure 環境關閉後，runtime 不再依賴 Azure Functions、Cosmos DB、Azure OpenAI 或 Static Web Apps。
+FutureMint AI 正式 iPhone 採 API／PostgreSQL 兩個 Coolify Resource；Flutter Web 只供選用測試，App 與 API 分開發布，PostgreSQL 僅存在於 Coolify private network。主辦方 Azure 環境關閉後，runtime 不再依賴 Azure Functions、Cosmos DB、Azure OpenAI 或 Static Web Apps。
 
 `app/` 與 `backend/` 分別是 Flutter 與 Fastify 的固定 component root；manifest 直接位於 component 根目錄。`design/` 保存設計資產但不是 executable component。此架構不增加 project-name、framework-name 或其他分類包層。
 
@@ -23,7 +23,7 @@ flowchart LR
 
 | Resource | 責任 | 網路 |
 |---|---|---|
-| Flutter Web Application | 編譯 release bundle，Nginx 提供 SPA 與 deep-link fallback | 公開 HTTPS |
+| Flutter Web Application（選用測試） | 編譯 release bundle，Nginx 提供 SPA 與 deep-link fallback | 公開 HTTPS |
 | Fastify API Application | Authentication、契約驗證、AI 協調、確定性計算、資料 ownership | 公開 HTTPS；可連 private database |
 | PostgreSQL 17 Database | Accounts、sessions、AI consents、profiles、events、lessons、migration history | 不公開；只允許 Coolify internal network |
 
@@ -49,7 +49,7 @@ flowchart LR
 - `http/`：routes、CORS、rate limit、安全 headers、錯誤 envelope。
 - `migrations/`：版本化 PostgreSQL schema。
 
-Runtime 必填 `AI_PROVIDER=demo|liangjie|openai`，正式預設選用量界，`DATA_PROVIDER=memory|postgres` 明確設定。Production 僅接受量界或官方 OpenAI 配合 PostgreSQL，缺少秘密／政策確認時啟動失敗；Demo／Memory 僅供展示與測試，不自動 failover。設定先經 pure preflight 驗證，再 migration、建構服務及 listen。
+Runtime 必填 `AI_PROVIDER=demo|liangjie|openai`，正式預設選用量界，`DATA_PROVIDER=memory|postgres` 明確設定。Production 僅接受量界或官方 OpenAI 配合 PostgreSQL，缺少必要連線秘密／公開營運政策確認時啟動失敗；未完成供應商政策則只停用外部 AI；Demo／Memory 僅供展示與測試，不自動 failover。設定先經 pure preflight 驗證，再 migration、建構服務及 listen。
 
 ## 主要資料流程
 
@@ -95,7 +95,7 @@ Runtime 必填 `AI_PROVIDER=demo|liangjie|openai`，正式預設選用量界，`
 ## HTTP 與信任邊界
 
 - API base path：`/api`；body 上限 32 KiB。
-- CORS 只允許 `ALLOWED_ORIGINS` 的完整 origin，不允許 `*`；production 缺少、帶 path／尾端 `/` 或非 HTTPS origin 時在 listen 前失敗，而不是 health 200 後才讓 Web 預檢失敗。
+- CORS 只允許完整origin，不允許 `*`；ALLOWED_ORIGINS未填時使用PUBLIC_BASE_URL的API自身origin。production缺少可用origin、帶path／尾端 `/` 或非HTTPS時，在listen前失敗。
 - 全域 rate limit 為單 instance 每分鐘 120 requests；auth routes 每分鐘 10 requests；AI routes 每分鐘 20 requests。
 - API 只信任 `TRUSTED_PROXY_CIDRS` 中實際連入的 proxy IP／CIDR（空值不信任 forwarded headers），production client IP／HTTPS 由設定正確的 Coolify reverse proxy 提供；VPS firewall 不得讓外部繞過 proxy 直接到 container port。
 - 所有動態回應設 `Cache-Control: no-store`，並送出 nosniff、frame deny、referrer 與 CSP headers。
@@ -133,3 +133,9 @@ AuthService 管理 Email 驗證與密碼重設；SMTP adapter 只在 API 持有�
 虛擬訂單以資料庫鎖內的 `executionSequence` 重建執行順序，不能使用交易開始時間判斷先後；家庭摘要在鎖定前擷取的成員集合若已變動，回 409 要求重試。日期型訂閱保留 PostgreSQL DATE 的原日曆，不經 UTC 轉換；近零報酬率複利使用穩定公式。
 
 拒絕／撤回 AI 授權或目前唯讀時，學習頁可經 `/api/education/catalog` 讀取固定受控教材；不產生外部 AI 請求。Catalog 不含個人摘要，完成標記僅在當前 Client 記憶體，不保存於帳戶；AI 個人化選題仍需當前資格及授權。
+
+## 簡化啟動邊界
+
+MAIL_PROVIDER 未填／disabled 時不建立 SMTP transport，可啟動 production；AuthService 關閉新註冊與新的寄信請求，保留既有登入、驗證門檻、資格及資料權限。公開支援頁依 mailEnabled 顯示可用流程。寄信停用不改年齡政策，也不把既有帳號標為已驗證。
+
+供應商 metadata 可由 providerPolicies.ts 或 runtime overrides 提供，reviewed=false 仍能建立服務；AuthService 在授權與 AI 呼叫前拒絕未確認政策，HTTP 層另保留檢查。配置缺失不會觸發自動 Demo／供應商切換。通用政策預設在 publicConfig.ts，公開 origin 與真實營運資料仍需填寫；備份0表示無定期備份，不更動資料庫。

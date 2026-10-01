@@ -54,7 +54,7 @@
 
 ### 3:25–4:00　技術收尾
 
-「前端與 API 是 Coolify 上兩個獨立 container，資料是第三個 PostgreSQL Resource。Flutter 以 Bearer token 呼叫 Fastify，後端才可接觸量界金鑰與資料庫；AI 回覆先過 schema，金額與複利由程式計算。Coolify 從 private GitHub 的 main 自動部署，不會讀我的電腦。」
+「正式 iPhone 直接連 Coolify API，資料保存在獨立 PostgreSQL Resource；Flutter Web 只供選用測試。Flutter 以 Bearer token 呼叫 Fastify，後端才可接觸量界金鑰與資料庫；AI 回覆先過 schema，金額與複利由程式計算。Coolify 從 private GitHub 的 main 自動部署，不會讀我的電腦。」
 
 若評審仍問 Azure，明確說明主辦方已關閉環境、團隊改用自有 VPS 替代，並出示已取得的規則確認；不可把替代架構稱為 Azure。
 
@@ -96,3 +96,5 @@
 在訂閱頁建立月繳或年繳合約，先指出承諾成本，再另外記付款或採用舊付款，確認沒有重複支出；編輯／停止保留實付。紀錄翻頁後摘要不變；示範手動輸入與本人 JSON 匯出。iPhone 提醒選擇啟用、權限失敗有清楚狀態，Web／Android 示範 App 內提醒，不說 APNs。
 
 AI 政策頁顯示當前 provider／模型／接收方；拒絕後手動功能與受控教材仍可用。不在 Demo 中改 production provider、使用真實 secret、送審或操作 backup。部署示範只能描述已觀察結果：使用者說明既有 Coolify 曾成功部署，本輪重新部署／live health 尚待驗收。
+
+簡化部署示範：未設定 SMTP 時使用訪客或既有合成帳號，不示範新註冊／寄信成功。未完成供應商說明時僅展示手動與固定教材，不宣稱真實AI成功。訪客資料結束後清除；本輪不示範或宣稱定期備份已設定。

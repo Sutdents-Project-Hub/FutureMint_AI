@@ -24,7 +24,7 @@
 
 ## Executable components
 
-- `client`：path=`app`，kind=`app`，framework=`Flutter`，package_manager=`flutter`，quality=analyze, test, build，deployment=Coolify Dockerfile Web Application。
+- `client`：path=`app`，kind=`app`，framework=`Flutter`，package_manager=`flutter`，quality=analyze, test, build，deployment=原生 iPhone App Store（簽章／送審未完成）；Coolify Dockerfile Web Application 僅供選用測試。
 - `api`：path=`backend`，kind=`backend`，framework=`Fastify`，package_manager=`npm`，quality=test, typecheck, build, evaluate:captures，deployment=Coolify Dockerfile API Application。
 - `database`：Coolify PostgreSQL 17 Resource，schema 由 `backend/migrations` 管理；它不是 source component，但有獨立資料／備份生命週期。
 
@@ -62,11 +62,13 @@
 
 - 正式 domains、VPS sizing、監控、磁碟與現場網路備援。
 - 量界 model、quota、費率、資料處理與比賽規則確認。
-- 每日備份保留 30 天的排程、異地目的地、隔離還原及刪除不復活驗收。
+- 本輪不建立定期資料庫備份；日後若啟用，另設定排程、保留、異地儲存及隔離還原。
 - 臺灣 15 歲門檻與 15–17 歲監護人確認已實作；法定代理人身分查核／客服更正、資料地區、供應商條款及 Email／SMTP 實際送達仍需營運驗收。
 - 訂閱方案資料授權。
 - Android 實機與 iOS signing。
 
 ## 本輪產品準備範圍
 
-新增訂閱合約／實付分離、分頁與手動紀錄、年齡／監護人資格、版本化供應商同意、官方 OpenAI 可選設定、跨 API instance AI 額度、個人匯出與 iPhone 本機提醒。分類為新能力、缺陷修正及釐清，保持 hybrid／executable、既有 Flutter／Fastify 與三 Resource 邊界。完整行為見 [產品範圍](project-overview.md)。
+新增訂閱合約／實付分離、分頁與手動紀錄、年齡／監護人資格、版本化供應商同意、官方 OpenAI 可選設定、跨 API instance AI 額度、個人匯出與 iPhone 本機提醒。分類為新能力、缺陷修正及釐清，保持 hybrid／executable、既有 Flutter／Fastify 與獨立 Resource 邊界；正式僅啟動 API／PostgreSQL，Web 為選用測試。完整行為見 [產品範圍](project-overview.md)。
+
+目前部署模式維持 hybrid／executable，正式 iPhone 使用最小 API Runtime 範本；無 SMTP 停用新註冊與新的寄信流程，未確認供應商說明只停用外部AI，備份預設0。公開政策與 Apple 正式發布條件仍需確認。

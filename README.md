@@ -1,10 +1,10 @@
 # FutureMint AI
 
-> 由黑客松原型轉為正式產品準備｜iPhone App Store 上架準備｜Flutter Web + Fastify + PostgreSQL｜目標由私人 GitHub repository 自動部署到 Coolify
+> 由黑客松原型轉為正式產品準備｜iPhone App Store 上架準備｜Flutter iPhone + Fastify + PostgreSQL（Web 僅供測試）｜目標由私人 GitHub repository 自動部署到 Coolify
 
 FutureMint AI 是青少年的 AI 金錢決策教練。使用者以繁體中文主動輸入收入、支出或訂閱（目前只接受文字／貼上，不提供圖片上傳或 OCR），系統先整理成可修改草稿與「需要／想要」建議；只有確認後才保存，並以確定性程式更新收支分析、訂閱提醒、個人學習規劃、FutureSeed 複利比較與延遲行情投資練習場。
 
-主辦方 Azure 環境已關閉，因此目標架構已改為團隊 VPS／Coolify。前端、API 與 PostgreSQL 是三個獨立 Resource；AI 由 API 呼叫量界智算，瀏覽器不會接觸資料庫或模型金鑰。Repository 已具備 Dockerfile、migration、health check 與三 Resource 設定文件；使用者確認既有 Coolify 三 Resources 曾成功部署；目前 live health、DNS／TLS、runtime 設定與完整使用者流程尚未在本輪驗證。本次程式變更需由使用者自行重新部署並驗收。
+主辦方 Azure 環境已關閉，因此目標架構已改為團隊 VPS／Coolify。正式 iPhone 只需 API 與 PostgreSQL 兩個獨立 Resource，Web Resource 保留為選用測試；AI 由 API 呼叫量界智算，瀏覽器不會接觸資料庫或模型金鑰。Repository 已具備 Dockerfile、migration、health check 與三 Resource 設定文件；使用者確認既有 Coolify 三 Resources 曾成功部署；目前 live health、DNS／TLS、runtime 設定與完整使用者流程尚未在本輪驗證。本次程式變更需由使用者自行重新部署並驗收。
 
 ## 命名對照
 
@@ -22,7 +22,7 @@ FutureMint AI 是青少年的 AI 金錢決策教練。使用者以繁體中文�
 - 用繁體中文輸入「今天買珍奶 75」、「打工薪水 1500」或「Netflix 390 四個人分」。
 - 查看所選量界智算／官方 OpenAI 或 deterministic demo 的解析來源，修正金額／項目／分類／需要或想要後再確認保存。
 - 在紀錄頁編輯或刪除自己已保存的收入、支出與訂閱；預算、分析與訂閱比較會立即重算。
-- 用電子郵件與密碼註冊、登入、登出；正式環境先驗證 Email，再完成首次預算與目標設定，並可申請密碼重設。
+- 用電子郵件與密碼註冊、登入、登出；啟用 SMTP 的正式環境先驗證 Email，再完成首次預算與目標設定，並可申請密碼重設。未啟用 SMTP 時新註冊停用，可使用訪客或登入既有帳號；既有驗證門檻仍保留。
 - 在第三方 AI 功能啟用前查看當前供應商、接收方、資料類別與用途，可選擇不啟用或日後撤回；未同意時 Client 與 API 都會擋住第三方 AI 請求。
 - 已登入帳號可在 App 內輸入目前密碼並二次確認，刪除帳號及其預算、紀錄、課程、虛擬投資與家庭關聯。
 - 每個帳號只能讀寫自己的 PostgreSQL profile、事件與課程資料；重啟 API 後資料仍保留。
@@ -40,20 +40,19 @@ FutureMint AI 是青少年的 AI 金錢決策教練。使用者以繁體中文�
 
 決賽只使用合成資料與測試帳號，不串接支付、銀行、電子發票、證券下單或真實未成年人金融服務。FutureSeed 曲線是版本化合成情境；投資練習場使用證交所延遲日資料但只記虛擬訂單。兩者都不是即時報價、買賣建議或報酬預測。
 
-## 三個 Coolify Resources
+## Coolify Resources：正式 API／PostgreSQL，Web 選用
 
 | Resource | 專案路徑／映像 | 對外 port | 健康檢查 | 秘密 |
 |---|---|---:|---|---|
-| `futuremint-ai-web` Application | `app/Dockerfile` | 3000 | `/` | 無；只有公開 URL／營運資料 build variables |
+| `futuremint-ai-web` Application（測試，正式不用啟動） | `app/Dockerfile` | 3000 | `/` | 無；只有公開 URL／營運資料 build variables |
 | `futuremint-ai-api` Application | `backend/Dockerfile` | 3000 | `/api/health` | `DATABASE_URL`、`LIANGJIE_API_KEY`、SMTP credentials |
 | `futuremint-ai-postgres` Database | Coolify PostgreSQL 17 Resource | 不公開 | Coolify 管理 | 使用 Coolify 產生的 credentials |
 
 ```mermaid
 flowchart LR
-    G["Private GitHub repository"] -->|"push main / webhook"| W["Coolify: Flutter Web"]
-    G -->|"push main / webhook"| A["Coolify: Fastify API"]
-    U["使用者瀏覽器"] -->|"HTTPS"| W
-    W -->|"HTTPS /api"| A
+    G["Private GitHub repository"] -->|"push main / webhook"| A["Coolify: Fastify API"]
+    U["iPhone App"] -->|"HTTPS /api"| A
+    W["測試 Flutter Web（選用）"] -.->|"HTTPS /api"| A
     A -->|"Coolify private network"| P["Coolify: PostgreSQL 17"]
     A -->|"HTTPS, server-side only"| L["量界智算／明確選用官方 OpenAI"]
     A -->|"HTTPS, daily snapshot"| T["TWSE OpenAPI"]
@@ -97,7 +96,7 @@ Docker Desktop 會顯示一個可展開的 `futuremint_ai` Compose 專案，內�
 - 停止服務：`docker compose down`
 - 停止並清除本機資料：`docker compose down -v`
 
-Compose 預設使用 `NODE_ENV=development`、`AI_PROVIDER=demo`、PostgreSQL named volume 與只在私有 Docker network 內生效的免密碼本機設定。它適合本機展示，不可直接當 production database 設定；production 會拒絕 demo provider、memory repository、遺漏 origin 或非 HTTPS origin，避免健康檢查正常但 Web 主線失效。
+Compose 預設使用 `NODE_ENV=development`、`AI_PROVIDER=demo`、PostgreSQL named volume 與只在私有 Docker network 內生效的免密碼本機設定。它適合本機展示，不可直接當 production database 設定；production 會拒絕 demo provider、memory repository、沒有 API origin 可作 CORS 預設或設定非 HTTPS origin，避免健康檢查正常但 Web 主線失效。
 
 要用量界智算做本機整合驗證，將根目錄 `.env.example` 複製為已忽略的 `.env`，設定 `AI_PROVIDER=liangjie`、`LIANGJIE_BASE_URL`、已由帳號確認可用的 `LIANGJIE_MODEL` 與 `LIANGJIE_API_KEY`，再執行 `docker compose up -d --build --wait`。金鑰只會注入 API runtime；不可寫入前端 Dart define、Web image build argument、文件或版本控制。
 
@@ -208,7 +207,7 @@ GitHub Actions workflow 位於 [.github/workflows/ci.yml](.github/workflows/ci.y
 - `API_BASE_URL`：必須是以 `/api/` 結尾的 API HTTPS base URL。改值後必須重新 build 前端。
 - `BUILD_ENV=production`、`PRIVACY_POLICY_URL`、`SUPPORT_URL`、`SUPPORT_EMAIL`、`SERVICE_OPERATOR`：正式公開政策／支援及營運者，production 不接受 validation placeholder。
 
-API 變數名稱索引在 `backend/.env.example`。以下為量界模式的連線變數；完整 production 必填 SMTP、公開政策、年齡與供應商條款，見 [部署變數表](docs/deployment.md#2026-09-正式產品新增發布條件)：
+API 變數名稱索引在 `backend/.env.example`。以下為量界模式的連線變數；最小 production 範本見 `backend/.env.coolify.example`；SMTP 與外部 AI 各自有功能啟用條件，公開政策需確認，見 [部署變數表](docs/deployment.md)：
 
 - `NODE_ENV=production`
 - `HOST=0.0.0.0`
@@ -220,7 +219,7 @@ API 變數名稱索引在 `backend/.env.example`。以下為量界模式的連�
 - `LIANGJIE_BASE_URL=https://liangjiewis.com/v1`
 - `LIANGJIE_MODEL=<已由帳號確認可用的模型>`
 - `LIANGJIE_API_KEY=<secret>`
-- `ALLOWED_ORIGINS=https://<frontend-domain>`
+- `PUBLIC_BASE_URL=https://<api-domain>`（未填 `ALLOWED_ORIGINS` 時作為其預設）
 
 不得提交真實 API key、password、connection string、production `.env`、個資、合約或商業文件。量界與資料庫秘密只放 API Resource 的 runtime environment，不可放前端或 Docker build arguments。
 
@@ -275,4 +274,13 @@ API runtime 設定來源為 `backend/src/config/aiConfig.ts`、`startupConfig.ts
 
 使用者確認既有 Coolify 三 Resources 曾成功部署；目前 live health、DNS／TLS、runtime 設定與完整使用者流程尚未在本輪驗證。本次程式變更需由使用者自行重新部署並驗收。
 
-每日備份保留 30 天、隔離還原與刪除不復活、SMTP／domain、Apple Team／signed TestFlight、App Privacy／年齡問卷仍為外部驗收條件。檢查證據見 [測試與證據](docs/testing-and-evidence.md)。
+本輪選擇不建立定期資料庫備份；SMTP／domain、供應商資料說明、Apple Team／signed TestFlight、App Privacy／年齡問卷仍需按啟用功能完成外部驗收。檢查證據見 [測試與證據](docs/testing-and-evidence.md)。
+
+## 最小 iPhone 部署模式
+
+分類：已核准範圍調整。僅啟動 Coolify API／PostgreSQL，停止測試 Web 並關閉其 Auto Deploy。API 設定從 [最小 Runtime 範本](backend/.env.coolify.example)開始；全部取消 Buildtime。PUBLIC_BASE_URL、營運者、客服、資料地區、資料庫及模型憑證仍需真實值，確認公開頁內容後才設 PRIVACY_POLICY_REVIEWED=true。
+
+- SMTP 可選；關閉時無新註冊／新的寄信流程，訪客與既有帳號仍可使用，既有未驗證帳號不會自動通過驗證。
+- 不備份為內建預設（BACKUP_RETENTION_DAYS=0），不刪既有資料卷或 journal。
+- 供應商公開說明可放版本化 [設定](backend/src/config/providerPolicies.ts)，不必全部放 env；初始條款未完成，外部 AI 保持停用，手動功能與固定教材可用。原有 runtime overrides 仍支援。
+- 正式新使用者的完整帳號／AI 功能仍需啟用 SMTP、確認供應商政策與使用者同意。訪客資料僅在記憶體；API 能啟動不代表已具備完整上架條件。

@@ -54,7 +54,7 @@ curl http://localhost:3000/api/health
 | `LIANGJIE_BASE_URL` | 僅允許 `https://liangjiewis.com/v1`，拒絕 HTTP、任意主機及 URL credentials |
 | `LIANGJIE_MODEL` | 量界帳號實際可用的 model id |
 | `LIANGJIE_API_KEY` | 只放 runtime secret |
-| `ALLOWED_ORIGINS` | 允許的完整 Web origins，以逗號分隔；production 必填且只接受不帶 path／尾端 `/` 的 HTTPS origin，不接受萬用 `*` |
+| `ALLOWED_ORIGINS` | 允許的完整 Web origins，以逗號分隔；未填時使用 PUBLIC_BASE_URL；production 只接受不帶 path／尾端 `/` 的 HTTPS origin，不接受萬用 `*` |
 | `ALLOW_DEMO_SEED` | 只有受控合成資料 seed 時短暫設為 `true` |
 
 `.env.example` 只放安全 placeholder。真實 `.env`、API key、database URL、密碼與 token 不得提交或寫入 log。
@@ -143,7 +143,7 @@ Coolify Application 設定：
 - Runtime variables：依上表設定；`DATABASE_URL` 使用 PostgreSQL Resource 的 internal URL
 - 不公開 PostgreSQL port，不把秘密設成 build arguments
 
-production 啟動會驗證 `AI_PROVIDER=liangjie|openai`、`DATA_PROVIDER=postgres` 與至少一個合法 HTTPS `ALLOWED_ORIGINS`；任何一項不符會在 listen 前退出，不能以 health 200 掩蓋錯誤設定。API 只信任 `TRUSTED_PROXY_CIDRS` 指定的 proxy IP／CIDR，VPS firewall 不得讓使用者直接繞過 proxy 連 API container。
+production 啟動會驗證 `AI_PROVIDER=liangjie|openai`、`DATA_PROVIDER=postgres` 與至少一個合法 HTTPS origin（ALLOWED_ORIGINS 未填時使用 PUBLIC_BASE_URL）；任何一項不符會在 listen 前退出，不能以 health 200 掩蓋錯誤設定。API 只信任 `TRUSTED_PROXY_CIDRS` 指定的 proxy IP／CIDR，VPS firewall 不得讓使用者直接繞過 proxy 連 API container。
 
 完整部署順序與 private GitHub 自動部署見 [部署說明](../docs/deployment.md)。
 
@@ -161,7 +161,7 @@ npm audit --omit=dev
 
 ## 正式環境與帳號恢復
 
-Production 除原有 provider／CORS 外，還需 SMTP 與完整公開政策設定。變數名稱見 `.env.example`，設定方式見 [部署文件](../docs/deployment.md)。`MAIL_PROVIDER=smtp` 啟用 Email 驗證門檻；本機 demo 的 `disabled` 不送信、不要求驗證，不能當成 production 驗收。
+Production 需真實公開政策設定；最小變數見 `.env.coolify.example`，完整選項見 `.env.example`。MAIL_PROVIDER 未填／disabled 不要求 SMTP 憑證，可啟動 API，但新註冊及新的驗證／重設／監護人寄信停用；既有帳號仍需通過原驗證與資格門檻。設定 smtp 才啟用完整新帳號流程。本機 demo 可免驗證，不代表 production 可繞過驗證。
 
 新增 API：`POST /api/auth/email-verification/request`（Bearer）、`POST /api/auth/email-verification/confirm`（token）、`POST /api/auth/password-reset/request`（email）、`POST /api/auth/password-reset/confirm`（token/password）。密碼沿用 12–128 字元、英文字母及數字規則。家庭邀請可用 `POST /api/family/invite/rotate` 更新、`DELETE /api/family/invite` 停用。
 
@@ -176,3 +176,11 @@ GET `/api/subscriptions` 回 `items`、`monthlyCommitmentMinor`、`legacyCandida
 設定以 `src/config/aiConfig.ts`、`startupConfig.ts` 及 `src/http/runtime.ts` 為準，完整名稱見 `.env.example`。`npm run preflight` 驗證設定不開 socket、寄信、讀資料庫或 migration；Docker 在 migration 前執行，失敗只輸出安全變數名稱／階段，不含 values。migrations 008／009／010／011 為 additive，舊 checksum 不變。年齡、監護人／AI 政策與額度見 [安全](../docs/security-and-privacy.md)及[整合](../docs/integrations.md)。
 
 隔離備份還原可使用 `node dist/scripts/reconcileRestoredAccounts.js export|preview|apply /protected/latest.deletion-journal.json`。刪除 journal 只保存帳號 ID 雜湊與時間；套用 011 後才開始記錄。來源與還原必須不同資料庫名稱，apply 需維運確認無流量；完整 secret／保留／切換流程見 [部署文件](../docs/deployment.md#9-隔離還原與刪除帳號對帳)。
+
+## 簡化設定與功能狀態
+
+公開政策版本、最低年齡15、未成年人說明、通用AI說明及備份0天有內建預設；覆寫仍會驗證。ALLOWED_ORIGINS 可省略，採 API 自身 PUBLIC_BASE_URL。真實營運者／客服／資料地區與 PRIVACY_POLICY_REVIEWED=true 仍為 production 啟動條件。
+
+`src/config/providerPolicies.ts` 維護公開供應商資料，初始 reviewed=false；既有 LIANGJIE_/OPENAI_DATA_* 可覆寫。缺少完整說明或未確認時，API 可啟動但授權／呼叫外部 AI 回 ai_policy_unavailable。單改 reviewed=true 而未提供條款仍拒絕啟動。mail_disabled 與 registration_disabled 明確回報功能未開放，不冒充已寄信。
+
+`GET /api/service-policy` 增加 mailEnabled／registrationEnabled；公開支援頁顯示當前寄信狀態。Flutter UIUX 不改動，既有錯誤處理顯示上述訊息。未設定 SMTP 的訪客資料不永久保存。最小刪除 journal 仍保留；備份天數不控制或自動清除 Coolify 的排程／既有副本。

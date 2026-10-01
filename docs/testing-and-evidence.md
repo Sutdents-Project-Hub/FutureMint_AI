@@ -1,6 +1,14 @@
 # 測試與證據
 
-## 本輪證據界線（2026-10-01）
+## 本輪簡化部署（2026-10-01）
+
+分類：已核准範圍調整。正式只需API／PostgreSQL，Web選用；可選SMTP、備份0、內建通用政策、供應商說明未完成時只停用外部AI。沒有新增migration、不修改前端UIUX。
+
+已執行：backend的npm run typecheck與npm run build，以及git diff --check通過。本輪只更新既有設定測試的預期以符合新契約，沒有新增或執行測試；下方歷史測試／跨元件結果不代表本輪新分支已通過回歸。編譯不證明disabled寄信／註冊、政策門檻或正式連線已實際驗收。
+
+未執行：Coolify設定／部署、Git commit／push、SMTP寄送、正式AI、Apple簽章／上傳／送審。無SMTP時無新註冊，未完成供應商說明時無外部AI；現有驗證／年齡／監護人門檻仍維持。使用者選擇不建立定期資料庫備份，既有journal及資料卷保留。
+
+## 上一輪正式產品整合證據（2026-10-01，簡化設定前）
 
 分類：新能力、缺陷修正與釐清。下方歷史測試數量僅對應各自日期／狀態。基線 `af7a5df` 的 GitHub CI 已確認成功：122 API tests、121 Flutter tests、未簽章 iOS 與 Web／API images；本輪新變更尚未跑遠端 CI，最新本機驗證結果需按本輪實際指令記錄。
 
@@ -8,7 +16,7 @@
 
 本輪已覆蓋訂閱同交易／完整 payload 重試、舊付款採用、分頁全量統計、owner 隔離、臺灣年齡／監護人 token／撤回、provider fingerprint 再授權／雙供應商 gate、共享 AI 額度／lease、preflight 先於 migration、DATE／近零複利、虛擬執行順序及家庭捕獲成員變動 409。Client 本機測試另覆蓋手動流程／同 key retry、所有 onboarding 退出／刪除／help/retry、iPhone 提醒 permission／時區／清除／resume。測試通過只能證明被測的本機狀態；未使用真實 provider key。
 
-未驗收：SMTP／domain／正式 AI 條款與品質、每日備份保留 30 天／隔離還原／刪除不復活、Apple Team／signed TestFlight／通知實機、App Privacy／年齡問卷。既有 CI 或未簽章產物不取代這些外部證據。
+未驗收：SMTP／domain／正式 AI 條款與品質、日後啟用備份時的隔離還原／刪除不復活、Apple Team／signed TestFlight／通知實機、App Privacy／年齡問卷。既有 CI 或未簽章產物不取代這些外部證據。
 
 ### 最終本機執行結果（2026-10-01）
 

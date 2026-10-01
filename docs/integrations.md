@@ -81,3 +81,9 @@ SMTP adapter 已實作 TLS、一次性驗證／密碼重設信與 sanitized erro
 本輪不使用真實 key 或供應商請求；本機 fake-client 結果不代表正式模型品質、費率或條款已驗收。GitHub Models 於 2026-07-30 退役，未列入替代供應商：[GitHub 官方文件](https://docs.github.com/en/github-models)。官方能力依據：[Structured Outputs](https://developers.openai.com/api/docs/guides/structured-outputs)、[GPT-4.1 mini](https://developers.openai.com/api/docs/models/gpt-4.1-mini)。
 
 拒絕／撤回 AI 授權或目前唯讀時，學習頁可經 `/api/education/catalog` 讀取固定受控教材；不產生外部 AI 請求。Catalog 不含個人摘要，完成標記僅在當前 Client 記憶體，不保存於帳戶；AI 個人化選題仍需當前資格及授權。
+
+## 簡化部署的整合開關
+
+分類：已核准範圍調整。正式 iPhone 只啟動 API／PostgreSQL，Web 為選用測試。MAIL_PROVIDER 未填／disabled 不建立寄信連線、停用新註冊及新的驗證／密碼重設／監護人寄信；smtp 才開放完整流程，仍需實際送達驗收。
+
+供應商公開接收方／說明／reviewed 可放 backend/src/config/providerPolicies.ts；既有 PROVIDER_DATA_* env 可覆寫，覆寫說明後需重新確認。缺少說明／未確認時不阻擋 API 啟動，但阻擋外部 AI 授權與呼叫，保留手動及固定教材。模型與 key 仍為所選 live provider 必要值，不自動 fallback；量界上游承諾尚未確認，初始設定不虛構內容。

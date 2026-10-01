@@ -10,7 +10,7 @@
 - 本機 Docker Compose project：`futuremint_ai`；主要 `compose.yaml` 必須明確設定頂層 `name: futuremint_ai`。
 - Coolify project：`futuremint-ai`；Coolify services：`futuremint-ai-web`、`futuremint-ai-api`、`futuremint-ai-postgres`。
 - Compose services 使用 `web`、`api`、`postgres`，不設定 `container_name`；容器名稱由 Compose project 與 service role 產生。
-- 根目錄 `compose.yaml` 只供本機三容器整合驗證；Coolify production 必須維持 `app/Dockerfile` 的 Web Application、`backend/Dockerfile` 的 API Application 與受管 PostgreSQL Resource 三個獨立 Resources，不得把本機 Compose 當正式入口。
+- 根目錄 `compose.yaml` 只供本機三容器整合驗證；Coolify iPhone production 使用 `backend/Dockerfile` 的 API Application 與受管 PostgreSQL Resource；`app/Dockerfile` 的 Web Application 僅供選用測試，保持獨立 Resource，不得把本機 Compose 當正式入口。
 - 產品型態：`hybrid`。
 - Bootstrap 模式：`executable`；Flutter 與 Fastify API 均需以 manifest、lockfile、Dockerfile 與實際品質指令維持此狀態。
 
@@ -31,7 +31,7 @@
 ### 假設與未決事項
 
 - 主 Persona 是開始管理零用錢與數位消費的中學生；正式服務採臺灣 15+，15–17 歲需監護人 Email 確認。服務資格、家庭摘要分享與 AI 授權各自獨立；Email 不證明法定代理人身分，正式未成年人營運條件仍待查核。
-- 主要 Demo 面保留 Flutter Web 或 Android；正式 iOS 僅支援 iPhone。Apple 簽章、正式 domain、SMTP 與 VPS 備份仍待確認。
+- 主要 Demo 面保留 Flutter Web 或 Android；正式 iOS 僅支援 iPhone。Apple 簽章、正式 domain 與完整帳號 SMTP 送達仍待確認；使用者選擇本輪不建立定期資料庫備份。
 - 訂閱方案資料來源及青少年可用性測試的同意／去識別方式尚待團隊定案。
 
 ## 專案事實與邊界
@@ -42,7 +42,7 @@
 - `design/` 是沒有 runtime、manifest 或部署生命週期的設計支援資產；`docs/` 是產品、架構、競賽、測試與部署依據，兩者不冒充 executable component。
 - 專案結構採公司慣例的固定 component roots：`app/`、`backend/`、`design/` 與 `docs/`；`app/`、`backend/` 本身就是 framework root，manifest 直接位於 component 根目錄，不得再建立 project-name 或 framework-name wrapper。
 - Flutter、Fastify、Node.js 22 與 npm 是已實作且可驗證的學生技術選型；除非另行核准遷移，不為了套用公司新專案基線而更換框架、runtime 或 package manager。
-- 已選定 Coolify 三 Resource 架構：Flutter Web Application、Fastify API Application、PostgreSQL Database；AI 僅由 API 呼叫，量界智算為主，可明確設定官方 OpenAI，不自動切換。供應商／模型／公開條款變更須重新授權；未驗收的 DNS、資料庫、SMTP、備份與外部 AI 連線不得描述成已完成。
+- 已選定 Coolify 獨立 Resource 架構：正式 iPhone 使用 Fastify API Application、PostgreSQL Database；Flutter Web Application 為可停用的測試入口；AI 僅由 API 呼叫，量界智算為主，可明確設定官方 OpenAI，不自動切換。供應商／模型／公開條款變更須重新授權；未驗收的 DNS、資料庫、SMTP、備份與外部 AI 連線不得描述成已完成。
 - Repository 與專案根目錄名稱維持 `FutureMint_AI`；Coolify resources 與新技術識別優先使用 `futuremint-ai` 或平台既有命名慣例。
 - 新 component id、路徑與一般文件名使用能表達責任的 lowercase kebab-case；固定角色優先使用 `app`、`web`、`cms`、`backend`、`packages`、`design` 與 `docs`。
 - 保留現有且可工作的框架慣例；新增 executable component 時直接建立在對應固定 root，不新增無必要的分類包層。
@@ -118,3 +118,11 @@
 ## 完成回報
 
 - 回報變更分類、變更檔案、行為差異、實際執行的驗證與結果、同步文件、未驗證事項、剩餘風險及需要人工決定的項目；若沒有文件變更，說明理由。
+
+## 簡化部署契約（2026-10）
+
+- 正式只啟動 API／PostgreSQL；測試 Web 停止並關閉其 Auto Deploy，原生 iPhone 不依賴 Web。不得以 API deploy 冒充 App Store 發布。
+- `MAIL_PROVIDER` 未填或 `disabled` 可啟動 production；未設定 SMTP 時停用新註冊與新的驗證／重設／監護人寄信，保留訪客與既有帳號登入。既有未驗證帳號仍維持驗證門檻，不改為已驗證或成年。
+- `BACKUP_RETENTION_DAYS` 預設 `0`，表示不建立定期資料庫備份；不刪 volume、既有備份或最小刪除 journal。
+- 公開說明的內建預設在 `backend/src/config/publicConfig.ts`；真實營運者、客服、API origin、資料地區與政策確認仍需設定。
+- 供應商公開說明可維護於 `backend/src/config/providerPolicies.ts` 或既有 `*_DATA_*` runtime overrides；缺少／未確認時只停用外部 AI，API 手動功能仍可啟動。不得虛構上游、保存或訓練承諾。

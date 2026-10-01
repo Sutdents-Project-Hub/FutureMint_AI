@@ -51,7 +51,7 @@
 ## 提交前清單
 
 - [ ] 主辦方已書面確認替代 Azure 的評分與提交方式。
-- [ ] Coolify Web／API／PostgreSQL 三 Resources、domains、TLS、health 正常。
+- [ ] 正式 iPhone 的 Coolify API／PostgreSQL、API domain、TLS、health 正常；Web 僅在選用展示時另驗收。
 - [ ] GitHub App 只授權單一 private repository，`main` Auto Deploy 經實際 push 驗證。
 - [ ] 量界 model／quota／資料條款確認，合成案例實測完成。
 - [ ] PostgreSQL 不公開；backup 與隔離 restore 實測完成。
@@ -71,4 +71,6 @@
 
 新增訂閱合約／實付、年齡／監護人、provider 政策、手動紀錄／匯出與 iPhone 本機提醒屬於正式產品核准範圍；競賽 Azure 規則、得分及匿名成效研究仍是歷史或外部確認，不因上架程式完成而推定通過。正式門檻為臺灣 15 歲，15–17 歲監護人信件確認不證明法定代理人身分。
 
-可描述基線 `af7a5df` 的 GitHub CI 成功（122 API／121 Flutter、未簽章 iOS／images），不得說本輪修改已經遠端 CI 或 production 驗收。既有 Coolify Resources 曾成功部署是使用者提供事實，現在 live health 尚未本輪驗證。備份保留 30 天／隔離 restore／刪除不復活、SMTP／domain、signed TestFlight／App Privacy／年齡問卷仍須實證。
+可描述基線 `af7a5df` 的 GitHub CI 成功（122 API／121 Flutter、未簽章 iOS／images），不得說本輪修改已經遠端 CI 或 production 驗收。既有 Coolify Resources 曾成功部署是使用者提供事實，現在 live health 尚未本輪驗證。本輪不建立定期備份；SMTP／domain、供應商政策與 signed TestFlight／App Privacy／年齡問卷依啟用範圍仍須實證。日後若啟用備份，另驗收還原與刪除不復活。
+
+簡化部署仍保留原年齡與資料權限；未啟用寄信時無新註冊，未完成供應商說明時外部AI未開放。不得將訪客或API啟動成功描述為完整正式帳號／AI／App Store驗收。

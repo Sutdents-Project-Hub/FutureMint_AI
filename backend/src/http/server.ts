@@ -5,7 +5,7 @@ import Fastify, {
   type FastifyRequest,
 } from "fastify";
 import { z, ZodError } from "zod";
-import { parseAllowedOrigins } from "../config/httpConfig";
+import { readAllowedOrigins } from "../config/httpConfig";
 export { parseAllowedOrigins } from "../config/httpConfig";
 import { servicePolicyVersion, providerAiPolicyVersion, guardianConfirmationSchema } from "../contracts/servicePolicy";
 
@@ -29,7 +29,7 @@ interface BuildServerOptions {
 }
 
 const configuredOrigins = (): string[] =>
-  parseAllowedOrigins(process.env.ALLOWED_ORIGINS);
+  readAllowedOrigins();
 
 const success = (
   request: FastifyRequest,
@@ -309,6 +309,8 @@ export const buildServer = async (
   const servicePolicy = {
     servicePolicyVersion, minimumAge: 15, country: "TW", guardianRequiredUnder18: true, eligibilityRequired: runtime.eligibilityRequired ?? false,
     privacyPolicyVersion: runtime.publicConfig?.policyVersion ?? "",
+    mailEnabled: runtime.mailEnabled ?? false,
+    registrationEnabled: runtime.registrationEnabled ?? true,
     ai: { provider: runtime.aiProvider, displayName: ai?.providerName ?? (runtime.aiProvider === "openai" ? "OpenAI" : runtime.aiProvider === "liangjie" ? "量界智算" : "離線展示"),
       model: ai?.model ?? "", policyVersion: ai?.policyVersion ?? providerAiPolicyVersion,
       dataRecipients: ai?.recipients ?? [], dataTerms: ai?.dataTerms ?? "", reviewed: ai?.reviewed ?? false },
@@ -323,6 +325,7 @@ export const buildServer = async (
   const aiOperation = async <T>(request: FastifyRequest, operation: () => Promise<T>): Promise<T> => {
     const account = await writableUser(request);
     if (runtime.aiProvider === "demo") return operation();
+    if (runtime.aiPolicy?.reviewed === false) throw new DomainError("ai_policy_unavailable", "第三方 AI 資料處理說明尚未完成，請先使用手動功能及固定教材。", 503);
     await runtime.authService.requireAiConsent(account.id);
     const release = await runtime.aiGate?.acquire(account.id);
     try { return await operation(); }

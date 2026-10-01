@@ -87,6 +87,7 @@ const passwordsMatch = async (
 export interface AuthServiceOptions {
   mailer?: AccountMailer; requireEmailVerification?: boolean; requireEligibility?: boolean;
   eligibilityStore?: EligibilityStore; servicePolicyVersion?: string; aiPolicyVersion?: string;
+  registrationEnabled?: boolean; aiPolicyReviewed?: boolean;
 }
 
 export class AuthService {
@@ -104,12 +105,15 @@ export class AuthService {
     this.eligibilityStore = options.eligibilityStore ?? new InMemoryEligibilityStore();
     this.currentServicePolicy = options.servicePolicyVersion ?? servicePolicyVersion;
     this.currentAiPolicy = options.aiPolicyVersion ?? aiConsentPolicyVersion;
-    if (options.requireEmailVerification && !options.mailer) {
-      throw new Error("Email verification requires an account mailer");
+    if (options.requireEmailVerification && !options.mailer && options.registrationEnabled !== false) {
+      throw new Error("Email verification without a mailer requires disabled registration");
     }
   }
 
   async register(input: AuthCredentials): Promise<AuthResult> {
+    if (this.options.registrationEnabled === false) {
+      throw new DomainError("registration_disabled", "此服務尚未開放新帳號註冊，請先使用訪客模式；既有帳號仍可登入。", 503);
+    }
     const parsed = registrationSchema.parse(input);
     if (this.eligibilityRequired && !parsed.ageDeclaration) {
       throw new DomainError("age_declaration_required", "請先確認年齡與服務說明。", 403);
@@ -161,6 +165,7 @@ export class AuthService {
   }
 
   async requestEmailVerification(userId: string): Promise<{ accepted: true }> {
+    this.requireMailer();
     const account = await this.repository.findAccountById(userId);
     if (!account) throw unauthorized();
     if (!account.emailVerifiedAt) await this.sendAccountAction(account, "verify-email");
@@ -168,6 +173,7 @@ export class AuthService {
   }
 
   async requestPasswordReset(input: { email: string }): Promise<{ accepted: true }> {
+    this.requireMailer();
     const email = authCredentialsSchema.shape.email.parse(input.email);
     const account = await this.repository.findAccountByEmail(normalizeEmail(email));
     // Both delivery failures and unknown addresses have the same public result.
@@ -204,15 +210,13 @@ export class AuthService {
   }
 
   private async sendAccountAction(account: Account, purpose: AccountMailPurpose): Promise<void> {
-    if (!this.options.mailer) {
-      throw new DomainError("mail_unavailable", "郵件服務暫時無法使用，請稍後再試。", 503, true);
-    }
+    const mailer = this.requireMailer();
     const token = randomBytes(32).toString("base64url");
     const tokenHash = hashToken(token);
     await this.repository.saveAccountActionToken({ tokenHash, userId: account.id, purpose,
       expiresAt: new Date(this.now().getTime() + 30 * 60 * 1000).toISOString() });
     try {
-      await this.options.mailer.send(account.email, purpose, token);
+      await mailer.send(account.email, purpose, token);
     } catch {
       await this.repository.deleteAccountActionToken(tokenHash);
       throw new DomainError("mail_unavailable", "郵件服務暫時無法使用，請稍後再試。", 503, true);
@@ -240,6 +244,7 @@ export class AuthService {
   async getAiConsent(userId: string): Promise<AiConsent> {
     const consent = await this.repository.getAiConsent(userId);
     if (consent?.policyVersion === this.currentAiPolicy) {
+      if (this.options.aiPolicyReviewed === false) return { ...consent, granted: false };
       const eligibility = await this.eligibilityStore.get(userId);
       if (eligibility?.ageBand === "15-17" && (eligibility.guardianStatus !== "approved" || eligibility.aiConsentRevision !== eligibility.revision)) return { ...consent, granted: false, withdrawnAt: eligibility.guardianWithdrawnAt };
       return consent;
@@ -260,6 +265,7 @@ export class AuthService {
     const now = this.now().toISOString();
     const declarationAtGrant = parsed.granted ? await this.eligibilityStore.get(userId) : null;
     if (parsed.granted) {
+      this.requireReviewedAiPolicy();
       if (parsed.policyVersion !== this.currentAiPolicy) throw new DomainError("ai_policy_changed", "AI 資料處理說明已更新，請重新閱讀並同意。", 409);
       await this.requireServiceEligibility(userId);
     }
@@ -288,6 +294,7 @@ export class AuthService {
   }
 
   async requireAiConsent(userId: string): Promise<void> {
+    this.requireReviewedAiPolicy();
     await this.requireServiceEligibility(userId);
     if (!(await this.getAiConsent(userId)).granted) {
       throw new DomainError(
@@ -296,6 +303,15 @@ export class AuthService {
         403,
       );
     }
+  }
+
+  private requireMailer(): AccountMailer {
+    if (!this.options.mailer) throw new DomainError("mail_disabled", "此服務未啟用寄信，無法寄送驗證、密碼重設或監護人確認信；請聯絡公開客服。", 503);
+    return this.options.mailer;
+  }
+
+  private requireReviewedAiPolicy(): void {
+    if (this.options.aiPolicyReviewed === false) throw new DomainError("ai_policy_unavailable", "第三方 AI 資料處理說明尚未完成，請先使用手動功能及固定教材。", 503);
   }
 
   private validateAgeDeclaration(input: AgeDeclarationInput): void {
@@ -345,6 +361,7 @@ export class AuthService {
   }
 
   async requestGuardian(userId: string, input: { email: string }): Promise<{ accepted: true }> {
+    this.requireMailer();
     const email = normalizeEmail(guardianRequestSchema.parse(input).email);
     await this.eligibilityStore.withUserTransaction(userId, async (store) => {
       const account = await this.repository.findAccountById(userId);
@@ -377,6 +394,7 @@ export class AuthService {
   }
 
   async requestGuardianWithdrawal(input: { accountEmail: string; guardianEmail: string }): Promise<{ accepted: true }> {
+    this.requireMailer();
     const accountEmail = normalizeEmail(authCredentialsSchema.shape.email.parse(input.accountEmail));
     const guardianEmail = normalizeEmail(authCredentialsSchema.shape.email.parse(input.guardianEmail));
     const account = await this.repository.findAccountByEmail(accountEmail);

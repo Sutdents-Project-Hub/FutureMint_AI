@@ -11,14 +11,15 @@ describe("pure startup preflight", () => {
   it("validates demo without allocating network resources", () => expect(() => validateStartupConfig({ AI_PROVIDER: "demo", DATA_PROVIDER: "memory" })).not.toThrow());
   it("validates complete production declarations", () => expect(() => validateStartupConfig(valid())).not.toThrow());
   it("requires Taiwan age 15 and no demo production bypass", () => {
-    for (const changes of [{ MINIMUM_AGE: "13" }, { AI_PROVIDER: "demo" }, { DATA_PROVIDER: "memory" }, { MAIL_PROVIDER: "disabled" }]) expect(() => validateStartupConfig({ ...valid(), ...changes })).toThrow(ConfigurationError);
+    for (const changes of [{ MINIMUM_AGE: "13" }, { AI_PROVIDER: "demo" }, { DATA_PROVIDER: "memory" }]) expect(() => validateStartupConfig({ ...valid(), ...changes })).toThrow(ConfigurationError);
+    expect(() => validateStartupConfig({ ...valid(), MAIL_PROVIDER: "disabled", BACKUP_RETENTION_DAYS: "0" })).not.toThrow();
   });
   it("aggregates missing names and never logs values", () => {
     try { validateStartupConfig({ NODE_ENV: "production", AI_PROVIDER: "openai", DATA_PROVIDER: "postgres", DATABASE_URL: "secret-sentinel" }); throw new Error("expected rejection"); }
     catch (error) {
       expect(error).toBeInstanceOf(ConfigurationError);
       const summary = summarizeStartupError(error); const names = (error as ConfigurationError).issues.map((issue) => issue.name);
-      expect(names).toEqual(expect.arrayContaining(["OPENAI_API_KEY", "OPENAI_MODEL", "DATABASE_URL", "SMTP_PASSWORD", "PUBLIC_BASE_URL"]));
+      expect(names).toEqual(expect.arrayContaining(["OPENAI_API_KEY", "OPENAI_MODEL", "DATABASE_URL", "PUBLIC_BASE_URL"]));
       expect(JSON.stringify(summary)).not.toContain("secret-sentinel");
       expect(summary).toMatchObject({ phase: "configuration", errorType: "ConfigurationError" });
     }

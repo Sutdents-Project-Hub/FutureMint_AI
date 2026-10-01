@@ -46,7 +46,7 @@ FutureMint AI 是專為青少年設計的 AI 金錢決策教練：把使用者�
 | 投資練習場 | 行情日期／來源／降級狀態可見；虛擬現金與持有量限制生效；登入訂單重啟後可取回；骰子不代替買賣決定 |
 | AI 失敗 | Timeout、429、格式錯誤時不保存、不洩漏、不偷偷切 Demo |
 | 家庭共學 | 家長可建立邀請碼、孩子可加入；家長只取得摘要，孩子不取得家長資料，無關聯帳號無法讀取 |
-| Coolify | 三 Resources 分離；Web／API health、PostgreSQL persistence、private database、backup／restore 可證明 |
+| Coolify | 正式 API／PostgreSQL 分離；API health、PostgreSQL persistence、private database 可證明；Web 選用，備份本輪不啟用 |
 | 決賽 Demo | 用合成資料完成固定腳本，另有訪客模式與錄影備援 |
 
 ## 已決定技術
@@ -55,7 +55,7 @@ FutureMint AI 是專為青少年設計的 AI 金錢決策教練：把使用者�
 - API：Fastify 5 + TypeScript + Node.js 22。
 - Data：Coolify PostgreSQL 17，versioned SQL migrations。
 - AI：預設量界智算；可明確設定官方 OpenAI，不自動 failover；deterministic provider 只供 Demo／測試。
-- Hosting：private GitHub repository → Coolify Auto Deploy；Web、API、PostgreSQL 三個 Resources。
+- Hosting：private GitHub repository → Coolify Auto Deploy；正式 API、PostgreSQL；Web 保留為選用測試 Resource。
 - Security：scrypt password、hashed session token、Bearer ownership、Zod、CORS allowlist、rate limit 與 parameterized SQL。
 - Design：`design/futuremint-ai/MASTER.md` 是 Flutter 視覺、響應式與可及性共同依據，不是 runtime。
 
@@ -63,7 +63,7 @@ FutureMint AI 是專為青少年設計的 AI 金錢決策教練：把使用者�
 
 - 正式 Web／API domains、VPS 容量、監測與現場網路備援。
 - 量界帳號可用 model、費率、quota、資料條款與競賽允許性。
-- 每日備份／保留 30 天的實際排程、異地目的地、隔離 restore 與刪除不復活演練。
+- 本輪不建立定期資料庫備份；日後若啟用，另設定排程、保留、異地儲存及隔離還原。
 - 青少年訪談／可用性測試人數，以及監護與去識別方式。
 - 訂閱方案資料來源與授權。
 - iOS signing Team；Android／Web 為主要展示面。
@@ -80,4 +80,10 @@ AI 預設量界智算，營運者可明確設定官方 OpenAI；不自動切換�
 
 iPhone 本機續訂提醒需使用者選擇啟用，於台北續訂前一天 09:00 提醒，最多排入最早 60 個未來提醒。登出、刪除及切換帳號清除提醒；回到 App 或訂閱變動後重排，其他裝置變動需同步後才更新。Web／Android 只有 App 內提醒；未整合 APNs。新增入口沿用既有版面與元件。
 
-正式 SMTP、公開網域、供應商資料條款、每日備份保留 30 天與隔離還原／刪除不復活驗收，以及 Apple Team、簽章、TestFlight、App Privacy 與年齡問卷仍待外部驗收。本機完成不等於正式開放。
+完整帳號 SMTP、公開網域、供應商資料條款，以及 Apple Team、簽章、TestFlight、App Privacy 與年齡問卷仍待外部驗收。本機完成不等於正式開放。
+
+## 2026-10 最小部署模式
+
+分類：已核准範圍調整。正式以 iPhone 為主，僅需 API／PostgreSQL；Web 留作選用測試，UIUX維持。使用者選擇不建立定期資料庫備份。
+
+SMTP 為部署可選項；無 SMTP 時新註冊及新的寄信流程停用，既有帳號登入仍受原驗證與資格限制，訪客僅記憶體資料。未完成供應商資料說明時外部AI停用，手動記帳、訂閱與固定教材仍可用；完整新帳號／AI功能需完成各自條件。最低年齡15及15–17歲監護人確認仍維持，不把簡化模式描述為完整正式服務或商店驗收。
