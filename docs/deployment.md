@@ -93,6 +93,7 @@ host／帳號／憑證由郵件服務提供；port只接受465或587，強制TLS
 
 - App 與 App Store 可共用 `PUBLIC_BASE_URL/privacy`；聯絡支援使用 `PUBLIC_BASE_URL/support`。
 - 網頁提供繁體中文／English 切換；可用 `/privacy?lang=zh-Hant`、`/privacy?lang=en` 及同樣的 support query。未指定時依 `Accept-Language`，無匹配則繁中。App build 設定仍使用不帶 query 的原本網址。
+- 公開頁左上角使用 iPhone App icon（API 的 `public/app-icon.png`）；`npm run build` 複製到 `dist/public/`，Docker image 包含此資產，不需額外 resource 或環境變數。
 - 預設淺色及可選 `?theme=dark` 取自 App 的紫色、靛色、圓角與表面 tokens，不載入第三方素材、字型或追蹤。
 - 本版政策為 `2026-10-02-optional-mail-v1`。未設定 `PRIVACY_POLICY_VERSION` 可採新版預設；若 Coolify 有舊的明確值，更新為此版本。版本變更會更新 AI 同意 fingerprint，使用者需重新同意。
 - 營運者須重新閱讀新版政策，核對 `SERVICE_OPERATOR`、`SUPPORT_EMAIL`、`DATA_REGION` 與供應商公開條款。`PRIVACY_POLICY_REVIEWED` 是內容確認，不能取代真正審核，也不能填虛構資料。

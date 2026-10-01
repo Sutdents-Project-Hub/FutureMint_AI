@@ -286,3 +286,5 @@ API runtime 設定來源為 `backend/src/config/aiConfig.ts`、`startupConfig.ts
 - 成年帳號不需 SMTP；15–17 歲仍需監護人確認，寄信驗證／重設需要 SMTP。外部 AI 另需確認供應商政策與使用者同意。訪客資料僅在記憶體；API 能啟動不代表已具備完整上架條件。
 
 公開隱私與支援頁由 API 提供 `/privacy`、`/support`，不依賴測試 Web Resource；繁中與英文可由頁面切換，或以 `?lang=zh-Hant`／`?lang=en` 指定，否則依瀏覽器語言。預設使用 App 的淺紫／靛色 tokens，另提供深色主題；公開內容尚未審核時維持 503。隱私版本預設為 `2026-10-02-optional-mail-v1`，既有 runtime 版本覆寫須同步；詳見部署文件。
+
+公開頁品牌圖示使用 iPhone App icon，隨 API 的 `public/` 靜態資產一起建置，不需部署 Web 或新增環境變數。

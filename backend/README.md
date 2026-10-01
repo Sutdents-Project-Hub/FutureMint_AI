@@ -186,3 +186,5 @@ GET `/api/subscriptions` 回 `items`、`monthlyCommitmentMinor`、`legacyCandida
 `GET /api/service-policy` 提供 mailEnabled／registrationEnabled／emailVerificationRequired，直接取自 AuthService 能力。公開支援頁及 Flutter 依實際能力說明免寄信註冊、停用重設與監護人待同意；既有視覺元件沿用。未設定 SMTP 的訪客資料不永久保存。最小刪除 journal 仍保留；備份天數不控制或自動清除 Coolify 的排程／既有副本。
 
 公開隱私與支援頁由 API 提供 `/privacy`、`/support`，不依賴測試 Web Resource；繁中與英文可由頁面切換，或以 `?lang=zh-Hant`／`?lang=en` 指定，否則依瀏覽器語言。預設使用 App 的淺紫／靛色 tokens，另提供深色主題；公開內容尚未審核時維持 503。隱私版本預設為 `2026-10-02-optional-mail-v1`，既有 runtime 版本覆寫須同步；詳見部署文件。
+
+公開頁左上角使用 `public/app-icon.png`，與 iPhone 的 `Icon-App-40x40@3x.png`（120px）完全相同。`npm run build` 同時複製 `public/` 到 `dist/public/`，Docker build stage 含此目錄；`/app-icon.png` 由 API 同源提供，CSP 僅允許同源圖片。未來更新 App icon 時同步此檔案，沒有額外環境變數。

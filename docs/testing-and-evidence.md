@@ -1,5 +1,11 @@
 # 測試與證據
 
+## 公開頁 App icon（2026-10-02）
+
+分類：使用者核准的品牌圖示替換。公開頁共用 header 改用 iPhone 的金幣嫩芽圖示；部署副本與 iOS 120px catalog SHA-256 一致，顯示版位維持 40px。新增同源 `/app-icon.png` 與 CSP `img-src self`，build 同時複製 public 資產至 dist，Docker build context 包含 public。
+
+已執行 `npm run build`、`git diff --check` 及本機公開頁畫面檢查；圖片 complete=true、naturalWidth/naturalHeight=120，正常顯示。沒有新增或執行自動化測試，沒有環境變數或資料庫變更。API README、根 README、部署文件及設計規範同步；線上生效以此版本的 deployment 與圖片載入另外確認。
+
 ## 免寄信帳號與雙語公開頁（2026-10-02）
 
 分類：使用者核准的帳號流程與公開頁調整，並包含前述年齡選單／密碼確認修正。SMTP disabled 時 runtime 開放註冊／登入且不要求 Email 驗證；帳號保持未驗證，新的寄信端點回 `mail_disabled`。啟用寄信後，重設僅寄已驗證信箱，未知／未驗證信箱仍使用相同 accepted 回應。最低年齡、15–17 歲監護人門檻與 AI 同意維持；免寄信監護人確認管道尚未新增。
