@@ -1,5 +1,23 @@
 # 測試與證據
 
+## 免寄信帳號與雙語公開頁（2026-10-02）
+
+分類：使用者核准的帳號流程與公開頁調整，並包含前述年齡選單／密碼確認修正。SMTP disabled 時 runtime 開放註冊／登入且不要求 Email 驗證；帳號保持未驗證，新的寄信端點回 `mail_disabled`。啟用寄信後，重設僅寄已驗證信箱，未知／未驗證信箱仍使用相同 accepted 回應。最低年齡、15–17 歲監護人門檻與 AI 同意維持；免寄信監護人確認管道尚未新增。
+
+Client 讀取三項公開帳號能力並顯示停用寄信、保管密碼、未成年人待同意狀態。公開政策／支援頁使用 App 的色彩與圓角，提供繁中／英文、明暗主題，並描述實際資料、AI、保存、刪除及支援邊界。預設政策版本 `2026-10-02-optional-mail-v1`；已有 runtime 舊版本需同步，版本變動使 AI 需重新同意。
+
+已執行：受影響 Dart 格式化及四檔 `flutter analyze --no-pub` 無問題；backend `npm run typecheck` 與 `npm run build` 通過。公開頁在本機使用明示的合成營運資訊、停用 mail／未啟用 AI 的 preview，桌面與 390×844 手機畫面確認可閱讀；繁中→English、明暗切換及支援連結可用。preview 未連 PostgreSQL、正式 AI 或 SMTP。iPhone 17／iOS 26.4 debug build 10.1 秒完成並安裝啟動；仍使用既有公開 API 網址。這些結果不代表線上帳號、寄信、AI 或 App Store 已驗收。
+
+沒有新增或執行自動化測試；既有 recovery fixture 僅配合已驗證信箱契約更新。正式成年註冊／儲存／登入／刪除、未成年人受限寫入及重新啟用 SMTP 仍待實際流程驗收。Git／Coolify 發布以實際 commit 及 deployment 結果獨立確認，下方歷史「無 SMTP 不開放註冊」已由本節行為取代。
+
+## 註冊年齡選單與密碼確認（2026-10-01）
+
+分類：年齡選單浮動標籤的缺陷修正，以及使用者核准的密碼規則／確認欄位調整。註冊及資格確認選單改為欄位外標題；App 註冊新增確認密碼並阻擋空白或不一致，修改原密碼時會重查已有確認值。Client 註冊、API 共用 credentials schema 及公開重設頁面同步為 8–128 字元、英文字母與數字。確認值只在 Client 比對，不傳送或保存。
+
+已執行：兩個受影響 Dart 檔案格式化；`flutter analyze --no-pub lib/features/auth/auth_screen.dart lib/features/auth/eligibility_screen.dart` 無問題；API `npm run build` 通過；`git diff --check` 通過。iPhone 17／iOS 26.4 模擬器 debug build（11.8 秒）與註冊畫面確認新規則及確認欄位可見、年齡選單可展開且選定值沒有浮動標籤；滑動後按鈕與公開連結可見。僅選擇本機表單選項，沒有送出年齡聲明或建立正式帳號。runner detach 後保留 App 供使用者查看。
+
+Client／API README、`docs/security-and-privacy.md`、Design README 及 `MASTER.md` 已同步。本輪沒有新增或執行自動化測試，尚未驗證真機、大字級、實際註冊／密碼重設與 SMTP 寄送；未執行 commit、push 或遠端部署。線上 API 的新規則需發布此版本並重新部署才會生效。
+
 ## 學習路線構圖微調（2026-10-01，最新指示）
 
 後續依使用者要求再整組上移 8dp：標題與角色／裝飾區的間距由 12dp 收至 4dp，角色大小、左右位置及貼邊錨點維持一致。靜態分析與格式檢查通過；iPhone 17 模擬器重新 build（14.2 秒），訪客學習頁已確認更新。`MASTER.md` 同步最新間距；此單一間距微調未執行單元測試或重新驗證其他裝置。

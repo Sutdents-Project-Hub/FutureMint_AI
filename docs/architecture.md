@@ -136,6 +136,8 @@ AuthService 管理 Email 驗證與密碼重設；SMTP adapter 只在 API 持有�
 
 ## 簡化啟動邊界
 
-MAIL_PROVIDER 未填／disabled 時不建立 SMTP transport，可啟動 production；AuthService 關閉新註冊與新的寄信請求，保留既有登入、驗證門檻、資格及資料權限。公開支援頁依 mailEnabled 顯示可用流程。寄信停用不改年齡政策，也不把既有帳號標為已驗證。
+MAIL_PROVIDER 未填／disabled 時不建立 SMTP transport，可啟動 production；AuthService 開放註冊／登入、不強制 Email 驗證，停用新的寄信請求；年齡、監護人、AI 及資料權限仍由 API 驗證。公開頁及 Client 依 mailEnabled／registrationEnabled／emailVerificationRequired 顯示可用流程。寄信停用不改年齡政策，也不把既有帳號標為已驗證。
 
 供應商 metadata 可由 providerPolicies.ts 或 runtime overrides 提供，reviewed=false 仍能建立服務；AuthService 在授權與 AI 呼叫前拒絕未確認政策，HTTP 層另保留檢查。配置缺失不會觸發自動 Demo／供應商切換。通用政策預設在 publicConfig.ts，公開 origin 與真實營運資料仍需填寫；備份0表示無定期備份，不更動資料庫。
+
+公開隱私與支援頁由 API 提供 `/privacy`、`/support`，不依賴測試 Web Resource；繁中與英文可由頁面切換，或以 `?lang=zh-Hant`／`?lang=en` 指定，否則依瀏覽器語言。預設使用 App 的淺紫／靛色 tokens，另提供深色主題；公開內容尚未審核時維持 503。隱私版本預設為 `2026-10-02-optional-mail-v1`，既有 runtime 版本覆寫須同步；詳見部署文件。

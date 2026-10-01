@@ -172,9 +172,14 @@ describe.skipIf(!connectionString)("isolated PostgreSQL integration", () => {
 
   it("consumes reset tokens once, revokes sessions and rejects stale credential session creation", async () => {
     const mail: string[] = [];
-    const auth = new AuthService(repository, undefined, { mailer: { send: async (_to, purpose, token) => { if (purpose === "reset-password") mail.push(token); } } });
+    let verificationToken = "";
+    const auth = new AuthService(repository, undefined, { mailer: { send: async (_to, purpose, token) => {
+      if (purpose === "reset-password") mail.push(token);
+      if (purpose === "verify-email") verificationToken = token;
+    } } });
     const email = `${randomUUID()}@example.com`;
     const registered = await auth.register({ email, password: "synthetic-test-2026" });
+    await auth.verifyEmail(verificationToken);
     const old = (await repository.findAccountById(registered.account.id))!;
     await auth.requestPasswordReset({ email });
     const otherAuth = new AuthService(otherRepository);

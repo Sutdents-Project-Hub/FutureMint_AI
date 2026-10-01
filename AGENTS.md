@@ -122,7 +122,7 @@
 ## 簡化部署契約（2026-10）
 
 - 正式只啟動 API／PostgreSQL；測試 Web 停止並關閉其 Auto Deploy，原生 iPhone 不依賴 Web。不得以 API deploy 冒充 App Store 發布。
-- `MAIL_PROVIDER` 未填或 `disabled` 可啟動 production；未設定 SMTP 時停用新註冊與新的驗證／重設／監護人寄信，保留訪客與既有帳號登入。既有未驗證帳號仍維持驗證門檻，不改為已驗證或成年。
+- `MAIL_PROVIDER` 未填或 `disabled` 可啟動 production、註冊及登入，不要求 Email 驗證；信箱只作未驗證登入識別、不改寫 emailVerifiedAt。新的驗證／重設／監護人寄信停用；15–17 歲仍待監護人同意、不能寫入受限資料。SMTP 啟用後要求信箱驗證，寄信重設只使用已驗證信箱；不依未驗證 Email 處理帳號復原或監護人核准。
 - `BACKUP_RETENTION_DAYS` 預設 `0`，表示不建立定期資料庫備份；不刪 volume、既有備份或最小刪除 journal。
 - 公開說明的內建預設在 `backend/src/config/publicConfig.ts`；真實營運者、客服、API origin、資料地區與政策確認仍需設定。
 - 供應商公開說明可維護於 `backend/src/config/providerPolicies.ts` 或既有 `*_DATA_*` runtime overrides；缺少／未確認時只停用外部 AI，API 手動功能仍可啟動。不得虛構上游、保存或訓練承諾。

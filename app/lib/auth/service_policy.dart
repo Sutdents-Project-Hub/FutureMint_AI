@@ -8,20 +8,31 @@ class ServicePolicy {
     this.model,
     this.reviewed = true,
     this.eligibilityRequired = true,
+    this.mailEnabled = true,
+    this.registrationEnabled = true,
+    this.emailVerificationRequired = true,
   });
   final String aiPolicyVersion, aiDisplayName, aiProvider, dataTerms;
   final String? model;
   final List<String> dataRecipients;
   final bool reviewed;
   final bool eligibilityRequired;
+  final bool mailEnabled;
+  final bool registrationEnabled;
+  final bool emailVerificationRequired;
   String get signature =>
-      '$aiPolicyVersion|$aiProvider|$aiDisplayName|$model|${dataRecipients.join('|')}|$dataTerms|$reviewed|$eligibilityRequired';
+      '$aiPolicyVersion|$aiProvider|$aiDisplayName|$model|${dataRecipients.join('|')}|$dataTerms|$reviewed|$eligibilityRequired|$mailEnabled|$registrationEnabled|$emailVerificationRequired';
   factory ServicePolicy.fromJson(Map<String, dynamic> j) {
     final ai = j['ai'] as Map<String, dynamic>;
     return ServicePolicy(
       aiPolicyVersion: ai['policyVersion'] as String,
       reviewed: ai['reviewed'] as bool? ?? false,
       eligibilityRequired: j['eligibilityRequired'] as bool? ?? true,
+      mailEnabled: j['mailEnabled'] as bool? ?? true,
+      registrationEnabled: j['registrationEnabled'] as bool? ?? true,
+      emailVerificationRequired:
+          j['emailVerificationRequired'] as bool? ??
+          (j['mailEnabled'] as bool? ?? true),
       aiDisplayName: ai['displayName'] as String,
       aiProvider: ai['provider'] as String,
       model: ai['model'] as String?,

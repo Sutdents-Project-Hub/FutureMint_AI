@@ -110,6 +110,18 @@ export class AuthService {
     }
   }
 
+  getCapabilities(): { mailEnabled: boolean; registrationEnabled: boolean; emailVerificationRequired: boolean } {
+    return {
+      mailEnabled: Boolean(this.options.mailer),
+      registrationEnabled: this.options.registrationEnabled !== false,
+      emailVerificationRequired: Boolean(this.options.requireEmailVerification),
+    };
+  }
+
+  requireMailDelivery(): void {
+    this.requireMailer();
+  }
+
   async register(input: AuthCredentials): Promise<AuthResult> {
     if (this.options.registrationEnabled === false) {
       throw new DomainError("registration_disabled", "此服務尚未開放新帳號註冊，請先使用訪客模式；既有帳號仍可登入。", 503);
@@ -130,6 +142,8 @@ export class AuthService {
     const passwordSalt = randomBytes(16).toString("base64url");
     const createdAt = this.now().toISOString();
     const account: Account = {
+      // Without mailbox confirmation, email is only a login identifier.
+      // Optional verification never marks it as a verified recovery address.
       id: randomUUID(),
       userId: "",
       email,
@@ -176,8 +190,9 @@ export class AuthService {
     this.requireMailer();
     const email = authCredentialsSchema.shape.email.parse(input.email);
     const account = await this.repository.findAccountByEmail(normalizeEmail(email));
-    // Both delivery failures and unknown addresses have the same public result.
-    if (account) {
+    // An unverified login identifier is not a trusted recovery address.
+    // Unknown, unverified and failed delivery cases have the same public result.
+    if (account?.emailVerifiedAt) {
       try { await this.sendAccountAction(account, "reset-password"); } catch { /* no account enumeration */ }
     }
     return { accepted: true };

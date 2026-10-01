@@ -32,7 +32,7 @@ export interface PublicConfig {
 
 // 公開、版本化的產品說明；部署時仍需填入真實營運者、信箱及資料地區。
 export const publicPolicyDefaults: Record<string, string> = {
-  PRIVACY_POLICY_VERSION: "2026-10-simple-v1",
+  PRIVACY_POLICY_VERSION: "2026-10-02-optional-mail-v1",
   BACKUP_RETENTION_DAYS: "0",
   MINIMUM_AGE: "15",
   MINOR_CONSENT_DISCLOSURE: "本服務限15歲以上使用；15至17歲需完成監護人Email確認。服務資格、家庭摘要分享及第三方AI授權分別處理；Email確認本身不證明法定代理人身分。",

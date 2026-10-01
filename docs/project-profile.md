@@ -71,4 +71,4 @@
 
 新增訂閱合約／實付分離、分頁與手動紀錄、年齡／監護人資格、版本化供應商同意、官方 OpenAI 可選設定、跨 API instance AI 額度、個人匯出與 iPhone 本機提醒。分類為新能力、缺陷修正及釐清，保持 hybrid／executable、既有 Flutter／Fastify 與獨立 Resource 邊界；正式僅啟動 API／PostgreSQL，Web 為選用測試。完整行為見 [產品範圍](project-overview.md)。
 
-目前部署模式維持 hybrid／executable，正式 iPhone 使用最小 API Runtime 範本；無 SMTP 停用新註冊與新的寄信流程，未確認供應商說明只停用外部AI，備份預設0。公開政策與 Apple 正式發布條件仍需確認。
+目前部署模式維持 hybrid／executable，正式 iPhone 使用最小 API Runtime 範本；無 SMTP 開放未驗證 Email 註冊／登入，停用新的寄信流程；15–17 歲仍待監護人同意，未確認供應商說明只停用外部AI，備份預設0。公開政策與 Apple 正式發布條件仍需確認。

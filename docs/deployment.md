@@ -4,7 +4,7 @@
 
 正式以原生 iPhone 為主，只啟動 `futuremint-ai-api`（backend/Dockerfile）與 `futuremint-ai-postgres`（Coolify managed PostgreSQL 17）。`futuremint-ai-web` 保留為測試 Resource，維持停止並關閉其 Auto Deploy；不需刪除。根 compose.yaml 僅供本機三容器整合，不作 production 入口。
 
-既有三 Resources 曾部署成功是使用者提供的歷史事實。本輪只修改本機程式與文件，沒有改 Coolify、部署、寄信、呼叫正式 AI 或 Apple 發布；遠端健康與使用流程仍待驗收。Coolify 讀 GitHub commit，未 push 的本機修改不會部署。
+既有三 Resources 曾部署成功是使用者提供的歷史事實。2026-10-02 本輪修改前，Coolify 顯示 API 的 `0bf08b0` deployment 為 Running (healthy)；這是前一版本的啟動狀態。新版免寄信及雙語頁須以自己的 deployment 驗收，正式帳號／AI／Apple 發布不由 healthy 狀態取代。Coolify 讀 GitHub commit，未 push 的本機修改不會部署。
 
 ## 1. GitHub 與資源
 
@@ -57,7 +57,7 @@ MAIL_PROVIDER=disabled
 | TRUSTED_PROXY_CIDRS | 空白時不採forwarding headers；取得實際proxy IP／最小CIDR後再設定，以正確辨識使用者IP |
 | BACKUP_RETENTION_DAYS | 0；允許0..3650，若日後設定大於0須符合實際備份排程／保存期限，程式不建立或清除Coolify備份 |
 | MINIMUM_AGE | 15，不允許production自行改成其他年齡 |
-| PRIVACY_POLICY_VERSION | 2026-10-simple-v1；與通用說明一起在publicConfig.ts版本化，仍可覆寫 |
+| PRIVACY_POLICY_VERSION | 2026-10-02-optional-mail-v1；中英文公開內容的版本，仍可覆寫；既有舊值需同步更新 |
 | MINOR_CONSENT_DISCLOSURE／AI_DATA_TERMS_DISCLOSURE | 內建產品公開說明，仍可覆寫 |
 | AI_OPERATION_TIMEOUT_MS／AI_MAX_OUTPUT_TOKENS | 12000 ms／2048 tokens |
 | AI_DAILY_USER_LIMIT／AI_DAILY_GLOBAL_LIMIT／AI_MAX_CONCURRENCY | 台北每日每人30／全站300次，並行5；操作次數不是供應商費用保證 |
@@ -69,11 +69,12 @@ MAIL_PROVIDER=disabled
 MAIL_PROVIDER未填或disabled時不要求SMTP憑證，可啟動production：
 
 - 可使用訪客；資料僅在App記憶體，結束或切換帳號後消失。
-- 可登入既有帳號，但仍需原Email驗證與年齡／監護人資格；不自動標記已驗證或成年。
-- 新註冊回registration_disabled，新的驗證／忘記密碼／監護人寄信回mail_disabled；不假裝已寄信。
+- 可註冊及登入，不要求 Email 驗證；Email 是未驗證的登入識別，不寫入 `emailVerifiedAt`，不自動標記成年或監護人同意。
+- 新的驗證／忘記密碼／監護人寄信回 `mail_disabled`；App 顯示寄信停用，提醒保存密碼，不能只憑該 Email 人工恢復帳號。
+- 成年帳號完成服務聲明後可使用正式功能；15–17 歲仍需有效監護人同意，未完成者可使用訪客，不能寫入正式資料。這版尚無新的免寄信監護人同意管道。
 - 既有有效的確認連結仍可使用，原token到期與一次性限制不變。公開support頁說明當前狀態。
 
-需要完整新帳號與15–17歲監護人流程時，啟用：
+需要 Email 驗證、已驗證信箱的密碼重設，以及新的監護人確認／撤回信時，才啟用：
 
 ```dotenv
 MAIL_PROVIDER=smtp
@@ -85,6 +86,18 @@ SMTP_FROM=
 ```
 
 host／帳號／憑證由郵件服務提供；port只接受465或587，強制TLS。SMTP_FROM為已驗證可寄送的純Email。SMTP_USER／PASSWORD只放Runtime secret。正式送達、DNS SPF／DKIM／DMARC、權限及費用另驗收。
+
+### 公開網址、語言與 App Store
+
+政策與支援由 API 的 SSR routes 提供，不需要 Web Resource，使用者不需登入。部署的 `PRIVACY_POLICY_REVIEWED=true` 且公開資訊完整時回 200；未審核環境回 503 服務準備中。
+
+- App 與 App Store 可共用 `PUBLIC_BASE_URL/privacy`；聯絡支援使用 `PUBLIC_BASE_URL/support`。
+- 網頁提供繁體中文／English 切換；可用 `/privacy?lang=zh-Hant`、`/privacy?lang=en` 及同樣的 support query。未指定時依 `Accept-Language`，無匹配則繁中。App build 設定仍使用不帶 query 的原本網址。
+- 預設淺色及可選 `?theme=dark` 取自 App 的紫色、靛色、圓角與表面 tokens，不載入第三方素材、字型或追蹤。
+- 本版政策為 `2026-10-02-optional-mail-v1`。未設定 `PRIVACY_POLICY_VERSION` 可採新版預設；若 Coolify 有舊的明確值，更新為此版本。版本變更會更新 AI 同意 fingerprint，使用者需重新同意。
+- 營運者須重新閱讀新版政策，核對 `SERVICE_OPERATOR`、`SUPPORT_EMAIL`、`DATA_REGION` 與供應商公開條款。`PRIVACY_POLICY_REVIEWED` 是內容確認，不能取代真正審核，也不能填虛構資料。
+
+Apple 要求 iOS App 提供 Privacy Policy URL，並允許各語言的隱私 URL 本地化；同一可切換語言的公開頁可供 App 及商店使用。App Privacy 資料標籤需另依實際資料流填寫，並非只填網址即可完成。[Apple App Privacy 設定](https://developer.apple.com/help/app-store-connect/manage-app-information/manage-app-privacy/)、[Review Guidelines 5.1.1](https://developer.apple.com/app-store/review/guidelines/)。
 
 ## 4. 可選外部 AI 說明
 
@@ -107,8 +120,8 @@ LIANGJIE_DATA_TERMS_REVIEWED=false
 1. PostgreSQL healthy，保留原volume並取得Internal URL。
 2. API填完整最小Runtime設定，確認公開政策後設PRIVACY_POLICY_REVIEWED=true。Docker先pure preflight，再套用尚未執行的migration、最後listen；沒有新migration不重寫schema。
 3. 使用者Deploy API，確認migration／啟動log及HTTPS /api/health回200。錯誤只輸出missing／invalid變數名稱與階段，不記秘密。
-4. 確認/privacy、/support及/api/service-policy回應；mailEnabled、registrationEnabled與ai.reviewed應符合實際啟用狀態。
-5. 無SMTP先以訪客或既有合成帳號驗收；完整帳號模式另驗證註冊→驗證信→年齡／監護人→profile→保存→重新登入／API重啟後持久化→匯出／刪除。未啟用功能應得到明確錯誤。
+4. 確認 `/privacy`、`/support` 及 `/api/service-policy` 回應；disabled 時應為 `mailEnabled=false`、`registrationEnabled=true`、`emailVerificationRequired=false`，`ai.reviewed` 仍以供應商實際審核狀態為準。
+5. 無 SMTP 以合成成年帳號驗收註冊→年齡聲明→profile→保存→重新登入／API 重啟後持久化→匯出／刪除；15–17 歲需確認待監護人同意仍阻擋受限寫入。啟用 SMTP 時另驗證註冊→驗證信→年齡／監護人流程、已驗證信箱的重設與真實送達。未啟用寄信功能應得到明確錯誤。
 6. 外部AI只在供應商說明確認與使用者同意後驗收合成輸入；health200不代表SMTP／AI成功。
 7. iPhone另在已忽略的app/.env.appstore.local設定API_BASE_URL（以/api/結尾）、PRIVACY_POLICY_URL（/privacy）、SUPPORT_URL（/support）、客服／營運者與Apple資訊，再產生signed IPA、TestFlight及完成商店表單／實機驗收。API部署不會更新已安裝App。
 
@@ -124,13 +137,13 @@ GitHub App／webhook正常且API Auto Deploy開啟時，push設定的main會重�
 
 確認API log沒有Authorization、密碼、capture原文、SQL URL、prompt或供應商body；database不公開port。取得實際proxy IP後設定TRUSTED_PROXY_CIDRS，避免所有使用者共用proxy IP限流；不可猜測全部信任網段。TWSE outbound HTTPS失敗時可顯示明示來源的教育快照，不冒充即時行情。
 
-本輪只做本機typecheck／build，沒有SMTP／AI正式請求、遠端設定、Apple登入或送審；這些驗收不能由編譯結果取代。
+本輪驗證紀錄見 [測試與證據](testing-and-evidence.md)。編譯／公開頁預覽／Coolify healthy 均不能取代正式帳號、SMTP／AI、Apple 登入或送審驗收。
 
 ## 8. Rollback 與故障處理
 
 - ConfigurationError：補錯誤列出的變數名稱，不略過preflight／health。
 - Database connection：核對private network、Internal URL、DATABASE_SSL與postgres provider；不公開資料庫繞過問題。
-- SMTP：disabled不送信且不開新註冊；smtp有憑證但送達失敗需檢查服務權限與TLS，不能宣稱已寄出。
+- SMTP：disabled 開放註冊／登入但不送信，信箱保持未驗證，監護人資格仍獨立檢查；smtp 有憑證但送達失敗需檢查服務權限與 TLS，不能宣稱已寄出。
 - AI：缺少政策僅停用外部AI；實際連線失敗核對key／model／額度／outbound HTTPS，不自動切Demo。
 - Application code：可選前一healthy image，但須確認新schema向前相容；不是資料回復操作。資料毀損若沒有可用備份，不能宣稱能還原。
 

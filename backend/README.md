@@ -161,11 +161,11 @@ npm audit --omit=dev
 
 ## 正式環境與帳號恢復
 
-Production 需真實公開政策設定；最小變數見 `.env.coolify.example`，完整選項見 `.env.example`。MAIL_PROVIDER 未填／disabled 不要求 SMTP 憑證，可啟動 API，但新註冊及新的驗證／重設／監護人寄信停用；既有帳號仍需通過原驗證與資格門檻。設定 smtp 才啟用完整新帳號流程。本機 demo 可免驗證，不代表 production 可繞過驗證。
+Production 需真實公開政策設定；最小變數見 `.env.coolify.example`，完整選項見 `.env.example`。SMTP 為部署可選項；未填／disabled 時開放註冊與登入、不要求 Email 驗證，Email 只作未驗證登入識別，不寫入 emailVerifiedAt。新的驗證／寄信重設／監護人寄信回 mail_disabled；App 清楚說明功能停用。最低年齡 15 與 15–17 歲監護人資格仍維持，未完成同意者不能寫入受限資料，可使用訪客；SMTP 重新啟用後仍需驗證信箱，密碼重設只寄給已驗證信箱。
 
-新增 API：`POST /api/auth/email-verification/request`（Bearer）、`POST /api/auth/email-verification/confirm`（token）、`POST /api/auth/password-reset/request`（email）、`POST /api/auth/password-reset/confirm`（token/password）。密碼沿用 12–128 字元、英文字母及數字規則。家庭邀請可用 `POST /api/family/invite/rotate` 更新、`DELETE /api/family/invite` 停用。
+新增 API：`POST /api/auth/email-verification/request`（Bearer）、`POST /api/auth/email-verification/confirm`（token）、`POST /api/auth/password-reset/request`（email）、`POST /api/auth/password-reset/confirm`（token/password）。註冊與重設密碼採 8–128 字元、英文字母及數字規則；Client 與重設頁面要求再次輸入並比對密碼，API 只接收單一密碼。家庭邀請可用 `POST /api/family/invite/rotate` 更新、`DELETE /api/family/invite` 停用。
 
-公開路徑 `/privacy`、`/support`、`/account/verify`、`/account/reset-password`、`/public.css`、`/account-actions.js` 均由此 API Resource 服務。公開政策未確認時前兩頁回 503。未驗證帳號的 `/api/auth/me`、重寄驗證、登出及刪除仍可使用；業務資料 API 回 `email_verification_required`。
+公開路徑 `/privacy`、`/support`、`/account/verify`、`/account/reset-password`、`/public.css`、`/account-actions.js` 均由此 API Resource 服務。公開政策未確認時前兩頁回 503。SMTP 模式下，未驗證帳號的 `/api/auth/me`、重寄驗證、登出及刪除仍可使用；業務資料 API 回 `email_verification_required`。disabled 模式不要求信箱驗證，仍檢查年齡／監護人等獨立資格。
 
 ## 訂閱、分頁與啟動契約
 
@@ -181,6 +181,8 @@ GET `/api/subscriptions` 回 `items`、`monthlyCommitmentMinor`、`legacyCandida
 
 公開政策版本、最低年齡15、未成年人說明、通用AI說明及備份0天有內建預設；覆寫仍會驗證。ALLOWED_ORIGINS 可省略，採 API 自身 PUBLIC_BASE_URL。真實營運者／客服／資料地區與 PRIVACY_POLICY_REVIEWED=true 仍為 production 啟動條件。
 
-`src/config/providerPolicies.ts` 維護公開供應商資料，初始 reviewed=false；既有 LIANGJIE_/OPENAI_DATA_* 可覆寫。缺少完整說明或未確認時，API 可啟動但授權／呼叫外部 AI 回 ai_policy_unavailable。單改 reviewed=true 而未提供條款仍拒絕啟動。mail_disabled 與 registration_disabled 明確回報功能未開放，不冒充已寄信。
+`src/config/providerPolicies.ts` 維護公開供應商資料，初始 reviewed=false；既有 LIANGJIE_/OPENAI_DATA_* 可覆寫。缺少完整說明或未確認時，API 可啟動但授權／呼叫外部 AI 回 ai_policy_unavailable。單改 reviewed=true 而未提供條款仍拒絕啟動。mail_disabled 明確回報寄信未開放，不冒充已寄信；無 SMTP 仍可註冊與登入。
 
-`GET /api/service-policy` 增加 mailEnabled／registrationEnabled；公開支援頁顯示當前寄信狀態。Flutter UIUX 不改動，既有錯誤處理顯示上述訊息。未設定 SMTP 的訪客資料不永久保存。最小刪除 journal 仍保留；備份天數不控制或自動清除 Coolify 的排程／既有副本。
+`GET /api/service-policy` 提供 mailEnabled／registrationEnabled／emailVerificationRequired，直接取自 AuthService 能力。公開支援頁及 Flutter 依實際能力說明免寄信註冊、停用重設與監護人待同意；既有視覺元件沿用。未設定 SMTP 的訪客資料不永久保存。最小刪除 journal 仍保留；備份天數不控制或自動清除 Coolify 的排程／既有副本。
+
+公開隱私與支援頁由 API 提供 `/privacy`、`/support`，不依賴測試 Web Resource；繁中與英文可由頁面切換，或以 `?lang=zh-Hant`／`?lang=en` 指定，否則依瀏覽器語言。預設使用 App 的淺紫／靛色 tokens，另提供深色主題；公開內容尚未審核時維持 503。隱私版本預設為 `2026-10-02-optional-mail-v1`，既有 runtime 版本覆寫須同步；詳見部署文件。

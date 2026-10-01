@@ -17,14 +17,18 @@ class _AuthScreenState extends State<AuthScreen> {
   final _formKey = GlobalKey<FormState>();
   final _email = TextEditingController();
   final _password = TextEditingController();
+  final _passwordConfirmation = TextEditingController();
+  final _confirmationKey = GlobalKey<FormFieldState<String>>();
   var _registering = false;
   var _showPassword = false;
+  var _showPasswordConfirmation = false;
   String? _ageBand;
 
   @override
   void dispose() {
     _email.dispose();
     _password.dispose();
+    _passwordConfirmation.dispose();
     super.dispose();
   }
 
@@ -33,6 +37,11 @@ class _AuthScreenState extends State<AuthScreen> {
     final email = _email.text.trim();
     final password = _password.text;
     if (_registering) {
+      if (session.servicePolicy?.registrationEnabled == false) {
+        session.message = '此服務目前未開放新帳號，請先使用訪客模式。';
+        setState(() {});
+        return;
+      }
       if (_ageBand == null) {
         session.message = '請選擇使用者年齡並確認聲明。';
         setState(() {});
@@ -219,9 +228,11 @@ class _AuthScreenState extends State<AuthScreen> {
                                       selected: {_registering},
                                       onSelectionChanged: session.busy
                                           ? null
-                                          : (next) => setState(
-                                              () => _registering = next.single,
-                                            ),
+                                          : (next) => setState(() {
+                                              _registering = next.single;
+                                              _passwordConfirmation.clear();
+                                              _showPasswordConfirmation = false;
+                                            }),
                                     ),
                                     const SizedBox(
                                       height: FutureMintTokens.space5,
@@ -250,6 +261,15 @@ class _AuthScreenState extends State<AuthScreen> {
                                     ),
                                     TextFormField(
                                       controller: _password,
+                                      onChanged: (_) {
+                                        if (_registering &&
+                                            _passwordConfirmation
+                                                .text
+                                                .isNotEmpty) {
+                                          _confirmationKey.currentState
+                                              ?.validate();
+                                        }
+                                      },
                                       obscureText: !_showPassword,
                                       autofillHints: [
                                         _registering
@@ -259,8 +279,10 @@ class _AuthScreenState extends State<AuthScreen> {
                                       decoration: InputDecoration(
                                         labelText: '密碼',
                                         helperText: _registering
-                                            ? '至少 12 個字元，並包含英文字母與數字。'
+                                            ? '8–128 個字元，並包含英文字母與數字。'
                                             : null,
+                                        helperMaxLines: 2,
+                                        errorMaxLines: 2,
                                         suffixIcon: IconButton(
                                           tooltip: _showPassword
                                               ? '隱藏密碼'
@@ -278,16 +300,66 @@ class _AuthScreenState extends State<AuthScreen> {
                                       ),
                                       validator: (value) {
                                         final password = value ?? '';
-                                        if (password.length < 12 ||
+                                        if (password.isEmpty) {
+                                          return '請輸入密碼。';
+                                        }
+                                        if (!_registering) return null;
+                                        if (password.length < 8 ||
                                             !RegExp(
                                               r'[A-Za-z]',
                                             ).hasMatch(password) ||
                                             !RegExp(r'\d').hasMatch(password)) {
-                                          return '密碼至少 12 個字元，且需包含英文字母與數字。';
+                                          return '密碼至少 8 個字元，且需包含英文字母與數字。';
+                                        }
+                                        if (password.length > 128) {
+                                          return '密碼不得超過 128 個字元。';
                                         }
                                         return null;
                                       },
                                     ),
+                                    if (_registering) ...[
+                                      const SizedBox(
+                                        height: FutureMintTokens.space4,
+                                      ),
+                                      TextFormField(
+                                        key: _confirmationKey,
+                                        controller: _passwordConfirmation,
+                                        obscureText: !_showPasswordConfirmation,
+                                        autofillHints: const [
+                                          AutofillHints.newPassword,
+                                        ],
+                                        autovalidateMode:
+                                            AutovalidateMode.onUserInteraction,
+                                        decoration: InputDecoration(
+                                          labelText: '確認密碼',
+                                          errorMaxLines: 2,
+                                          suffixIcon: IconButton(
+                                            tooltip: _showPasswordConfirmation
+                                                ? '隱藏確認密碼'
+                                                : '顯示確認密碼',
+                                            onPressed: () => setState(() {
+                                              _showPasswordConfirmation =
+                                                  !_showPasswordConfirmation;
+                                            }),
+                                            icon: Icon(
+                                              _showPasswordConfirmation
+                                                  ? Icons
+                                                        .visibility_off_outlined
+                                                  : Icons.visibility_outlined,
+                                            ),
+                                          ),
+                                        ),
+                                        validator: (value) {
+                                          if (value == null || value.isEmpty) {
+                                            return '請再次輸入密碼。';
+                                          }
+                                          if (value != _password.text) {
+                                            return '兩次輸入的密碼不一致。';
+                                          }
+                                          return null;
+                                        },
+                                      ),
+                                    ],
                                     if (session.message != null) ...[
                                       const SizedBox(
                                         height: FutureMintTokens.space4,
@@ -322,38 +394,73 @@ class _AuthScreenState extends State<AuthScreen> {
                                       const Text(
                                         '台灣服務限 15 歲以上；15–17 歲需取得監護人同意。',
                                       ),
-                                      DropdownButtonFormField<String>(
-                                        key: const Key('registration-age'),
-                                        initialValue: _ageBand,
-                                        decoration: const InputDecoration(
-                                          labelText: '年齡聲明',
+                                      const SizedBox(
+                                        height: FutureMintTokens.space3,
+                                      ),
+                                      Text(
+                                        '年齡聲明',
+                                        style: theme.textTheme.labelLarge,
+                                      ),
+                                      const SizedBox(
+                                        height: FutureMintTokens.space2,
+                                      ),
+                                      Semantics(
+                                        label: '年齡聲明',
+                                        child: DropdownButtonFormField<String>(
+                                          key: const Key('registration-age'),
+                                          initialValue: _ageBand,
+                                          hint: const Text('請選擇年齡'),
+                                          decoration: const InputDecoration(
+                                            floatingLabelBehavior:
+                                                FloatingLabelBehavior.never,
+                                            errorMaxLines: 2,
+                                          ),
+                                          items: const [
+                                            DropdownMenuItem(
+                                              value: 'under-15',
+                                              child: Text('未滿 15 歲'),
+                                            ),
+                                            DropdownMenuItem(
+                                              value: '15-17',
+                                              child: Text('15–17 歲'),
+                                            ),
+                                            DropdownMenuItem(
+                                              value: '18-plus',
+                                              child: Text('18 歲以上'),
+                                            ),
+                                          ],
+                                          onChanged: session.busy
+                                              ? null
+                                              : (v) => setState(
+                                                  () => _ageBand = v,
+                                                ),
+                                          validator: (v) => v == null
+                                              ? '請選擇年齡；送出代表確認聲明。'
+                                              : null,
                                         ),
-                                        items: const [
-                                          DropdownMenuItem(
-                                            value: 'under-15',
-                                            child: Text('未滿 15 歲'),
-                                          ),
-                                          DropdownMenuItem(
-                                            value: '15-17',
-                                            child: Text('15–17 歲'),
-                                          ),
-                                          DropdownMenuItem(
-                                            value: '18-plus',
-                                            child: Text('18 歲以上'),
-                                          ),
-                                        ],
-                                        onChanged: session.busy
-                                            ? null
-                                            : (v) =>
-                                                  setState(() => _ageBand = v),
-                                        validator: (v) => v == null
-                                            ? '請選擇年齡；送出代表確認聲明。'
-                                            : null,
                                       ),
                                       const SizedBox(height: 16),
+                                      if (session.servicePolicy?.mailEnabled ==
+                                          false) ...[
+                                        Text(
+                                          _ageBand == '15-17'
+                                              ? '目前不寄送監護人確認信。建立帳號後仍須等待監護人同意，暫時無法使用正式記帳；可先使用訪客模式。'
+                                              : '目前採免寄信註冊，信箱只作登入識別、不驗證所有權。沒有寄信重設密碼功能，請妥善保存密碼。',
+                                          style: theme.textTheme.bodySmall,
+                                        ),
+                                        const SizedBox(
+                                          height: FutureMintTokens.space4,
+                                        ),
+                                      ],
                                     ],
                                     FilledButton.icon(
-                                      onPressed: session.busy
+                                      onPressed:
+                                          session.busy ||
+                                              (_registering &&
+                                                  session
+                                                          .servicePolicy
+                                                          ?.registrationEnabled ==
+                                                      false)
                                           ? null
                                           : () => _submit(session),
                                       icon: Icon(
@@ -373,15 +480,22 @@ class _AuthScreenState extends State<AuthScreen> {
                                       const SizedBox(
                                         height: FutureMintTokens.space2,
                                       ),
-                                      TextButton(
-                                        onPressed: session.busy
-                                            ? null
-                                            : () =>
-                                                  session.requestPasswordReset(
-                                                    _email.text,
-                                                  ),
-                                        child: const Text('忘記密碼？寄送重設說明'),
-                                      ),
+                                      if (session.servicePolicy?.mailEnabled ==
+                                          false)
+                                        Text(
+                                          '目前沒有寄信重設密碼功能，請妥善保存密碼；需要協助可開啟下方「聯絡支援」。',
+                                          style: theme.textTheme.bodySmall,
+                                        )
+                                      else
+                                        TextButton(
+                                          onPressed: session.busy
+                                              ? null
+                                              : () => session
+                                                    .requestPasswordReset(
+                                                      _email.text,
+                                                    ),
+                                          child: const Text('忘記密碼？寄送重設說明'),
+                                        ),
                                     ],
                                   ],
                                 ),

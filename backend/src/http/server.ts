@@ -286,6 +286,7 @@ export const buildServer = async (
   });
 
   app.post("/api/auth/email-verification/request", authRateLimit, async (request, reply) => {
+    runtime.authService.requireMailDelivery();
     const account = await requireAuthenticatedUser(request, runtime, true);
     await runtime.authService.requestEmailVerification(account.id);
     return success(request, reply, { accepted: true });
@@ -296,6 +297,7 @@ export const buildServer = async (
     return success(request, reply, { verified: true });
   });
   app.post("/api/auth/password-reset/request", authRateLimit, async (request, reply) => {
+    runtime.authService.requireMailDelivery();
     const body = z.object({ email: z.string().trim().email().max(254) }).parse(request.body);
     await runtime.authService.requestPasswordReset(body);
     return success(request, reply, { accepted: true });
@@ -309,8 +311,7 @@ export const buildServer = async (
   const servicePolicy = {
     servicePolicyVersion, minimumAge: 15, country: "TW", guardianRequiredUnder18: true, eligibilityRequired: runtime.eligibilityRequired ?? false,
     privacyPolicyVersion: runtime.publicConfig?.policyVersion ?? "",
-    mailEnabled: runtime.mailEnabled ?? false,
-    registrationEnabled: runtime.registrationEnabled ?? true,
+    ...runtime.authService.getCapabilities(),
     ai: { provider: runtime.aiProvider, displayName: ai?.providerName ?? (runtime.aiProvider === "openai" ? "OpenAI" : runtime.aiProvider === "liangjie" ? "量界智算" : "離線展示"),
       model: ai?.model ?? "", policyVersion: ai?.policyVersion ?? providerAiPolicyVersion,
       dataRecipients: ai?.recipients ?? [], dataTerms: ai?.dataTerms ?? "", reviewed: ai?.reviewed ?? false },
@@ -340,6 +341,7 @@ export const buildServer = async (
     return success(request, reply, await runtime.authService.declareAge(account.id, request.body as never));
   });
   app.post("/api/privacy/guardian-consent/request", authRateLimit, async (request, reply) => {
+    runtime.authService.requireMailDelivery();
     const account = await requireAuthenticatedUser(request, runtime);
     return success(request, reply, await runtime.authService.requestGuardian(account.id, request.body as never));
   });
@@ -348,6 +350,7 @@ export const buildServer = async (
   app.post("/api/privacy/guardian-consent/withdraw", authRateLimit, async (request, reply) =>
     success(request, reply, await runtime.authService.withdrawGuardian(request.body as never)));
   app.post("/api/privacy/guardian-consent/withdrawal-request", authRateLimit, async (request, reply) => {
+    runtime.authService.requireMailDelivery();
     const input = z.object({ accountEmail: z.string().trim().email().max(254), guardianEmail: z.string().trim().email().max(254) }).parse(request.body);
     return success(request, reply, await runtime.authService.requestGuardianWithdrawal(input));
   });

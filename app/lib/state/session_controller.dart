@@ -125,6 +125,7 @@ class SessionController extends ChangeNotifier {
       busy = false;
       status = SessionStatus.signedOut;
       _notifyListeners();
+      await _loadSignedOutPolicy(epoch);
       return;
     }
     busy = true;
@@ -146,6 +147,18 @@ class SessionController extends ChangeNotifier {
         busy = false;
         _notifyListeners();
       }
+    }
+  }
+
+  Future<void> _loadSignedOutPolicy(int epoch) async {
+    try {
+      final policy = await _auth.getServicePolicy();
+      if (!_isCurrent(epoch) || status != SessionStatus.signedOut) return;
+      servicePolicy = policy;
+      _notifyListeners();
+    } catch (_) {
+      // Public capability lookup does not prevent sign-in or guest access.
+      // The API remains authoritative if this request fails.
     }
   }
 
@@ -612,6 +625,12 @@ class SessionController extends ChangeNotifier {
   Future<bool> requestPasswordReset(String email) async {
     final normalizedEmail = email.trim();
     if (busy) return false;
+    if (servicePolicy?.mailEnabled == false) {
+      message = '目前未提供寄信重設密碼，請妥善保存密碼；需要協助可開啟聯絡支援。';
+      notice = null;
+      _notifyListeners();
+      return false;
+    }
     if (!normalizedEmail.contains('@') || !normalizedEmail.contains('.')) {
       message = '請先輸入有效的電子郵件，再寄送重設說明。';
       notice = null;

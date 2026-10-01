@@ -44,6 +44,7 @@ describe("account recovery", () => {
   it("reset is single-use, rotates credentials, revokes all sessions and rejects a stale login write", async () => {
     const { service, repository, mail } = fixture();
     const first = await service.register(credentials);
+    await service.verifyEmail(mail[0].token);
     const second = await service.login(credentials);
     const oldAccount = (await repository.findAccountById(first.account.id))!;
     expect(await service.requestPasswordReset({ email: "missing@example.com" })).toEqual({ accepted: true });

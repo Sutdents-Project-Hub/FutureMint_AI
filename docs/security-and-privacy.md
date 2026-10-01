@@ -3,6 +3,7 @@
 ## 身份與授權
 
 - Email/password registration 與 login 由 Fastify API 處理。
+- 註冊與重設密碼採 8–128 個字元，需包含英文字母與數字。App 註冊與公開重設頁面要求確認密碼；兩次輸入不一致時阻止送出，確認值僅在 Client 比對、不傳送 API 或保存。登入直接驗證既有密碼，不要求再次輸入。
 - Password 以 Node.js scrypt、每個帳號隨機 salt 與 timing-safe compare 驗證；資料庫不保存明文 password。
 - Session token 使用 cryptographically random bytes，Client 只收到明文 token；PostgreSQL 只保存 SHA-256 token hash。
 - Session 七天到期；logout 設 revoked timestamp。
@@ -10,7 +11,7 @@
 - 已保存的 MoneyEvent 只能由擁有該 session 的帳號完整更新或刪除；更新不接受／改寫建立時的 idempotency key，查無該帳號紀錄時回相同 404。
 - App 內帳號刪除需目前密碼再驗證與文字二次確認；成功後以同 transaction 保存僅含 account ID 雜湊與時間的最小刪除 journal，再刪除 live account 及 FK cascade 資料、使現有 sessions 失效並清除 Client token。
 
-帳號流程已補上 Email ownership verification、一次性 password reset 及重設後所有 session 失效；production 可不設定 SMTP，此時新註冊與新的寄信流程停用；既有未驗證帳號只能恢復驗證、讀取自身帳號、登出或刪除帳號。仍未提供 MFA、獨立的所有裝置登出、breached-password screening 或家庭所有權轉移；這些功能不等於正式未成年人營運條件已獲確認。
+帳號流程已補上 Email ownership verification、一次性 password reset 及重設後所有 session 失效；production 可不設定 SMTP，此時開放未驗證 Email 的註冊／登入，新的寄信流程停用；帳號 Email 僅作登入識別，不能當成信箱所有權、帳號復原或監護人身分證明。仍未提供 MFA、獨立的所有裝置登出、breached-password screening 或家庭所有權轉移；這些功能不等於正式未成年人營運條件已獲確認。
 
 ### 家庭關聯與資料權限
 
@@ -86,7 +87,7 @@ API 啟動及每小時分批清理到期／撤銷 sessions、到期 action token
 
 ## 臺灣年齡、監護人與資料權利
 
-首次正式註冊提交 `ageDeclaration:{ageBand,policyVersion,accepted:true}`，版本為 `tw-service-age-15-v1`。`under-15` 拒正式帳號、可合成訪客體驗；`15-17` 完成 Email 驗證後仍需監護人確認；`18-plus` 自行聲明。既有帳號缺資料即為待補聲明，不能預設成年。已聲明年齡分組不可直接覆寫；更正需客服查核，目前未提供後端 admin console，正式操作流程仍待營運建立。
+首次正式註冊提交 `ageDeclaration:{ageBand,policyVersion,accepted:true}`，版本為 `tw-service-age-15-v1`。`under-15` 拒正式帳號、可合成訪客體驗；`15-17` 在寄信模式需先完成 Email 驗證，兩種模式皆仍需監護人確認；`18-plus` 自行聲明。既有帳號缺資料即為待補聲明，不能預設成年。已聲明年齡分組不可直接覆寫；更正需客服查核，目前未提供後端 admin console，正式操作流程仍待營運建立。
 
 監護人信件標示 requester Email；接收者須確認已滿 18 歲、為法定代理人並接受政策。核准與撤回為單次 fragment token，資料庫只存 hash／revision，GET 不消耗、POST 才消耗；重寄會使舊 token 失效。Email 控制權及聲明不證明合法監護人身分，不可把家庭 parent role 或邀請碼当成監護人確認。家庭分享與 AI 授權需各自選擇。
 
@@ -100,6 +101,10 @@ iPhone 提醒只在本機排程、不使用 APNs；notification payload 不包�
 
 ## 可選設定的安全界線
 
-寄信未啟用時，在查帳號前就明確回 mail_disabled，避免忘記密碼畫面宣稱已寄出；實際 SMTP 送達失敗仍採 generic accepted 避免帳號探測。新註冊回 registration_disabled，既有 production 帳號保留 Email ownership／監護人資格檢查；不以設定簡化降低權限。
+寄信未啟用時，在查帳號前就明確回 mail_disabled，避免忘記密碼畫面宣稱已寄出；實際 SMTP 送達失敗仍採 generic accepted 避免帳號探測。無 SMTP 可註冊／登入，不強制 Email ownership；Email 保持未驗證，年齡／監護人與 AI 同意門檻仍維持。SMTP 開啟後，新的重設信只寄給已驗證信箱；未驗證／未知信箱仍回相同 accepted，不能依收件能力取得未驗證識別所屬帳號。
 
-供應商說明可維護於版本化 providerPolicies.ts；初始未確認，不宣稱量界上游、保存或訓練政策已查核。未確認政策的舊AI授權亦不放行；必須補完整說明並確認，再由使用者同意當前 fingerprint。公開隱私頁按備份0／寄信狀態顯示實際模式，原生UIUX不變。
+供應商說明可維護於版本化 providerPolicies.ts；初始未確認，不宣稱量界上游、保存或訓練政策已查核。未確認政策的舊AI授權亦不放行；必須補完整說明並確認，再由使用者同意當前 fingerprint。公開隱私與支援頁按備份0／寄信狀態顯示實際模式，提供繁中／English，原生 App 只調整能力提示。
+
+### 雙語公開說明（2026-10-02）
+
+`/privacy` 及 `/support` 提供繁中／英文與明暗主題；公開政策涵蓋帳號／資格與理財資料用途、可選 SMTP、外部 AI 接收者及傳送欄位、家庭分享、地區／保存、帳號刪除與最小 journal、裝置儲存／提醒、來源 IP／平台紀錄及資料權利。動態營運者、信箱、地區與供應商說明必須 HTML escape；帳號一次性 token 保留在 URL fragment、透過 POST 使用並清除網址，語言切換不得把 token 放入 query。政策未 reviewed 維持 503。供應商條款保留營運者確認的原文，英文頁不捏造訓練／保存或上游承諾；公開文字不能取代真實法律與平台設定驗收。

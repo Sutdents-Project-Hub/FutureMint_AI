@@ -120,6 +120,7 @@ The approved iOS icon uses `assets/app-icon.png`: one warm gold coin with an ivo
 - Investment lab: show portfolio totals and data freshness before the order form; market examples are a compact selectable list, while holdings and orders use shared surfaces with dividers. Buy/sell is a segmented control, quantity uses stepper/input controls, allocation uses labeled bars, and the event die is a learning prompt rather than a casino visual. Always show source date, fallback state, virtual-money label, and no-advice disclaimer.
 - Roles: child／parent uses explicit API authorization and an invite-code family relationship. Parents see only summary cards; never imply transaction-level cross-account visibility. Guest mode has no family controls.
 - Forms: visible labels, helper text for financial assumptions, validation after submit/blur, and error text next to the field.
+- Age declaration dropdowns use a visible title above the control and a selection hint inside it, without a floating outlined-input label. Registration uses an 8–128-character password containing an English letter and a digit, plus a masked confirmation field with its own visibility toggle. Confirmation errors appear beside the field after interaction or submit, and changing the first password rechecks a nonempty confirmation; confirmation is never sent to the API.
 - Capture flow: input → parsing → confirmation. Show provider source and never equate parsed with saved.
 - Capture input is text／paste only in this MVP; do not add image upload or OCR controls.
 - Navigation: icons and labels from Material Symbols only; active location uses text weight, icon, and an indigo/lavender indicator in addition to color.
@@ -167,3 +168,7 @@ iOS 只支援 iPhone。沿用既有設計，淺色／深色／系統主題需實
 本輪不改既有布局、色彩、字級與插圖；年齡／監護人、AI 政策、手動紀錄、訂閱管理、匯出與 iPhone 提醒入口重用原元件。等待資格、寄信失敗、撤回及政策過期均需保留可見的 help/retry、登出與刪除，不用不可退出的全螢幕同意流程。
 
 訂閱卡分開呈現合約承諾成本與實際付款，不能把新增合約顯示成已扣款。提醒文字明示 iPhone 本機權限與其他平台 App 內限制；遠端變更需同步。AI disclosure 顯示當前 provider、模型、資料接收方與政策版本；拒絕後手動功能仍有入口。微課標明受控教材與選題來源。
+
+## 公開隱私與支援頁（2026-10-02）
+
+API SSR 的公開頁沿用淺色 `#F8F7FC`／靛紫 `#6D5BD0`／文字 `#1B1B2A`，深色採 `#14131F`／`#1C1B2A`／淡紫重點；用簡單圓角資訊框、44px 以上導覽觸控範圍、可見 focus 與單欄閱讀。手機時標題／營運資訊與語言按鈕換行，不用裝置座標。繁中、English 與明暗切換由網址參數控制，不使用 cookie 或第三方字型／素材。App 內既有主題與角色版位沿用原設計；免寄信說明只新增所需狀態文案。

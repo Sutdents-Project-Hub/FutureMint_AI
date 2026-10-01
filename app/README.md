@@ -7,6 +7,7 @@ Android、iPhone 與 Web 共用 Client；App Store 只支援 iPhone。正式 Web
 - Flutter 3.41.x、Dart 3.11.x；manifest 是 `pubspec.yaml`，lockfile 是 `pubspec.lock`。
 - Provider、go_router、http、flutter_secure_storage、SharedPreferences、flutter_localizations、intl、fl_chart；Client 不安裝資料庫或 AI SDK。
 - 註冊、登入、Email 驗證、忘記密碼、首次預算／目標設定、登出、App 內帳號刪除與 Bearer session。
+- 註冊密碼為 8–128 個字元，需含英文字母與數字，並再次輸入確認；不一致時顯示欄位錯誤並阻止送出。年齡選單採欄位外標題及「請選擇年齡」提示，選取後不出現浮動標籤。SMTP 停用時可免寄信註冊，信箱僅作登入識別；寄信重設密碼停用，15–17 歲仍等待監護人同意。
 - 第三方 AI 資料說明、明確啟用／撤回，以及未同意時的 Client-side AI 功能攔截；設定與首頁提示都可再次開啟說明。
 - 響應式 dashboard、自然語言 Capture、可修改需要／想要建議，以及可編輯／刪除已保存帳務的紀錄頁；另有收支圖表、圖形化通知、訂閱檢查、個人學習規劃、金融微課、三路徑 FutureSeed 模擬與延遲行情投資練習場。
 - 學習頁與 FutureSeed 支援自由輸入問題、主題與回答方式個人化；設定可建立／加入家庭關聯，家長只看孩子的預算與趨勢摘要，不共享交易明細。
@@ -114,4 +115,6 @@ iPhone 使用 native MethodChannel／UserNotifications 本機提醒，使用者�
 
 原生 iPhone 直接連 HTTPS API，不需要部署 Flutter Web。app/.env.appstore.local 的 API_BASE_URL、PRIVACY_POLICY_URL、SUPPORT_URL 指向同一 API 的 /api/、/privacy、/support；仍需公開客服／營運者及 Apple Team、Bundle ID、build number 與簽章。Web 只供選用測試。
 
-API 未設定 SMTP 時新註冊與新的寄信功能未開放，App 使用現有錯誤訊息與訪客入口；既有帳號仍維持驗證／年齡門檻。未完成供應商公開說明時外部 AI 停用，手動功能及固定教材仍可用。此輪不變更前端 UIUX 或 App 建置產物。
+SMTP 為部署可選項；未填／disabled 時開放註冊與登入、不要求 Email 驗證，Email 只作未驗證登入識別，不寫入 emailVerifiedAt。新的驗證／寄信重設／監護人寄信回 mail_disabled；App 清楚說明功能停用。最低年齡 15 與 15–17 歲監護人資格仍維持，未完成同意者不能寫入受限資料，可使用訪客；SMTP 重新啟用後仍需驗證信箱，密碼重設只寄給已驗證信箱。未完成供應商公開說明時外部 AI 停用，手動功能及固定教材仍可用。本輪只調整登入／監護人狀態提示，沿用既有視覺；公開政策與支援頁使用同產品雙語頁面。
+
+登入頁會讀取公開 service policy，依 `mailEnabled`、`registrationEnabled`、`emailVerificationRequired` 顯示註冊與寄信狀態；政策取得失敗不會阻擋訪客入口，送出後仍以 API 授權為準。App 保留原本無 query 的隱私／支援 URL；開啟後網頁可切換繁中／英文及明暗主題，App Store 可使用同一 `/privacy` 網址。

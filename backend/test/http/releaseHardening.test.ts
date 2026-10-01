@@ -72,8 +72,13 @@ describe("production configuration and public account recovery", () => {
   });
   it("completes password recovery and revokes the old session without returning tokens", async () => {
     let actionToken = "";
-    const app = await makeApp(undefined, { send: async (_to, purpose, token) => { if (purpose === "reset-password") actionToken = token; } });
+    let verificationToken = "";
+    const app = await makeApp(undefined, { send: async (_to, purpose, token) => {
+      if (purpose === "reset-password") actionToken = token;
+      if (purpose === "verify-email") verificationToken = token;
+    } });
     const registered = await app.inject({ method: "POST", url: "/api/auth/register", payload: { email: "reset@example.com", password: "test-password2026" } });
+    await app.inject({ method: "POST", url: "/api/auth/email-verification/confirm", payload: { token: verificationToken } });
     const authorization = `Bearer ${registered.json().data.token}`;
     const accepted = await app.inject({ method: "POST", url: "/api/auth/password-reset/request", payload: { email: "reset@example.com" } });
     expect(accepted.statusCode).toBe(200);
