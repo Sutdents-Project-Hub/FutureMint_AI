@@ -1,5 +1,31 @@
 # 測試與證據
 
+## 學習路線構圖微調（2026-10-01，最新指示）
+
+後續依使用者要求再整組上移 8dp：標題與角色／裝飾區的間距由 12dp 收至 4dp，角色大小、左右位置及貼邊錨點維持一致。靜態分析與格式檢查通過；iPhone 17 模擬器重新 build（14.2 秒），訪客學習頁已確認更新。`MASTER.md` 同步最新間距；此單一間距微調未執行單元測試或重新驗證其他裝置。
+
+分類：使用者核准的局部視覺調整，取代下方上一版的額外紫色橫線。移除橫線與獨立裝飾列；角色由 128／156dp 縮至 112／136dp，左移讓出右側 52dp 裝飾列及 12dp 間距。兩個圓與一個菱形可見範圍均為 12dp，相鄰間距均為 8dp；菱形旋轉前按 sqrt(2) 縮小，避免可見邊界變大。標題下方間距由 24dp 縮至 12dp，頭部右側裝飾與角色共用卡片局部定位，整體區塊向上收。
+
+已執行：兩個受影響 Dart 檔案格式化（無額外格式變動）、`flutter analyze --no-pub lib/features/learning/learning_screen.dart`（No issues found）、`git diff --check`，以及 iPhone 17／iOS 26.4 模擬器 debug build（16.4 秒）。訪客學習頁截圖確認紫線移除、角色縮小左移、裝飾等距且位於頭部右側，標題可讀。設計及 Client README 已同步；既有定位測試移除已不存在的橫線期待，沒有新增或執行單元測試。
+
+此微調未重新執行上一版的四種 Web 寬度檢查；保留以卡片局部座標及縮放錨點定位的實作。未執行真機／深色／大字級驗收、Git commit／push 或遠端部署。
+
+## 學習路線角色貼邊（2026-10-01）
+
+分類：使用者核准的局部視覺調整。角色位於學習路線卡片右上方，透明 PNG 的水平身體底緣與卡片上邊界共用縮放錨點；卡片上界加上 2dp 橫線，頭部與雙手預留空間，不遮住標題。對應來源、提示與定位規則同步於 `design/README.md`、`MASTER.md` 及 `app/README.md`。
+
+已執行：`dart format lib/features/learning/learning_screen.dart`、`flutter analyze lib/features/learning/learning_screen.dart`（No issues found）、`git diff --check`；iPhone 17／iOS 26.4 模擬器 debug build（15.1 秒）與訪客學習頁截圖；本機 Flutter Web 預覽 375×812、768×1024、1024×768、1440×900 均確認角色底緣貼齊卡片橫線且標題可讀。375px 初次截圖時角色圖片仍在載入，載入完成後再次確認正常。檢查未呼叫外部 AI，也未建立正式帳號或寫入後端資料。
+
+既有 `learning_and_subscription_test.dart` 的定位預期同步為新底緣錨點，沒有新增或執行單元測試。尚未驗證此調整在真機、其他作業系統與 200% 字級／深色主題的實際呈現；Git commit／push 與遠端部署未執行。
+
+## iPhone icon 更新（2026-10-01）
+
+分類：已核准視覺資產調整。內建 imagegen 產生靛紫背景、金幣與嫩芽原稿，保存於 `design/futuremint-ai/assets/app-icon.png`；`app/tool/generate_ios_icons.py` 使用 macOS sips 重建現有 iOS catalog 的 15 個唯一 PNG。
+
+已執行：檢查 catalog 全部 19 項的 PNG 尺寸與不透明背景；`git diff --check` 通過；以前一輪公開 production Dart defines 執行 `flutter run --debug`，iPhone 17／iOS 26.4 模擬器 Xcode build 27.8 秒完成，App 安裝與登入畫面啟動成功。回到系統主畫面截圖確認 FutureMint AI 顯示新圖示，runner detach 後保留安裝的 App。建置仍出現既有 `native_assets` SdkRoot 提示，但未阻止此輪建置及啟動。
+
+未執行：單元測試、真機／App Store 圖示驗收、Git commit／push、後端重新部署。此次僅替換 iOS icon，App 內畫面與 API 功能沒有變更；模擬器成功不代表正式簽章或上架驗收完成。
+
 ## 本輪簡化部署（2026-10-01）
 
 分類：已核准範圍調整。正式只需API／PostgreSQL，Web選用；可選SMTP、備份0、內建通用政策、供應商說明未完成時只停用外部AI。沒有新增migration、不修改前端UIUX。

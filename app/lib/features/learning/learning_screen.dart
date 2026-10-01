@@ -72,8 +72,7 @@ class _LearningScreenState extends State<LearningScreen> {
                   description: '內容依合成紀錄挑選，重點是看懂選擇，不是考試。',
                   accent: FutureMintTokens.lavenderInk,
                 ),
-                const _LearningDecorationStrip(),
-                const SizedBox(height: FutureMintTokens.space5),
+                const SizedBox(height: FutureMintTokens.space1),
                 if (plan != null) ...[
                   _LearningPlanCard(plan: plan),
                   const SizedBox(height: FutureMintTokens.space5),
@@ -299,104 +298,68 @@ class _LearningPlanCard extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final cardPadding = FutureMintTokens.cardPadding(context);
-    final compact =
-        MediaQuery.sizeOf(context).width < 620 ||
-        MediaQuery.textScalerOf(context).scale(1) >= 1.3;
     final sourceChip = Chip(
       visualDensity: VisualDensity.compact,
       avatar: const Icon(Icons.auto_awesome_outlined, size: 16),
       label: Text(plan.source.isAi ? 'AI 選題' : '離線規劃'),
     );
 
-    if (compact) {
-      // Phone: title and source share a row with the peeking mascot, so the
-      // character rests on the card edge without leaving an empty band.
-      return SoftCard(
-        key: const Key('learning-plan-card'),
-        padding: EdgeInsets.zero,
-        color: Theme.of(context).brightness == Brightness.dark
-            ? FutureMintTokens.darkSurfaceRaised
-            : FutureMintTokens.skySoft,
-        borderWidth: 1,
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.stretch,
+    return LayoutBuilder(
+      builder: (context, constraints) {
+        final compact =
+            constraints.maxWidth < 620 ||
+            MediaQuery.textScalerOf(context).scale(1) >= 1.3;
+        final mascotWidth = compact ? 112.0 : 136.0;
+        final mascotHeight = mascotWidth * _LearningPlanMascot.aspectRatio;
+        final ledgeTop = mascotHeight * _LearningPlanMascot.ledgeFraction;
+
+        // The artwork and the card share this local coordinate system. The
+        // reserved band keeps the head above the border without painting over
+        // the preceding section; the hands alone extend into the card padding.
+        return Stack(
           children: [
-            Row(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Expanded(
-                  child: Padding(
-                    padding: EdgeInsets.fromLTRB(
-                      cardPadding.left,
-                      cardPadding.top,
-                      FutureMintTokens.space2,
-                      0,
-                    ),
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Text(
-                          plan.title,
-                          style: Theme.of(context).textTheme.titleLarge,
-                        ),
-                        const SizedBox(height: FutureMintTokens.space2),
-                        sourceChip,
-                      ],
-                    ),
-                  ),
-                ),
-                Padding(
-                  padding: EdgeInsets.only(right: cardPadding.right),
-                  child: const _LearningPlanMascot(compact: true),
-                ),
-              ],
-            ),
             Padding(
-              padding: EdgeInsets.fromLTRB(
-                cardPadding.left,
-                FutureMintTokens.space3,
-                cardPadding.right,
-                cardPadding.bottom,
+              padding: EdgeInsets.only(top: ledgeTop),
+              child: SoftCard(
+                key: const Key('learning-plan-card'),
+                padding: cardPadding.copyWith(
+                  top: mascotHeight - ledgeTop + cardPadding.top,
+                ),
+                color: FutureMintTokens.isDark(context)
+                    ? FutureMintTokens.darkSurfaceRaised
+                    : FutureMintTokens.skySoft,
+                borderWidth: 1,
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.stretch,
+                  children: [
+                    Text(
+                      plan.title,
+                      style: Theme.of(context).textTheme.titleLarge,
+                    ),
+                    const SizedBox(height: FutureMintTokens.space2),
+                    Align(alignment: Alignment.centerLeft, child: sourceChip),
+                    const SizedBox(height: FutureMintTokens.space3),
+                    _content(context, showTitle: false),
+                  ],
+                ),
               ),
-              child: _content(context, showTitle: false),
+            ),
+            Positioned(
+              top: 0,
+              right:
+                  cardPadding.right +
+                  _LearningDecorationStrip.width +
+                  FutureMintTokens.space3,
+              child: _LearningPlanMascot(width: mascotWidth),
+            ),
+            Positioned(
+              top: ledgeTop * .3,
+              right: cardPadding.right,
+              child: const _LearningDecorationStrip(),
             ),
           ],
-        ),
-      );
-    }
-
-    return SoftCard(
-      key: const Key('learning-plan-card'),
-      padding: EdgeInsets.zero,
-      color: Theme.of(context).brightness == Brightness.dark
-          ? FutureMintTokens.darkSurfaceRaised
-          : FutureMintTokens.skySoft,
-      borderWidth: 1,
-      child: Row(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Expanded(
-            child: Padding(padding: cardPadding, child: _content(context)),
-          ),
-          Padding(
-            padding: EdgeInsets.only(right: cardPadding.right),
-            child: Row(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                const _LearningPlanMascot(),
-                const SizedBox(width: FutureMintTokens.space2),
-                SizedBox(
-                  height: _LearningPlanMascot.height,
-                  child: Align(
-                    alignment: Alignment.centerLeft,
-                    child: sourceChip,
-                  ),
-                ),
-              ],
-            ),
-          ),
-        ],
-      ),
+        );
+      },
     );
   }
 
@@ -460,31 +423,25 @@ class _LearningPlanCard extends StatelessWidget {
 }
 
 class _LearningPlanMascot extends StatelessWidget {
-  const _LearningPlanMascot({this.compact = false});
+  const _LearningPlanMascot({required this.width});
 
-  final bool compact;
+  final double width;
 
-  static const imageSize = 132.0;
-  static const height = 116.0;
+  // The packed PNG is 1176x744; its horizontal body edge is at y=642.
+  // Scale this asset anchor with the artwork, never with the device height.
+  static const aspectRatio = 744 / 1176;
+  static const ledgeFraction = 642 / 744;
 
   @override
   Widget build(BuildContext context) => SizedBox(
     key: const Key('learning-plan-mascot'),
-    width: compact ? 104 : imageSize,
-    height: compact ? 92 : height,
-    child: ClipRect(
-      child: FittedBox(
-        // The PNG has a transparent top margin. This crops only that canvas
-        // space so the visible character rests on the card's top edge.
-        alignment: const Alignment(0, .8),
-        fit: BoxFit.cover,
-        child: Image.asset(
-          'assets/images/mascot_peek_purple.png',
-          width: compact ? 104 : imageSize,
-          height: compact ? 104 : imageSize,
-          fit: BoxFit.contain,
-          excludeFromSemantics: true,
-        ),
+    width: width,
+    height: width * aspectRatio,
+    child: IgnorePointer(
+      child: Image.asset(
+        'assets/images/mascot_peek_purple_level.png',
+        fit: BoxFit.contain,
+        excludeFromSemantics: true,
       ),
     ),
   );
@@ -662,19 +619,22 @@ class _LessonContent extends StatelessWidget {
 class _LearningDecorationStrip extends StatelessWidget {
   const _LearningDecorationStrip();
 
+  static const size = 12.0;
+  static const gap = FutureMintTokens.space2;
+  static const width = size * 3 + gap * 2;
+
   @override
-  Widget build(BuildContext context) => Align(
-    alignment: Alignment.centerRight,
-    child: Padding(
-      padding: const EdgeInsets.only(top: FutureMintTokens.space1),
-      child: Wrap(
-        spacing: FutureMintTokens.space2,
-        crossAxisAlignment: WrapCrossAlignment.center,
+  Widget build(BuildContext context) => ExcludeSemantics(
+    child: IgnorePointer(
+      child: Row(
+        key: const Key('learning-plan-decoration'),
+        mainAxisSize: MainAxisSize.min,
         children: const [
-          _LearningCircle(size: 14, color: FutureMintTokens.lavenderInk),
-          _LearningDiamond(size: 13, color: FutureMintTokens.skyInk),
-          Icon(Icons.auto_awesome_rounded, size: 16, color: Colors.white54),
-          _LearningCircle(size: 10, color: FutureMintTokens.teal),
+          _LearningCircle(size: size, color: FutureMintTokens.lavenderInk),
+          SizedBox(width: gap),
+          _LearningDiamond(size: size, color: FutureMintTokens.skyInk),
+          SizedBox(width: gap),
+          _LearningCircle(size: size, color: FutureMintTokens.teal),
         ],
       ),
     ),
@@ -702,9 +662,20 @@ class _LearningDiamond extends StatelessWidget {
   final Color color;
 
   @override
-  Widget build(BuildContext context) => Transform.rotate(
-    angle: 0.785398,
-    child: Container(width: size, height: size, color: color),
+  Widget build(BuildContext context) => SizedBox.square(
+    dimension: size,
+    child: Center(
+      child: Transform.rotate(
+        angle: 0.785398,
+        // A rotated square grows by sqrt(2); keep its painted bounds equal
+        // to each circle so the visible gaps remain equal as well.
+        child: Container(
+          width: size * 0.7071067812,
+          height: size * 0.7071067812,
+          color: color,
+        ),
+      ),
+    ),
   );
 }
 

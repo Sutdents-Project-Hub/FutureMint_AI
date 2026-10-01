@@ -17,6 +17,10 @@ Android、iPhone 與 Web 共用 Client；App Store 只支援 iPhone。正式 Web
 
 ## 本機執行
 
+iPhone launcher icon 原稿位於 `design/futuremint-ai/assets/app-icon.png`（Codex 內建 imagegen 產生）。替換原稿後，在 `app/` 執行 `python3 tool/generate_ios_icons.py`，按既有 Xcode asset catalog 重建各尺寸，再重新 build／安裝原生 App；hot reload 不會更新系統主畫面 icon。設計與來源見 [Design System](../design/README.md)。
+
+學習頁的紫色探頭角色與「我的理財學習路線」卡片共用局部版位和縮放底緣錨點；頭部預留在卡片上方，雙手跨在上內距，不額外畫紫色橫線。兩圓一菱形在角色頭部右側，三個圖形可見範圍均為 12dp、間距均為 8dp，不依賴裝置畫面座標。
+
 先啟動根 README 所述的 Fastify API：
 
 ```bash

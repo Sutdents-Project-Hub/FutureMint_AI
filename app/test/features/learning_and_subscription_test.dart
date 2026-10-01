@@ -27,7 +27,11 @@ void main() {
     final mascotRect = tester.getRect(
       find.byKey(const Key('learning-plan-mascot')),
     );
-    expect(mascotRect.top, closeTo(cardRect.top, .1));
+    expect(
+      mascotRect.top + mascotRect.height * (642 / 744),
+      closeTo(cardRect.top, .1),
+    );
+    expect(mascotRect.top, lessThan(cardRect.top));
     expect(mascotRect.right, lessThanOrEqualTo(cardRect.right));
     expect(mascotRect.bottom, lessThanOrEqualTo(cardRect.bottom));
     expect(tester.takeException(), isNull);

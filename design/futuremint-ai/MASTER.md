@@ -66,6 +66,10 @@
 
 Every foreground/background pair used for body text must meet WCAG 4.5:1. State meaning always includes text or an icon, never color alone.
 
+## iPhone launcher icon
+
+The approved iOS icon uses `assets/app-icon.png`: one warm gold coin with an ivory/lavender two-leaf sprout on an opaque edge-to-edge indigo background. Keep the silhouette legible at launcher size; no text, currency symbols, premasked rounded corners, or transparent edges. `app/tool/generate_ios_icons.py` produces the current Xcode catalog sizes. This icon update does not change in-app visual tokens or the existing Web/Android vector identity.
+
 ## Typography
 
 - Use the platform sans-serif with Traditional Chinese fallback; do not fetch a font at runtime.
@@ -153,6 +157,7 @@ iOS 只支援 iPhone。沿用既有設計，淺色／深色／系統主題需實
 - 亮色主題的預算 Hero 使用 `teal`→`tealDark` 靛紫漸層表面與淺色文字；深色維持深色表面與紫色光暈。兩者都不得使用白底配白字。
 - 底部導覽的選中標籤位於膠囊下方，沿用導覽殼前景色並以字重區分；未選中項目降低不透明度。
 - 380–440dp 手機寬度且字級低於 130% 時，首頁、紀錄、記一筆、學習與 FutureSeed 的角色插圖放在標題或內文旁的獨立欄位（約 72–112dp），不再獨占一列；130% 以上字級回到垂直堆疊。
+- 學習路線卡片依 2026-10-01 最新使用者指示採探頭構圖：在卡片自己的版位預留角色高度，水平身體底緣與卡片上邊界共用錨點，雙手可跨入卡片上內距，不額外畫紫色橫線。局部 `LayoutBuilder` 決定 112／136dp 角色寬度，右側保留兩圓一菱形的 52dp 版位及 12dp 角色間距；三個圖形可見範圍均為 12dp、間距均為 8dp，與頭部共用同一列。標題與此列間距為 4dp（最新微調再上收 8dp），圖像底緣比例跟隨縮放；不得用螢幕座標、負位移或遮住標題，放大字級時標題保有完整可用寬度。
 - 深色主題中淺色專用的 ink token（`teal`、`positive`、`danger`、淺色 kicker）改用 `FutureMintTokens.brandInk／positiveInk／dangerInk／accentInk` 取得可讀版本。
 - 帶圖示的 ChoiceChip 不顯示預設勾勾，改以 `check_circle` 取代圖示表示選取，避免重疊並保留非顏色的選取提示。
 - 手機 PageHeading 標題使用 headline 範圍下限 26。
