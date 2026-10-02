@@ -60,9 +60,11 @@ Account deletion is available in the app settings and requires the current passw
 
 尚未提交 App Privacy 回答。需依正式部署與供應商資料流核對，不能填「不收集資料」。程式保存帳號 Email／帳號 ID、年齡分組、使用者輸入的收支／預算／目標／訂閱、教材進度、虛擬投資與家庭關聯；新的監護人流程只記錄同意方式／狀態，不收集監護人 Email；舊 Email 流程可能保留先前資料。這些資料與帳號關聯，用於 App 功能。來源 IP 與請求紀錄另需按代管平台實際保留方式核對。
 
-Apple 的「其他財務資訊」涵蓋收入等資料；不連銀行不等於不收集財務資訊。可對應的項目包括 Email、User ID、Other Financial Info、Other User Content、Product Interaction、Other Data Types，最終選項與用途需逐項對照現行問卷，不以此草稿代替營運者確認。
+Apple 的「其他財務資訊」涵蓋收入等資料；不連銀行不等於不收集財務資訊。可對應的項目包括 Email、User ID、Other Financial Info、Purchase History（自填支出、商家、訂閱及日期需核對此分類）、Other User Content、Product Interaction、Other Data Types，最終選項與用途需逐項對照現行問卷，不以此草稿代替營運者確認。帳號資料多與 User ID 關聯，主要用於 App Functionality；依摘要選課另需按實際資料類別判斷 Product Personalization，不把所有用途一律勾選。
 
 目前程式沒有廣告 SDK／跨 App 廣告追蹤、相片上傳或定位權限；AI 接收方與上游用途仍需核對，不能以「沒有廣告 SDK」推論所有第三方用途。年齡分級由 Apple 問卷產生，服務資格 15+ 不等同商店分級；不得直接猜填分級或兒童類別。
+
+內容權利仍有具體缺口：[Design README](../design/README.md) 記錄原有學生角色 PNG 尚待作者、來源與商用授權確認；新 iOS icon 的生成紀錄不涵蓋其他插圖。這不能由 repository 的 LICENSE 宣告或本輪截圖替代。年齡問卷可依固定金融教材、不提供使用者互相聊天或一般網頁瀏覽等程式事實回答；家庭摘要及自我年齡／家長聲明不冒充身分驗證或內容家長控制。
 
 參考：[Apple App Privacy Details](https://developer.apple.com/app-store/app-privacy-details/)、[管理 App 隱私權](https://developer.apple.com/help/app-store-connect/manage-app-information/manage-app-privacy/)。
 
@@ -70,6 +72,6 @@ Apple 的「其他財務資訊」涵蓋收入等資料；不連銀行不等於�
 
 - Apple 協議、Bundle ID 註冊及 App record 已完成；仍需 Apple signing identity、signed build 與 TestFlight。
 - 審查聯絡姓名／電話／Email 已依使用者指示沿用 EmoChess；公開營運者與版權名称尚待確認，與審查聯絡人分開。
-- 以最終可送審 iPhone 版本製作商店截圖，確認尺寸、內容與無私人資料；現有小尺寸巡檢圖不當作已完成商店素材。
+- 已從目前 1.0.0(1) 模擬器版本製作六張 1320×2868 繁中 iPhone 6.9 吋截圖，見 [素材與來源](../design/app-store/README.md)。使用合成訪客資料，原生 PNG 保留，JPEG 無透明通道；目前仍待完成 ASC 上傳與最終 signed build 對照。
 - 新版 API／migration 與 App 內監護人流程、AI 資料處理條款與功能、通知真機驗收，以及新版審查帳號完整流程。
 - 免費價格及臺灣供應已保存；仍須 App Privacy、年齡問卷、內容權利、加密、build 選擇與提交檢查。

@@ -1,5 +1,18 @@
 # 測試與證據
 
+## iPhone 商店截圖準備（2026-10-03）
+
+分類：使用者核准的上架素材製作與現況釐清；沒有變更 App 程式或介面。
+
+- 從 `55d030f` 一般 App 入口執行 `flutter build ios --simulator --debug --no-pub`，帶入已忽略的公開 production defines；Xcode build 25.8 秒成功，實際 Info.plist 為 1.0.0(1)、`tw.futuremint.futuremintApp`、`UIDeviceFamily=[1]`。
+- iPhone 17 Pro Max／iOS 26.4 實際啟動訪客模式，操作預算首頁、收支分析、記帳草稿、訂閱追蹤、學習路線及 FutureSeed 教育試算。六張 1320×2868 素材位於 [design/app-store](../design/app-store/README.md)，JPEG 無 alpha，未修改 UI 或使用真實帳號資料。
+- 起初模擬器因磁碟空間不足無法安裝；只清理本專案可再生的 Android intermediates 與 Flutter build cache，保留原始碼及成品。重新啟動截圖用模擬器後成功安裝／操作。
+- 公開 production `GET /api/service-policy` 現在回報 `tw-service-age-15-in-app-v2`、`guardianConsentMethod=in-app`、privacy `2026-10-03-in-app-guardian-v2`、mail disabled／registration enabled／email verification disabled。此為公開能力的現況確認，未直接驗證 migration 012 或新監護人寫入交易。
+- 簽章仍為 0 valid identities；本輪尚無 signed archive／IPA、TestFlight 或正式送審。原生 iPhone target 不代表完全排除 iPad 相容模式。
+- ASC 截圖上傳目前受 Chrome 檔案存取／原生前景選檔流程阻擋；素材完成不等同上傳完成。App Privacy、年齡問卷、插圖權利、AI 上游資料用途與公開營運者仍需完成。
+
+本輪只新增素材與文件，未重跑既有 200 Flutter／210 backend 測試；程式與先前測試狀態相同。遠端 main 規則要求 PR、一位 reviewer 及最後 push 的他人核准；以 PR 交付，不能用帳號 bypass 取代審查。
+
 ## App 內監護人確認與上架準備（2026-10-03）
 
 分類：使用者核准的流程簡化、首次上架資料準備。保留孩子／家長角色與 Email／密碼登入；15–17 歲改由監護人在孩子裝置勾選確認，沒有監護人 Email 或寄信依賴。勾選不是身分驗證，家庭分享與 AI 同意仍分開。新政策 `tw-service-age-15-in-app-v2` 要求舊帳號依原 age band 重聲明，不能改成年。

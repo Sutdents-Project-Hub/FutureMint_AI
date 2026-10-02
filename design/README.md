@@ -5,6 +5,7 @@
 ## 權威文件
 
 - [MASTER.md](futuremint-ai/MASTER.md)：全域色彩、字體、間距、元件、響應式、動態、狀態與可及性規範。
+- [App Store 截圖](app-store/README.md)：繁中 iPhone 6.9 吋原始截圖、上傳素材、來源與驗證界線。
 - 若未來建立 `futuremint-ai/pages/<page>.md`，頁面 override 只覆蓋該頁明確列出的規則，其餘仍以 `MASTER.md` 為準。
 
 ## 與程式碼的關係
