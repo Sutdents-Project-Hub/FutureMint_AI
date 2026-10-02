@@ -105,7 +105,7 @@ iOS Client 本身只使用系統 HTTPS／TLS，沒有實作自訂或非豁免加
 
 原生 token 存於系統安全儲存，Web 使用瀏覽器儲存；舊原生 token 會安全遷移。MaterialApp 支援繁體中文系統元件與淺色／深色／系統主題；設定可開啟公開隱私與支援 URL。
 
-本機編譯驗證：`bash tool/build_ios_validation.sh`。正式簽章：先由已確認的 Apple 帳號在 Xcode Runner 設定 Team，填妥已忽略的 `.env.appstore.local`（格式見 `.env.appstore.example`），再於獲授權後執行 `bash tool/build_ios_release.sh`。腳本驗證 Runner 的 bundle ID、Team、iPhone 裝置與 production 公開設定，然後在隔離副本排除 integration_test 插件。輸出在 `build/release-ios/`，不覆寫原始測試依賴。未簽章產物不能上傳 App Store。
+本機編譯驗證：`bash tool/build_ios_validation.sh`。正式簽章：Runner 的 Debug／Profile／Release 已設定自動簽章與已確認的開發團隊；仍須在 Xcode → Settings → Apple Accounts 登入該團隊的 Apple 帳號，完成雙重驗證並取得有效簽章，填妥已忽略的 `.env.appstore.local`（格式見 `.env.appstore.example`），再於獲授權後執行 `bash tool/build_ios_release.sh`。腳本驗證 Runner 的 bundle ID、Team、iPhone 裝置與 production 公開設定，然後在隔離副本排除 integration_test 插件。輸出在 `build/release-ios/`，不覆寫原始測試依賴。未簽章產物不能上傳 App Store。
 
 直接 `flutter build web --release` 必須附正確 production defines；本機／CI 可以明確指定 `--dart-define=BUILD_ENV=validation`，此模式產物只供驗證。正式 Docker build 先執行相同 ReleaseConfig 檢查，placeholder 網域與缺少營運者資訊會失敗。
 

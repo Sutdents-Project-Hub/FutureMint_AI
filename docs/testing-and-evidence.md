@@ -1,5 +1,14 @@
 # 測試與證據
 
+## 上架接續與簽章配置（2026-10-03）
+
+分類：已核准的 iPhone 發布配置與上架現況更新。Runner Debug／Profile／Release 設定 `CODE_SIGN_STYLE=Automatic` 與已確認的 Team；沒有修改功能或資料流程。
+
+- `plutil -lint app/ios/Runner.xcodeproj/project.pbxproj` 通過；`xcodebuild -showBuildSettings` 確認 Automatic、Team、bundle `tw.futuremint.futuremintApp` 及 `TARGETED_DEVICE_FAMILY=1`。沒有執行 signed build 或產生憑證。
+- Xcode Apple Accounts 當時為空；已開啟 Apple Account 登入視窗，等待帳號持有人直接登入及雙重驗證。有效 signing identity 仍未取得。
+- 六張商店截圖上傳及重新載入驗證完成，見下節。App Privacy／年齡問卷尚未保存或發布；App 仍是準備提交。
+- 本次不涉及 Dart／API 行為，未重跑完整功能測試；以 Xcode 配置解析及實際 ASC 上傳驗證本次改動。原截圖提交 `964b385` 的 API、Flutter、iOS unsigned archive、Docker 及秘密掃描 CI 均成功；不能將該結果當作後續簽章配置的 signed archive 驗收。
+
 ## iPhone 商店截圖準備（2026-10-03）
 
 分類：使用者核准的上架素材製作與現況釐清；沒有變更 App 程式或介面。
@@ -9,7 +18,7 @@
 - 起初模擬器因磁碟空間不足無法安裝；只清理本專案可再生的 Android intermediates 與 Flutter build cache，保留原始碼及成品。重新啟動截圖用模擬器後成功安裝／操作。
 - 公開 production `GET /api/service-policy` 現在回報 `tw-service-age-15-in-app-v2`、`guardianConsentMethod=in-app`、privacy `2026-10-03-in-app-guardian-v2`、mail disabled／registration enabled／email verification disabled。此為公開能力的現況確認，未直接驗證 migration 012 或新監護人寫入交易。
 - 簽章仍為 0 valid identities；本輪尚無 signed archive／IPA、TestFlight 或正式送審。原生 iPhone target 不代表完全排除 iPad 相容模式。
-- ASC 截圖上傳目前受 Chrome 檔案存取／原生前景選檔流程阻擋；素材完成不等同上傳完成。App Privacy、年齡問卷、插圖權利、AI 上游資料用途與公開營運者仍需完成。
+- ASC 六張截圖已透過 Chrome 原生選檔器上傳，重新載入確認六張及 6.5 吋沿用 6.9 吋設定。App Privacy、年齡問卷、插圖權利、AI 上游資料用途與公開營運者仍需完成。
 
 本輪只新增素材與文件，未重跑既有 200 Flutter／210 backend 測試；程式與先前測試狀態相同。遠端 main 規則要求 PR、一位 reviewer 及最後 push 的他人核准；以 PR 交付，不能用帳號 bypass 取代審查。
 

@@ -20,7 +20,7 @@
 - 六張 JPEG 均確認尺寸、無 alpha；人工檢視沒有帳密、私人聯絡或真實交易資料，保留訪客提示。
 - 對照 [Apple 截圖規格](https://developer.apple.com/help/app-store-connect/reference/app-information/screenshot-specifications/) 與 ASC 6.9 吋欄位列出的 1320 × 2868。
 - 截圖完成不代表 signed build 或 TestFlight 驗收；這次是模擬器 debug 產物。最終送審 build 如有 UI 差異須重拍。
-- 上傳尚待 Chrome 原生選檔流程完成；擴充功能缺少檔案 URL 存取，未以放寬權限繞過。
+- 六張 JPEG 已透過 Chrome 原生選檔器上傳至 ASC 繁體中文 iPhone 6.9 吋欄位；重新載入後確認共六張，6.5 吋沿用 6.9 吋素材。未變更瀏覽器擴充功能的檔案存取權限。
 - 原有角色插圖權利查核仍依 [Design README](../README.md)；此次截圖不補足原素材作者／來源／商用授權紀錄。
 
 建置產物的 `UIDeviceFamily=[1]`，沒有 native iPad target。這不等同排除 iPad 的 iPhone 相容模式；沒有加入虛假的硬體限制。Mac／Vision Pro 供應已於 ASC 關閉。
