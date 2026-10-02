@@ -89,7 +89,7 @@ class _InvestmentLabScreenState extends State<InvestmentLabScreen> {
             const SizedBox(height: FutureMintTokens.space2),
             const PageHeading(
               kicker: 'FutureSeed 投資練習場',
-              title: '用虛擬資金，練習真實的投資決策',
+              title: '用虛擬資金練習投資決策',
               description: '使用盤後行情練習買賣、配置與面對波動；不連券商、不使用真錢，也不提供選股建議。',
               accent: FutureMintTokens.teal,
             ),

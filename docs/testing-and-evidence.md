@@ -1,5 +1,21 @@
 # 測試與證據
 
+## iPhone 逐頁排版優化（2026-10-02）
+
+分類：已核准範圍內的 UI 調整與缺陷修正。沿用既有品牌與插圖，調整首次設定／資格等待／Email 驗證的表單、支援及帳號分區；記帳生成草稿後收起鍵盤並捲至確認表單，下一筆輸入在後；手動草稿移除不適用的解析信心與 AI 建議文案；FutureSeed 控制與結果優先於投資練習入口，手機試算成功後直接捲至結果。另整理訂閱表單間距、設定支援入口，修復預算編輯彈窗因 intrinsic layout 失敗而空白，以及提醒卡在大字級下橫向溢位。
+
+| 驗證 | 本輪結果 |
+|---|---|
+| `flutter analyze --no-pub` | No issues found |
+| `flutter test --no-pub` | 162 tests 全數通過；後續增加 FutureSeed 試算結果可見位置檢查，重跑受影響的 FutureSeed／手機版面 10 tests 全數通過。包含首次設定日期操作與分區、草稿可見位置及確認前不保存、FutureSeed 控制優先、亮／暗主題手機版面、200% 字級提醒／訂閱／投資頁及預算彈窗實際開啟與取消 |
+| `dart --suppress-analytics format --output=none --set-exit-if-changed lib test integration_test` | 74 files，0 changed |
+| iPhone 17／iOS 26.4 模擬器 | debug build 成功；巡檢首頁、紀錄、記一筆與手動草稿、學習與陪讀、FutureSeed 與投資練習場、通知、訂閱編輯、設定、預算編輯、使用導覽／客服，以及合成登入／註冊／首次設定／資格聲明／Email 驗證狀態。已確認草稿前置與手動文案、首次設定日期高度、資格／Email 驗證分區、訂閱間距、預算彈窗恢復，以及亮／暗 FutureSeed 排列與深色試算結果自動顯示 |
+| 一般 App 入口恢復 | 從既有 FutureMint 公開頁分頁確認服務 origin，唯讀 `/api/health` 回應 `status=ok`。用 `lib/main.dart` 及暫存的公開網址設定重新 debug build（21.3 秒），恢復原登入的首次設定狀態；日期選擇開啟／取消正常，未提交表單 |
+
+畫面預覽使用記憶體合成資料與注入的測試帳號狀態，不保存真實帳號資料、不執行真實 AI／寄信／刪除。Mac 解鎖後已補驗手動草稿文案、首次設定日期高度及資格頁；另用深色訪客預覽確認首頁與 FutureSeed 試算結果。200% 字級結果來自 widget tests。家庭、AI 同意、所有錯誤及帳號狀態未逐一原生操作，真機與正式帳號寫入等完整流程仍待驗收。
+
+同步根／Client README、產品規格、專案概覽、Design README／MASTER、Demo 腳本與競賽證據說明。未修改 API、資料契約、權限或財務計算。本段只記錄本機畫面與 Flutter 驗證結果；commit、push、部署、正式簽章及 App Store 狀態以對應 Git 與發佈檢查紀錄為準。下方歷史結果各自對應原驗證狀態。
+
 ## 公開頁 App icon（2026-10-02）
 
 分類：使用者核准的品牌圖示替換。公開頁共用 header 改用 iPhone 的金幣嫩芽圖示；部署副本與 iOS 120px catalog SHA-256 一致，顯示版位維持 40px。新增同源 `/app-icon.png` 與 CSP `img-src self`，build 同時複製 public 資產至 dist，Docker build context 包含 public。

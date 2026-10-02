@@ -23,7 +23,7 @@ void main() {
     await tester.tap(find.text('進入投資練習場'));
     await tester.pumpAndSettle();
 
-    expect(find.text('用虛擬資金，練習真實的投資決策'), findsOneWidget);
+    expect(find.text('用虛擬資金練習投資決策'), findsOneWidget);
     expect(
       find.byKey(const Key('investment-lab-portfolio-hero')),
       findsOneWidget,

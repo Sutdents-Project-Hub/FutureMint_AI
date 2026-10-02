@@ -1,5 +1,7 @@
 import 'package:flutter/material.dart';
 import '../../state/session_controller.dart';
+import '../../design/soft_components.dart';
+import '../../design/tokens.dart';
 import '../../shared/public_links.dart';
 import '../settings/help_sheets.dart';
 
@@ -80,27 +82,58 @@ class AccountSafetyActions extends StatelessWidget {
   const AccountSafetyActions({super.key, required this.session});
   final SessionController session;
   @override
-  Widget build(BuildContext context) => Column(
-    crossAxisAlignment: CrossAxisAlignment.stretch,
-    children: [
-      const PrivacySupportLinks(),
-      TextButton.icon(
-        onPressed: () => showSupportBot(context),
-        icon: const Icon(Icons.support_agent),
-        label: const Text('使用說明與協助'),
-      ),
-      TextButton.icon(
-        onPressed: session.busy ? null : session.logout,
-        icon: const Icon(Icons.logout),
-        label: const Text('登出'),
-      ),
-      TextButton.icon(
-        onPressed: session.busy || !session.hasActiveToken
-            ? null
-            : () => showSessionDeleteAccount(context, session),
-        icon: const Icon(Icons.delete_outline),
-        label: const Text('刪除這個帳號'),
-      ),
-    ],
-  );
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      children: [
+        SoftCard(
+          color: theme.colorScheme.surface,
+          borderColor: theme.colorScheme.outlineVariant,
+          borderWidth: 1,
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text('支援與隱私', style: theme.textTheme.titleSmall),
+              const SizedBox(height: FutureMintTokens.space1),
+              const PrivacySupportLinks(),
+              Align(
+                alignment: Alignment.centerLeft,
+                child: TextButton.icon(
+                  onPressed: () => showSupportBot(context),
+                  icon: const Icon(Icons.support_agent),
+                  label: const Text('使用說明與協助'),
+                ),
+              ),
+            ],
+          ),
+        ),
+        const SizedBox(height: FutureMintTokens.space3),
+        Padding(
+          padding: const EdgeInsets.symmetric(
+            horizontal: FutureMintTokens.space2,
+          ),
+          child: Text('帳號安全', style: theme.textTheme.titleSmall),
+        ),
+        TextButton.icon(
+          onPressed: session.busy ? null : session.logout,
+          icon: const Icon(Icons.logout),
+          label: const Text('登出'),
+          style: TextButton.styleFrom(alignment: Alignment.centerLeft),
+        ),
+        const Divider(height: FutureMintTokens.space2),
+        TextButton.icon(
+          onPressed: session.busy || !session.hasActiveToken
+              ? null
+              : () => showSessionDeleteAccount(context, session),
+          icon: const Icon(Icons.delete_outline),
+          label: const Text('刪除這個帳號'),
+          style: TextButton.styleFrom(
+            alignment: Alignment.centerLeft,
+            foregroundColor: FutureMintTokens.dangerInk(context),
+          ),
+        ),
+      ],
+    );
+  }
 }

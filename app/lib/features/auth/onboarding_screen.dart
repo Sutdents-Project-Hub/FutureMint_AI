@@ -77,7 +77,7 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
                       child: Column(
                         crossAxisAlignment: CrossAxisAlignment.stretch,
                         children: [
-                          Text('這個帳號怎麼使用？', style: theme.textTheme.titleMedium),
+                          Text('使用角色', style: theme.textTheme.titleMedium),
                           const SizedBox(height: FutureMintTokens.space2),
                           const Text('角色只調整內容與說明角度，不會開放查看另一個帳號的明細。'),
                           const SizedBox(height: FutureMintTokens.space3),
@@ -146,6 +146,8 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
                             },
                           ),
                           const SizedBox(height: FutureMintTokens.space5),
+                          Text('預算與目標', style: theme.textTheme.titleMedium),
+                          const SizedBox(height: FutureMintTokens.space3),
                           TextFormField(
                             controller: _monthlyBudget,
                             keyboardType: TextInputType.number,
@@ -181,26 +183,45 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
                                 : '請填入大於 0 的目標金額。',
                           ),
                           const SizedBox(height: FutureMintTokens.space4),
-                          ListTile(
-                            contentPadding: EdgeInsets.zero,
-                            title: const Text('希望完成的日期'),
-                            subtitle: Text(
-                              '${_goalDate.year}/${_goalDate.month}/${_goalDate.day}',
-                            ),
-                            trailing: const Icon(Icons.calendar_month_outlined),
-                            onTap: () async {
-                              final selected = await showDatePicker(
-                                context: context,
-                                initialDate: _goalDate,
-                                firstDate: DateTime.now(),
-                                lastDate: DateTime.now().add(
-                                  const Duration(days: 3650),
+                          Semantics(
+                            button: true,
+                            label:
+                                '希望完成的日期，${_goalDate.year}年${_goalDate.month}月${_goalDate.day}日',
+                            child: InkWell(
+                              borderRadius: BorderRadius.circular(
+                                FutureMintTokens.radiusSmall,
+                              ),
+                              onTap: () async {
+                                final selected = await showDatePicker(
+                                  context: context,
+                                  initialDate: _goalDate,
+                                  firstDate: DateTime.now(),
+                                  lastDate: DateTime.now().add(
+                                    const Duration(days: 3650),
+                                  ),
+                                );
+                                if (selected != null && mounted) {
+                                  setState(() => _goalDate = selected);
+                                }
+                              },
+                              child: ConstrainedBox(
+                                constraints: const BoxConstraints(
+                                  minHeight: FutureMintTokens.controlHeight,
                                 ),
-                              );
-                              if (selected != null && mounted) {
-                                setState(() => _goalDate = selected);
-                              }
-                            },
+                                child: InputDecorator(
+                                  isEmpty: false,
+                                  decoration: const InputDecoration(
+                                    labelText: '希望完成的日期',
+                                    suffixIcon: Icon(
+                                      Icons.calendar_month_outlined,
+                                    ),
+                                  ),
+                                  child: Text(
+                                    '${_goalDate.year}/${_goalDate.month}/${_goalDate.day}',
+                                  ),
+                                ),
+                              ),
+                            ),
                           ),
                           if (session.message != null)
                             Text(
@@ -217,11 +238,12 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
                             icon: const Icon(Icons.arrow_forward_rounded),
                             label: Text(session.busy ? '正在儲存…' : '儲存並開始使用'),
                           ),
-                          AccountSafetyActions(session: session),
                         ],
                       ),
                     ),
                   ),
+                  const SizedBox(height: FutureMintTokens.space4),
+                  AccountSafetyActions(session: session),
                 ],
               ),
             ),

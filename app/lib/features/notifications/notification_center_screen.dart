@@ -140,7 +140,11 @@ class _NoticeCard extends StatelessWidget {
                       const SizedBox(height: FutureMintTokens.space1),
                       Text(notice.message),
                       const SizedBox(height: FutureMintTokens.space3),
-                      Row(
+                      Wrap(
+                        alignment: WrapAlignment.spaceBetween,
+                        crossAxisAlignment: WrapCrossAlignment.center,
+                        spacing: FutureMintTokens.space3,
+                        runSpacing: FutureMintTokens.space2,
                         children: [
                           if (notice.amountMinor != null)
                             MoneyText(
@@ -149,18 +153,22 @@ class _NoticeCard extends StatelessWidget {
                                 fontWeight: FontWeight.w800,
                               ),
                             ),
-                          const Spacer(),
-                          Text(
-                            '前往查看',
-                            style: theme.textTheme.labelLarge?.copyWith(
-                              color: theme.colorScheme.primary,
-                            ),
-                          ),
-                          const SizedBox(width: FutureMintTokens.space1),
-                          Icon(
-                            Icons.arrow_forward_rounded,
-                            size: 18,
-                            color: theme.colorScheme.primary,
+                          Row(
+                            mainAxisSize: MainAxisSize.min,
+                            children: [
+                              Text(
+                                '前往查看',
+                                style: theme.textTheme.labelLarge?.copyWith(
+                                  color: theme.colorScheme.primary,
+                                ),
+                              ),
+                              const SizedBox(width: FutureMintTokens.space1),
+                              Icon(
+                                Icons.arrow_forward_rounded,
+                                size: 18,
+                                color: theme.colorScheme.primary,
+                              ),
+                            ],
                           ),
                         ],
                       ),

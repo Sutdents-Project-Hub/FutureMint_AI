@@ -21,6 +21,10 @@ void main() {
     await tester.tap(find.text('未來').last);
     await tester.pumpAndSettle();
     expect(find.byKey(const Key('future-seed-controls')), findsOneWidget);
+    expect(
+      tester.getTopLeft(find.byKey(const Key('future-seed-controls'))).dy,
+      lessThan(tester.getTopLeft(find.text('進入投資練習場')).dy),
+    );
     final sliders = tester.widgetList<Slider>(find.byType(Slider)).toList();
     expect(sliders, hasLength(3));
     expect(sliders.every((slider) => slider.divisions == null), isTrue);
@@ -51,6 +55,9 @@ void main() {
     await tester.tap(find.text('開始教育試算'));
     await tester.pumpAndSettle();
 
+    final resultHeading = tester.getRect(find.text('時間與風險曲線'));
+    expect(resultHeading.top, greaterThanOrEqualTo(0));
+    expect(resultHeading.bottom, lessThanOrEqualTo(812));
     expect(find.text('投入本金'), findsOneWidget);
     expect(find.text('假設成長'), findsOneWidget);
     expect(find.text('期末可能金額'), findsOneWidget);

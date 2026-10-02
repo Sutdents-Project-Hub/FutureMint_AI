@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import '../../core/launch_models.dart';
 import '../../core/models.dart';
+import '../../design/tokens.dart';
 import '../../state/app_controller.dart';
 
 Future<void> showSubscriptionEditor(
@@ -59,12 +60,14 @@ Future<void> showSubscriptionEditor(
               const Text('訂閱承諾與實際付款分開。停用追蹤不會刪除既有付款。'),
               if (legacy != null)
                 const Text('這筆舊付款將保留；請明確確認方案與下一次續訂日期，不會再次記入付款。'),
+              const SizedBox(height: FutureMintTokens.space4),
               TextFormField(
                 controller: name,
                 decoration: const InputDecoration(labelText: '訂閱名稱'),
                 validator: (v) =>
                     v == null || v.trim().isEmpty ? '請填入名稱。' : null,
               ),
+              const SizedBox(height: FutureMintTokens.space4),
               TextFormField(
                 controller: amount,
                 keyboardType: TextInputType.number,
@@ -72,6 +75,7 @@ Future<void> showSubscriptionEditor(
                 validator: (v) =>
                     (int.tryParse(v ?? '') ?? 0) > 0 ? null : '請填入正確金額。',
               ),
+              const SizedBox(height: FutureMintTokens.space4),
               DropdownButtonFormField<BillingCycle>(
                 initialValue: cycle,
                 decoration: const InputDecoration(labelText: '計費週期'),
@@ -87,6 +91,7 @@ Future<void> showSubscriptionEditor(
                 ],
                 onChanged: busy ? null : (v) => update(() => cycle = v!),
               ),
+              const SizedBox(height: FutureMintTokens.space3),
               ListTile(
                 contentPadding: EdgeInsets.zero,
                 title: const Text('續訂日期／原始計費日'),
@@ -120,6 +125,7 @@ Future<void> showSubscriptionEditor(
                   error!,
                   style: TextStyle(color: Theme.of(context).colorScheme.error),
                 ),
+              const SizedBox(height: FutureMintTokens.space3),
               FilledButton(
                 onPressed: busy
                     ? null

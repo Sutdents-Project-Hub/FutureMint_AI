@@ -7,6 +7,37 @@ import 'package:futuremint_app/features/capture/draft_editor.dart';
 import '../widget_test.dart';
 
 void main() {
+  testWidgets('manual draft becomes visible before another input on a phone', (
+    tester,
+  ) async {
+    final controller = await createController();
+    tester.view.physicalSize = const Size(375, 812);
+    tester.view.devicePixelRatio = 1;
+    addTearDown(tester.view.resetPhysicalSize);
+    addTearDown(tester.view.resetDevicePixelRatio);
+    await tester.pumpWidget(FutureMintApp(controller: controller));
+    await tester.pumpAndSettle();
+    await tester.tap(find.byType(NavigationDestination).at(2));
+    await tester.pumpAndSettle();
+    await tester.ensureVisible(find.byKey(const Key('manual-capture')));
+    await tester.tap(find.byKey(const Key('manual-capture')));
+    await tester.pumpAndSettle();
+    final draft = find.byKey(const Key('capture-draft-focus'));
+    final heading = tester.getRect(find.text('確認草稿'));
+    expect(heading.top, greaterThanOrEqualTo(0));
+    expect(heading.bottom, lessThan(700));
+    expect(
+      tester.getTopLeft(draft).dy,
+      lessThan(tester.getTopLeft(find.byKey(const Key('capture-hero'))).dy),
+    );
+    expect(find.text('再記一筆'), findsOneWidget);
+    expect(find.bySemanticsLabel('手動草稿，尚未保存'), findsOneWidget);
+    expect(find.text('需要／想要分類'), findsOneWidget);
+    expect(find.textContaining('解析信心'), findsNothing);
+    expect(controller.lastSavedEvent, isNull);
+    expect(tester.takeException(), isNull);
+  });
+
   testWidgets('capture stays a draft until the user confirms it', (
     tester,
   ) async {

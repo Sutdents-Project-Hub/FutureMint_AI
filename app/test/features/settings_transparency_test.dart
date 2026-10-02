@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:futuremint_app/auth/auth_models.dart';
+import 'package:futuremint_app/app/future_mint_app.dart';
 import 'package:futuremint_app/core/models.dart';
 import 'package:futuremint_app/data/api_repository.dart';
 import 'package:futuremint_app/features/settings/settings_sheet.dart';
@@ -9,6 +10,38 @@ import 'package:provider/provider.dart';
 import '../widget_test.dart';
 
 void main() {
+  for (final theme in [ThemeMode.light, ThemeMode.dark]) {
+    testWidgets('profile dialog opens and can be cancelled on a phone '
+        '(${theme.name}, 2x text)', (tester) async {
+      final controller = await createController();
+      controller.setThemeMode(theme);
+      final initialProfile = controller.profile;
+      tester.view.physicalSize = const Size(375, 812);
+      tester.view.devicePixelRatio = 1;
+      tester.platformDispatcher.textScaleFactorTestValue = 2;
+      addTearDown(tester.view.resetPhysicalSize);
+      addTearDown(tester.view.resetDevicePixelRatio);
+      addTearDown(tester.platformDispatcher.clearTextScaleFactorTestValue);
+      await tester.pumpWidget(FutureMintApp(controller: controller));
+      await tester.pumpAndSettle();
+      await tester.tap(find.byTooltip('設定'));
+      await tester.pumpAndSettle();
+      await tester.ensureVisible(find.text('編輯預算與目標'));
+      await tester.tap(find.text('編輯預算與目標'));
+      await tester.pumpAndSettle();
+      expect(tester.takeException(), isNull);
+      expect(find.text('設定預算與目標'), findsOneWidget);
+      expect(find.byType(TextField), findsNWidgets(4));
+      await tester.ensureVisible(find.text('目標日期'));
+      await tester.pumpAndSettle();
+      expect(tester.takeException(), isNull);
+      await tester.tap(find.text('取消'));
+      await tester.pumpAndSettle();
+      expect(find.text('設定預算與目標'), findsNothing);
+      expect(controller.profile, same(initialProfile));
+    });
+  }
+
   testWidgets('consent failure stays visible inside the open disclosure', (
     tester,
   ) async {

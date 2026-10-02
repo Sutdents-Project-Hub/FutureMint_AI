@@ -225,6 +225,7 @@ class _SessionRecoveryScreen extends StatelessWidget {
                     onPressed: busy ? null : onUseAnotherAccount,
                     child: const Text('改用其他帳號'),
                   ),
+                  const SizedBox(height: 16),
                   AccountSafetyActions(session: session),
                 ],
               ),

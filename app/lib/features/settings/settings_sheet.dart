@@ -253,8 +253,8 @@ class _SettingsSheet extends StatelessWidget {
       builder: (dialogContext) => StatefulBuilder(
         builder: (context, setDialogState) => AlertDialog(
           title: const Text('設定預算與目標'),
-          content: ConstrainedBox(
-            constraints: const BoxConstraints(maxWidth: 480),
+          content: SizedBox(
+            width: 480,
             child: SingleChildScrollView(
               child: Column(
                 mainAxisSize: MainAxisSize.min,
@@ -510,16 +510,21 @@ class _SettingsSheet extends StatelessWidget {
                         ),
                       ),
                       const SizedBox(height: FutureMintTokens.space3),
-                      OutlinedButton.icon(
-                        onPressed: () => showAppWalkthrough(context),
-                        icon: const Icon(Icons.route_outlined),
-                        label: const Text('使用步驟介紹'),
-                      ),
-                      const SizedBox(height: FutureMintTokens.space3),
-                      OutlinedButton.icon(
-                        onPressed: () => showSupportBot(context),
-                        icon: const Icon(Icons.support_agent_rounded),
-                        label: const Text('機器人服務諮詢'),
+                      Wrap(
+                        spacing: FutureMintTokens.space2,
+                        runSpacing: FutureMintTokens.space1,
+                        children: [
+                          TextButton.icon(
+                            onPressed: () => showAppWalkthrough(context),
+                            icon: const Icon(Icons.route_outlined),
+                            label: const Text('使用步驟介紹'),
+                          ),
+                          TextButton.icon(
+                            onPressed: () => showSupportBot(context),
+                            icon: const Icon(Icons.support_agent_rounded),
+                            label: const Text('機器人服務諮詢'),
+                          ),
+                        ],
                       ),
                       const SizedBox(height: FutureMintTokens.space3),
                       if (!guest) ...[

@@ -15,10 +15,22 @@ class FutureSeedScreen extends StatefulWidget {
 }
 
 class _FutureSeedScreenState extends State<FutureSeedScreen> {
+  final _resultsKey = GlobalKey();
   double initial = 4200;
   double monthly = 500;
   double years = 5;
   InvestmentScenarioId selectedId = InvestmentScenarioId.balanced;
+
+  void _showResults() {
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (!mounted) return;
+      final resultsContext = _resultsKey.currentContext;
+      if (resultsContext != null) {
+        Scrollable.ensureVisible(resultsContext, alignment: 0);
+      }
+    });
+  }
+
   @override
   Widget build(BuildContext context) {
     final controller = context.watch<AppController>();
@@ -46,10 +58,6 @@ class _FutureSeedScreenState extends State<FutureSeedScreen> {
                   accent: FutureMintTokens.teal,
                 ),
                 const _FutureSeedDecorationStrip(),
-                const SizedBox(height: FutureMintTokens.space5),
-                _FutureSeedEntryCard(
-                  onOpen: () => context.go('/future-seed/investment-lab'),
-                ),
                 const SizedBox(height: FutureMintTokens.space5),
                 LayoutBuilder(
                   builder: (context, constraints) {
@@ -85,9 +93,15 @@ class _FutureSeedScreenState extends State<FutureSeedScreen> {
                                 monthlyContributionMinor: monthly.round(),
                                 years: years.round(),
                               );
+                              if (!wide &&
+                                  controller.errorMessage == null &&
+                                  controller.investmentSimulation != null) {
+                                _showResults();
+                              }
                             },
                     );
                     final results = _SimulationResults(
+                      key: _resultsKey,
                       simulation: simulation,
                       selectedId: selectedId,
                       coachReply: controller.coachReply,
@@ -119,6 +133,10 @@ class _FutureSeedScreenState extends State<FutureSeedScreen> {
                       ],
                     );
                   },
+                ),
+                const SizedBox(height: FutureMintTokens.space5),
+                _FutureSeedEntryCard(
+                  onOpen: () => context.go('/future-seed/investment-lab'),
                 ),
               ],
             ),
@@ -487,6 +505,7 @@ class _SliderField extends StatelessWidget {
 
 class _SimulationResults extends StatelessWidget {
   const _SimulationResults({
+    super.key,
     required this.simulation,
     required this.selectedId,
     required this.coachReply,

@@ -129,84 +129,110 @@ class EmailVerificationScreen extends StatelessWidget {
             padding: EdgeInsets.all(FutureMintTokens.pageGutter(context)),
             child: ConstrainedBox(
               constraints: const BoxConstraints(maxWidth: 520),
-              child: SoftCard(
-                color: theme.brightness == Brightness.dark
-                    ? FutureMintTokens.darkSurfaceRaised
-                    : FutureMintTokens.lavenderSoft,
-                borderWidth: 1,
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.stretch,
-                  children: [
-                    const Icon(Icons.mark_email_unread_outlined, size: 48),
-                    const SizedBox(height: FutureMintTokens.space4),
-                    Text(
-                      '請先驗證你的電子郵件',
-                      textAlign: TextAlign.center,
-                      style: theme.textTheme.headlineSmall,
-                    ),
-                    const SizedBox(height: FutureMintTokens.space2),
-                    Text(
-                      '請查看 $email 的驗證信。若未收到，可重新寄送；完成信件中的步驟後，回到 App 按「我已完成驗證」。',
-                      textAlign: TextAlign.center,
-                    ),
-                    if (session.message != null) ...[
-                      const SizedBox(height: FutureMintTokens.space3),
-                      Semantics(
-                        liveRegion: true,
-                        child: Text(
-                          session.message!,
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.stretch,
+                children: [
+                  SoftCard(
+                    color: theme.brightness == Brightness.dark
+                        ? FutureMintTokens.darkSurfaceRaised
+                        : FutureMintTokens.lavenderSoft,
+                    borderWidth: 1,
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.stretch,
+                      children: [
+                        const Icon(Icons.mark_email_unread_outlined, size: 48),
+                        const SizedBox(height: FutureMintTokens.space4),
+                        Text(
+                          '請先驗證你的電子郵件',
                           textAlign: TextAlign.center,
-                          style: TextStyle(color: theme.colorScheme.error),
+                          style: theme.textTheme.headlineSmall,
                         ),
-                      ),
-                    ],
-                    if (session.notice != null) ...[
-                      const SizedBox(height: FutureMintTokens.space3),
-                      Semantics(
-                        liveRegion: true,
-                        child: Text(
-                          session.notice!,
+                        const SizedBox(height: FutureMintTokens.space2),
+                        Text(
+                          '請查看 $email 的驗證信。若未收到，可重新寄送；完成信件中的步驟後，回到 App 按「我已完成驗證」。',
                           textAlign: TextAlign.center,
                         ),
-                      ),
-                    ],
-                    const SizedBox(height: FutureMintTokens.space5),
-                    FilledButton.icon(
-                      onPressed: session.busy
-                          ? null
-                          : session.refreshEmailVerification,
-                      icon: const Icon(Icons.verified_outlined),
-                      label: Text(session.busy ? '正在確認…' : '我已完成驗證'),
+                        if (session.message != null) ...[
+                          const SizedBox(height: FutureMintTokens.space3),
+                          Semantics(
+                            liveRegion: true,
+                            child: Text(
+                              session.message!,
+                              textAlign: TextAlign.center,
+                              style: TextStyle(color: theme.colorScheme.error),
+                            ),
+                          ),
+                        ],
+                        if (session.notice != null) ...[
+                          const SizedBox(height: FutureMintTokens.space3),
+                          Semantics(
+                            liveRegion: true,
+                            child: Text(
+                              session.notice!,
+                              textAlign: TextAlign.center,
+                            ),
+                          ),
+                        ],
+                        const SizedBox(height: FutureMintTokens.space5),
+                        FilledButton.icon(
+                          onPressed: session.busy
+                              ? null
+                              : session.refreshEmailVerification,
+                          icon: const Icon(Icons.verified_outlined),
+                          label: Text(session.busy ? '正在確認…' : '我已完成驗證'),
+                        ),
+                        const SizedBox(height: FutureMintTokens.space3),
+                        OutlinedButton.icon(
+                          onPressed: session.busy
+                              ? null
+                              : session.requestEmailVerification,
+                          icon: const Icon(Icons.forward_to_inbox_outlined),
+                          label: const Text('重新寄驗證信'),
+                        ),
+                        const SizedBox(height: FutureMintTokens.space3),
+                      ],
                     ),
-                    const SizedBox(height: FutureMintTokens.space3),
-                    OutlinedButton.icon(
-                      onPressed: session.busy
-                          ? null
-                          : session.requestEmailVerification,
-                      icon: const Icon(Icons.forward_to_inbox_outlined),
-                      label: const Text('重新寄驗證信'),
+                  ),
+                  const SizedBox(height: FutureMintTokens.space4),
+                  SoftCard(
+                    borderWidth: 1,
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text('支援與隱私', style: theme.textTheme.titleSmall),
+                        const SizedBox(height: FutureMintTokens.space1),
+                        const PrivacySupportLinks(),
+                        TextButton.icon(
+                          onPressed: () => showSupportBot(context),
+                          icon: const Icon(Icons.support_agent),
+                          label: const Text('使用說明與協助'),
+                        ),
+                      ],
                     ),
-                    const SizedBox(height: FutureMintTokens.space3),
-                    const PrivacySupportLinks(),
-                    TextButton.icon(
-                      onPressed: () => showSupportBot(context),
-                      icon: const Icon(Icons.support_agent),
-                      label: const Text('使用說明與協助'),
+                  ),
+                  const SizedBox(height: FutureMintTokens.space3),
+                  Text('帳號安全', style: theme.textTheme.titleSmall),
+                  TextButton.icon(
+                    style: TextButton.styleFrom(
+                      alignment: Alignment.centerLeft,
                     ),
-                    TextButton.icon(
-                      onPressed: session.busy ? null : session.logout,
-                      icon: const Icon(Icons.logout_rounded),
-                      label: const Text('改用其他帳號登入'),
+                    onPressed: session.busy ? null : session.logout,
+                    icon: const Icon(Icons.logout_rounded),
+                    label: const Text('改用其他帳號登入'),
+                  ),
+                  const Divider(height: FutureMintTokens.space2),
+                  TextButton.icon(
+                    style: TextButton.styleFrom(
+                      alignment: Alignment.centerLeft,
+                      foregroundColor: FutureMintTokens.dangerInk(context),
                     ),
-                    TextButton.icon(
-                      onPressed: session.busy
-                          ? null
-                          : () => _deleteAccount(context, session),
-                      icon: const Icon(Icons.delete_outline),
-                      label: const Text('刪除這個帳號'),
-                    ),
-                  ],
-                ),
+                    onPressed: session.busy
+                        ? null
+                        : () => _deleteAccount(context, session),
+                    icon: const Icon(Icons.delete_outline),
+                    label: const Text('刪除這個帳號'),
+                  ),
+                ],
               ),
             ),
           ),

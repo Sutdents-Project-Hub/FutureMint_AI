@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:go_router/go_router.dart';
 import 'package:futuremint_app/app/future_mint_app.dart';
 
 import '../widget_test.dart';
@@ -16,6 +17,44 @@ void main() {
 
   for (final theme in [ThemeMode.light, ThemeMode.dark]) {
     for (final scale in [1.0, 2.0]) {
+      testWidgets('secondary pages and subscription form stay usable '
+          '(${theme.name}, ${scale}x text)', (tester) async {
+        final controller = await createController();
+        controller.setThemeMode(theme);
+        tester.view.physicalSize = const Size(375, 812);
+        tester.view.devicePixelRatio = 1;
+        tester.platformDispatcher.textScaleFactorTestValue = scale;
+        addTearDown(tester.view.resetPhysicalSize);
+        addTearDown(tester.view.resetDevicePixelRatio);
+        addTearDown(tester.platformDispatcher.clearTextScaleFactorTestValue);
+        await tester.pumpWidget(FutureMintApp(controller: controller));
+        await tester.pumpAndSettle();
+        final router = GoRouter.of(tester.element(find.byType(NavigationBar)));
+        for (final route in [
+          '/notifications',
+          '/subscriptions',
+          '/future-seed/investment-lab',
+        ]) {
+          router.go(route);
+          await tester.pumpAndSettle();
+          expect(tester.takeException(), isNull, reason: route);
+        }
+        router.go('/subscriptions');
+        await tester.pumpAndSettle();
+        await tester.ensureVisible(find.text('新增訂閱'));
+        await tester.tap(find.text('新增訂閱'));
+        await tester.pumpAndSettle();
+        expect(find.text('訂閱名稱'), findsOneWidget);
+        expect(find.text('每期自己的負擔（元）'), findsOneWidget);
+        final fields = find.byType(TextFormField);
+        final first = tester.getRect(fields.at(0));
+        final second = tester.getRect(fields.at(1));
+        expect(second.top - first.bottom, greaterThanOrEqualTo(16));
+        await tester.ensureVisible(find.text('確認儲存'));
+        await tester.pumpAndSettle();
+        expect(tester.takeException(), isNull);
+      });
+
       testWidgets('phone destinations lay out without overflow '
           '(${theme.name}, ${scale}x text)', (tester) async {
         final controller = await createController();

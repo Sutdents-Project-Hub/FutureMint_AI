@@ -61,6 +61,8 @@ class _DraftEditorState extends State<DraftEditor> {
   int? get parsedAmount =>
       int.tryParse(amountController.text.replaceAll(',', '').trim());
 
+  bool get isManual => widget.draft.source == CaptureSource.manual;
+
   @override
   void dispose() {
     amountController.dispose();
@@ -161,7 +163,11 @@ class _DraftEditorState extends State<DraftEditor> {
   Widget build(BuildContext context) => Semantics(
     container: true,
     explicitChildNodes: true,
-    label: widget.editing ? '編輯已保存的交易' : 'AI 已整理草稿，尚未保存',
+    label: widget.editing
+        ? '編輯已保存的交易'
+        : widget.draft.source == CaptureSource.manual
+        ? '手動草稿，尚未保存'
+        : 'AI 已整理草稿，尚未保存',
     child: SoftCard(
       color: Theme.of(context).brightness == Brightness.dark
           ? FutureMintTokens.darkSurfaceRaised
@@ -195,7 +201,11 @@ class _DraftEditorState extends State<DraftEditor> {
           ),
           const SizedBox(height: FutureMintTokens.space2),
           Text(
-            widget.editing ? '修改後會立即重新計算預算、分析與訂閱比較。' : '解析不會自動存檔，請確認內容後再記下。',
+            widget.editing
+                ? '修改後會立即重新計算預算、分析與訂閱比較。'
+                : isManual
+                ? '請確認內容，按下「確認並記下」後才會保存。'
+                : '解析不會自動存檔，請確認內容後再記下。',
             style: TextStyle(
               color: Theme.of(context).colorScheme.onSurfaceVariant,
             ),
@@ -203,17 +213,21 @@ class _DraftEditorState extends State<DraftEditor> {
           if (!widget.editing) ...[
             const SizedBox(height: FutureMintTokens.space2),
             Text(
-              '你可以修改每個欄位。確認後會依你的版本更新分析；這次修正不會自動拿去訓練 AI。',
+              isManual
+                  ? '你可以修改每個欄位。確認後會依你的版本更新分析。'
+                  : '你可以修改每個欄位。確認後會依你的版本更新分析；這次修正不會自動拿去訓練 AI。',
               style: Theme.of(context).textTheme.bodySmall?.copyWith(
                 color: Theme.of(context).colorScheme.onSurfaceVariant,
               ),
             ),
-            const SizedBox(height: FutureMintTokens.space2),
-            Text(
-              '解析信心 ${(widget.draft.confidence * 100).round()}%'
-              '${widget.draft.missingFields.isEmpty ? '' : ' · 待補：${widget.draft.missingFields.map(_missingFieldLabel).join('、')}'}',
-              style: Theme.of(context).textTheme.bodySmall,
-            ),
+            if (!isManual) ...[
+              const SizedBox(height: FutureMintTokens.space2),
+              Text(
+                '解析信心 ${(widget.draft.confidence * 100).round()}%'
+                '${widget.draft.missingFields.isEmpty ? '' : ' · 待補：${widget.draft.missingFields.map(_missingFieldLabel).join('、')}'}',
+                style: Theme.of(context).textTheme.bodySmall,
+              ),
+            ],
           ],
           const SizedBox(height: FutureMintTokens.space5),
           Text('交易基本資料', style: Theme.of(context).textTheme.titleMedium),
@@ -360,10 +374,15 @@ class _DraftEditorState extends State<DraftEditor> {
           ],
           if (eventType != MoneyEventType.income) ...[
             const SizedBox(height: FutureMintTokens.space5),
-            Text('AI 需要／想要建議', style: Theme.of(context).textTheme.titleMedium),
+            Text(
+              isManual ? '需要／想要分類' : 'AI 需要／想要建議',
+              style: Theme.of(context).textTheme.titleMedium,
+            ),
             const SizedBox(height: FutureMintTokens.space2),
             Text(
-              widget.draft.intentReason ?? 'AI 無法確定當時情境，最後由你決定。',
+              isManual
+                  ? '依照當時的情境選擇，也可以先保留不確定。'
+                  : widget.draft.intentReason ?? 'AI 無法確定當時情境，最後由你決定。',
               style: TextStyle(
                 color: Theme.of(context).colorScheme.onSurfaceVariant,
               ),
