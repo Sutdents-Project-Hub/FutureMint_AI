@@ -66,12 +66,12 @@ export class PostgresEligibilityStore implements EligibilityStore {
     const r = rows[0];
     return r ? { userId: r.user_id as string, ageBand: r.age_band as EligibilityRecord["ageBand"], policyVersion: r.policy_version as string,
       declaredAt: timestamp(r.declared_at)!, guardianStatus: r.guardian_status as EligibilityRecord["guardianStatus"],
-      guardianEmail: r.guardian_email as string | null, guardianApprovedAt: timestamp(r.guardian_approved_at), guardianWithdrawnAt: timestamp(r.guardian_withdrawn_at), revision: Number(r.revision), aiConsentRevision: r.ai_consent_revision == null ? null : Number(r.ai_consent_revision) } : null;
+      guardianEmail: r.guardian_email as string | null, guardianConsentMethod: (r.guardian_consent_method as EligibilityRecord["guardianConsentMethod"]) ?? null, guardianApprovedAt: timestamp(r.guardian_approved_at), guardianWithdrawnAt: timestamp(r.guardian_withdrawn_at), revision: Number(r.revision), aiConsentRevision: r.ai_consent_revision == null ? null : Number(r.ai_consent_revision) } : null;
   }
   async save(r: EligibilityRecord): Promise<void> {
-    await this.client.query(`INSERT INTO service_eligibilities (user_id,age_band,policy_version,declared_at,guardian_status,guardian_email,guardian_approved_at,guardian_withdrawn_at,revision,ai_consent_revision)
-      VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10) ON CONFLICT (user_id) DO UPDATE SET age_band=EXCLUDED.age_band,policy_version=EXCLUDED.policy_version,declared_at=EXCLUDED.declared_at,guardian_status=EXCLUDED.guardian_status,guardian_email=EXCLUDED.guardian_email,guardian_approved_at=EXCLUDED.guardian_approved_at,guardian_withdrawn_at=EXCLUDED.guardian_withdrawn_at,revision=EXCLUDED.revision,ai_consent_revision=EXCLUDED.ai_consent_revision`,
-      [r.userId,r.ageBand,r.policyVersion,r.declaredAt,r.guardianStatus,r.guardianEmail,r.guardianApprovedAt,r.guardianWithdrawnAt,r.revision,r.aiConsentRevision]);
+    await this.client.query(`INSERT INTO service_eligibilities (user_id,age_band,policy_version,declared_at,guardian_status,guardian_email,guardian_approved_at,guardian_withdrawn_at,revision,ai_consent_revision,guardian_consent_method)
+      VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11) ON CONFLICT (user_id) DO UPDATE SET age_band=EXCLUDED.age_band,policy_version=EXCLUDED.policy_version,declared_at=EXCLUDED.declared_at,guardian_status=EXCLUDED.guardian_status,guardian_email=EXCLUDED.guardian_email,guardian_approved_at=EXCLUDED.guardian_approved_at,guardian_withdrawn_at=EXCLUDED.guardian_withdrawn_at,revision=EXCLUDED.revision,ai_consent_revision=EXCLUDED.ai_consent_revision,guardian_consent_method=EXCLUDED.guardian_consent_method`,
+      [r.userId,r.ageBand,r.policyVersion,r.declaredAt,r.guardianStatus,r.guardianEmail,r.guardianApprovedAt,r.guardianWithdrawnAt,r.revision,r.aiConsentRevision,r.guardianConsentMethod ?? null]);
   }
   async findToken(hash: string): Promise<GuardianActionToken | null> {
     const { rows } = await this.client.query("SELECT * FROM guardian_action_tokens WHERE token_hash = $1", [hash]);

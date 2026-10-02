@@ -35,6 +35,21 @@ describe.skipIf(!connectionString)("isolated PostgreSQL guardian eligibility", (
     second = new AuthService(new PostgresRepository(otherPool), undefined, { eligibilityStore: new PostgresEligibilityStore(otherPool), requireEligibility: true, mailer });
   }, 30000);
   afterAll(async () => { await Promise.all([pool?.end(), otherPool?.end()]); if (admin) { await admin.query(`DROP SCHEMA IF EXISTS ${schema} CASCADE`); await admin.end(); } });
+  it("persists in-app declarations without SMTP across independent PostgreSQL pools", async () => {
+    const noMail = new AuthService(repository, undefined, { eligibilityStore: store, requireEligibility: true });
+    const another = new AuthService(new PostgresRepository(otherPool), undefined, { eligibilityStore: new PostgresEligibilityStore(otherPool), requireEligibility: true });
+    const { account } = await noMail.register({ email: `${randomUUID()}@example.invalid`, password: "synthetic-test2026", ageDeclaration: { ageBand: "15-17", policyVersion: servicePolicyVersion, accepted: true } });
+    const input = { policyVersion: servicePolicyVersion, adult: true, legalGuardian: true, accepted: true };
+    await Promise.all([noMail.confirmGuardianInApp(account.id, input), another.confirmGuardianInApp(account.id, input)]);
+    const approved = (await pool.query("SELECT * FROM service_eligibilities WHERE user_id=$1", [account.id])).rows[0];
+    expect(approved).toMatchObject({ guardian_status: "approved", guardian_email: null, guardian_consent_method: "in-app", revision: 2, ai_consent_revision: null });
+    expect(await another.getEligibility(account.id)).toMatchObject({ guardianConsentMethod: "in-app", canWrite: true });
+    await noMail.setAiConsent(account.id, { granted: true, policyVersion: aiConsentPolicyVersion });
+    await another.withdrawGuardianByAccount(account.id); await noMail.confirmGuardianInApp(account.id, input);
+    expect(await another.getAiConsent(account.id)).toMatchObject({ granted: false });
+    expect((await store.get(account.id))?.revision).toBe(4);
+    expect((await repository.findAccountById(account.id))?.emailVerifiedAt).toBeFalsy();
+  });
   it("atomically approves across independent pools, grants without FK lock deadlocks, revokes and cascades deletion", async () => {
     const account = await minor();
     const results = await Promise.allSettled([service.confirmGuardian(approveInput(account.approval)), second.confirmGuardian(approveInput(account.approval))]);

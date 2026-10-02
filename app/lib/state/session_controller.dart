@@ -497,6 +497,8 @@ class SessionController extends ChangeNotifier {
       _eligibilityAction((token) => _auth.declareAge(token, ageBand));
   Future<bool> requestGuardian(String email) =>
       _eligibilityAction((token) => _auth.requestGuardian(token, email.trim()));
+  Future<bool> confirmGuardianInApp() =>
+      _eligibilityAction((token) => _auth.confirmGuardianInApp(token));
   Future<bool> refreshEligibility() => _eligibilityAction((_) async {});
   Future<void> withdrawGuardian() async {
     await _eligibilityAction((token) async {

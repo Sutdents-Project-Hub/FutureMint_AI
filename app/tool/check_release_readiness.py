@@ -135,14 +135,16 @@ def check_readiness(config, fetch=fetch_public):
         else:
             record('年齡與監護人政策', policy.get('minimumAge') == 15
                    and policy.get('country') == 'TW'
-                   and policy.get('servicePolicyVersion') == 'tw-service-age-15-v1'
+                   and policy.get('servicePolicyVersion') == 'tw-service-age-15-in-app-v2'
                    and policy.get('guardianRequiredUnder18') is True
+                   and policy.get('guardianConsentMethod') == 'in-app'
                    and policy.get('eligibilityRequired') is True,
-                   '此版 Client 採臺灣 15+；15–17 歲須完成監護人確認。')
+                   '此版 Client 採臺灣 15+；15–17 歲須可在 App 內完成監護人聲明。')
             record('新帳號與寄信功能', policy.get('registrationEnabled') is True
-                   and policy.get('mailEnabled') is True
-                   and policy.get('emailVerificationRequired') is True,
-                   '15+ 上架流程需開放註冊、Email 驗證、監護人寄信與密碼重設；disabled 無法完成新未成年流程。')
+                   and isinstance(policy.get('mailEnabled'), bool)
+                   and isinstance(policy.get('emailVerificationRequired'), bool)
+                   and (policy['mailEnabled'] or not policy['emailVerificationRequired']),
+                   '需開放註冊；寄信可停用，但不可在沒有寄信服務時要求 Email 驗證。監護人確認獨立採 App 內聲明。')
             record('公開隱私版本', nonempty_text(policy.get('privacyPolicyVersion')),
                    '需有已確認的公開隱私版本。')
             ai = policy.get('ai')

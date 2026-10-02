@@ -22,7 +22,7 @@ FutureMint AI 是青少年的 AI 金錢決策教練。使用者以繁體中文�
 - 用繁體中文輸入「今天買珍奶 75」、「打工薪水 1500」或「Netflix 390 四個人分」。
 - 查看所選量界智算／官方 OpenAI 或 deterministic demo 的解析來源，修正金額／項目／分類／需要或想要後再確認保存。
 - 在紀錄頁編輯或刪除自己已保存的收入、支出與訂閱；預算、分析與訂閱比較會立即重算。
-- 用電子郵件與密碼註冊、登入、登出；啟用 SMTP 的正式環境先驗證 Email，再完成首次預算與目標設定，並可申請密碼重設。未啟用 SMTP 時可直接註冊／登入，信箱只作未驗證登入識別、沒有寄信重設密碼；15–17 歲仍須監護人同意才能使用正式資料功能。
+- 用電子郵件與密碼註冊、登入、登出；SMTP 可選擇啟用信箱驗證與密碼重設。15–17 歲帳號由孩子登入後交給家長或法定代理人在 App 內勾選聲明並確認；未啟用 SMTP 也能完成此流程。Email 只在未驗證時作登入識別，不代表家長身分驗證。
 - 在第三方 AI 功能啟用前分段查看當前供應商、接收方、資料類別與用途，從詳細資訊查看完整同意版本；可選擇不啟用或日後撤回，未同意時 Client 與 API 都會擋住第三方 AI 請求。
 - 已登入帳號可在 App 內輸入目前密碼並二次確認，刪除帳號及其預算、紀錄、課程、虛擬投資與家庭關聯。
 - 每個帳號只能讀寫自己的 PostgreSQL profile、事件與課程資料；重啟 API 後資料仍保留。
@@ -263,9 +263,11 @@ API 變數名稱索引在 `backend/.env.example`。以下為量界模式的連�
 
 ## 2026-10 正式產品準備
 
+2026-10-03 已建立臺灣 App Store record，並儲存[繁中商店資料](docs/app-store-metadata.md)、審查登入資料及臺灣免費供應設定。使用者完成 Apple 協議後已註冊 Bundle ID；仍缺有效本機簽章與可上傳 build。新版監護人確認不需寄信，App／API 與 migration 012 已完成本機驗證，正式後端與新版 App 仍待部署驗收；詳見[測試證據](docs/testing-and-evidence.md#app-內監護人確認與上架準備2026-10-03)。
+
 2026-10-02 依使用者測試回饋更新 iPhone 排版：首次設定及等待頁分區、記帳草稿優先、FutureSeed 控制／結果優先、訂閱欄位間距，並修復預算編輯彈窗空白與大字級提醒卡溢位。品牌及插圖保留；最新本機驗證與限制見 [測試證據](docs/testing-and-evidence.md)。
 
-分類：新能力、缺陷修正與既有狀態釐清。首次正式服務以臺灣 15 歲以上為界線；未滿 15 歲僅能以合成資料訪客體驗，15–17 歲需監護人單次信件確認，18 歲以上需自行聲明。年齡政策版本為 `tw-service-age-15-v1`，既有帳號需補聲明。監護人同意、家庭摘要分享與第三方 AI 授權是三個獨立選擇；Email 確認不證明法定代理人身分，仍需營運查核與客服流程。
+分類：新能力、缺陷修正與既有狀態釐清。首次正式服務以臺灣 15 歲以上為界線；未滿 15 歲僅能以合成資料訪客體驗，15–17 歲由家長或法定代理人在 App 內明確聲明並同意，18 歲以上自行聲明。現行年齡政策為 `tw-service-age-15-in-app-v2`；舊政策帳號需依保存的年齡組別重新聲明，不能藉此改成年。監護人同意、家庭摘要分享與第三方 AI 授權是三個獨立選擇；App 內聲明與舊 Email 確認都不驗證法定代理人身分，正式營運查核與客服流程仍待確認。
 
 訂閱合約與實際付款分離：建立月繳／年繳訂閱不會自行新增支出，使用者可另記首次付款或採用自己的舊付款。編輯、停止及續訂日由穩定合約 ID 管理；支出統計只計實付紀錄，月承諾成本另列。紀錄支援分頁、手動輸入與自己的 JSON 匯出；統計使用完整資料。訂閱價格／比較為使用者輸入與合成方案，未接外部即時價格。
 
@@ -273,7 +275,7 @@ AI 預設量界智算，營運者可明確設定官方 OpenAI；不自動切換�
 
 iPhone／Android 本機續訂提醒需使用者選擇啟用，於續訂前一天 09:00（台灣時間）排程，最多排入最早 60 個未來提醒。權限拒絕時提供「開啟通知設定」，回到 App 後重新讀取權限，不依賴 API 連線；首次拒絕後需再啟用提醒。Android 13+ 由明確操作請求通知權限，並使用非精準排程，送達可能受系統省電限制延後；重開機或 App 更新後恢復仍有效的排程。登出、刪除及切換帳號清除待送與已送提醒，舊權限回覆不得恢復舊帳號。其他裝置變動需同步後才更新。Web 只有 App 內提醒；未整合 APNs／FCM。原生編譯與真實裝置送達驗收分開記錄。
 
-API runtime 設定來源為 `backend/src/config/aiConfig.ts`、`startupConfig.ts` 及 `backend/src/http/runtime.ts`；安全變數索引見 `backend/.env.example`。production 設定先檢查再 migration，錯誤只列階段及變數名稱。新增 migrations 008／009／010／011，既有 migration checksum 保留。
+API runtime 設定來源為 `backend/src/config/aiConfig.ts`、`startupConfig.ts` 及 `backend/src/http/runtime.ts`；安全變數索引見 `backend/.env.example`。production 設定先檢查再 migration，錯誤只列階段及變數名稱。新增 migrations 008／009／010／011／012，既有 migration checksum 保留。
 
 使用者確認既有 Coolify 三 Resources 曾成功部署；目前 live health、DNS／TLS、runtime 設定與完整使用者流程尚未在本輪驗證。本次程式變更需由使用者自行重新部署並驗收。
 
@@ -283,13 +285,13 @@ API runtime 設定來源為 `backend/src/config/aiConfig.ts`、`startupConfig.ts
 
 分類：已核准範圍調整。僅啟動 Coolify API／PostgreSQL，停止測試 Web 並關閉其 Auto Deploy。API 設定從 [最小 Runtime 範本](backend/.env.coolify.example)開始；全部取消 Buildtime。PUBLIC_BASE_URL、營運者、客服、資料地區、資料庫及模型憑證仍需真實值，確認公開頁內容後才設 PRIVACY_POLICY_REVIEWED=true。
 
-- SMTP 可選；關閉時開放註冊／登入、不要求 Email 驗證，但不送新的確認／重設信。信箱保持未驗證；15–17 歲仍需有效監護人同意，訪客保留。
+- SMTP 可選；關閉時開放註冊／登入、不要求 Email 驗證，也不送新的驗證／密碼重設／舊式監護人確認信。信箱保持未驗證；15–17 歲可依現行政策在 App 內完成家長聲明，不因此驗證 Email 或法定代理人身分。
 - 不備份為內建預設（BACKUP_RETENTION_DAYS=0），不刪既有資料卷或 journal。
 - 供應商公開說明可放版本化 [設定](backend/src/config/providerPolicies.ts)，不必全部放 env；初始條款未完成，外部 AI 保持停用，手動功能與固定教材可用。原有 runtime overrides 仍支援。
 - 量界資訊不完整時，可依使用者核准的[合成資料測試範本](docs/deployment.md#量界資訊不完整時的測試設定2026-10-02)如實揭露未知條件；reviewed 表示營運者確認告知，不表示供應商條款或真實連線已驗收。
-- 成年帳號不需 SMTP；15–17 歲仍需監護人確認，寄信驗證／重設需要 SMTP。外部 AI 另需確認供應商政策與使用者同意。訪客資料僅在記憶體；API 能啟動不代表已具備完整上架條件。
+- 15–17 歲的 App 內監護人聲明不需 SMTP；寄信驗證／重設仍需要 SMTP。外部 AI 另需確認供應商政策與使用者同意。訪客資料僅在記憶體；API 能啟動不代表已具備完整上架條件。
 
-公開隱私與支援頁由 API 提供 `/privacy`、`/support`，不依賴測試 Web Resource；繁中與英文可由頁面切換，或以 `?lang=zh-Hant`／`?lang=en` 指定，否則依瀏覽器語言。預設使用 App 的淺紫／靛色 tokens，另提供深色主題；公開內容尚未審核時維持 503。隱私版本預設為 `2026-10-02-optional-mail-v1`，既有 runtime 版本覆寫須同步；詳見部署文件。
+公開隱私與支援頁由 API 提供 `/privacy`、`/support`，不依賴測試 Web Resource；繁中與英文可由頁面切換，或以 `?lang=zh-Hant`／`?lang=en` 指定，否則依瀏覽器語言。預設使用 App 的淺紫／靛色 tokens，另提供深色主題；公開內容尚未審核時維持 503。隱私版本預設為 `2026-10-03-in-app-guardian-v2`；Coolify 若有舊的 `PRIVACY_POLICY_VERSION` 或 `MINOR_CONSENT_DISCLOSURE` 覆寫，須同步檢查更新；詳見部署文件。
 
 公開頁品牌圖示使用 iPhone App icon，隨 API 的 `public/` 靜態資產一起建置，不需部署 Web 或新增環境變數。
 
@@ -297,4 +299,4 @@ API runtime 設定來源為 `backend/src/config/aiConfig.ts`、`startupConfig.ts
 
 分類：缺陷修正、既有流程釐清與新能力（公開發布配置檢查）。家長與孩子各自註冊、完成資格及自己的預算設定；家長在設定建立邀請碼，孩子確認摘要分享後加入。家長不代建孩子帳號；監護人同意、家庭分享與 AI 同意仍獨立。唯讀帳號可離開家庭或停用邀請碼，新增分享仍需服務資格；家庭查詢失敗會顯示重試。
 
-`app/tool/build_ios_release.sh` 現在先執行公開服務檢查，核對 hosted／PostgreSQL、15+ 年齡政策、註冊與 SMTP 功能、AI 公開政策及雙語隱私／支援頁。未通過時停止正式 IPA 建置；`MAIL_PROVIDER=disabled` 仍可啟動最小 API，但不能當作完整 15+ 上架配置。檢查不登入、不寄信、不呼叫 AI、不寫資料。命令及人工驗收見 [部署說明](docs/deployment.md)，實際結果見 [測試與證據](docs/testing-and-evidence.md)。
+`app/tool/build_ios_release.sh` 先執行公開服務檢查，核對 hosted／PostgreSQL、臺灣 15+ 與 App 內監護人政策、註冊和 Email 功能一致性、AI 公開政策及雙語隱私／支援頁。SMTP disabled 且 Email verification disabled 是合法配置；檢查不登入、不寄信、不呼叫 AI、不寫資料。命令及人工驗收見 [部署說明](docs/deployment.md)，實際結果見 [測試與證據](docs/testing-and-evidence.md)。

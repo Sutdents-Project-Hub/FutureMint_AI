@@ -89,6 +89,25 @@ describe("launch API integration", () => {
     expect((await app.inject({ method: "PUT", url: "/api/profile", headers: adult, payload: { accountRole: "parent", monthlyBudgetMinor: 600000, goalName: "合成目標", goalTargetMinor: 1000000, goalSavedMinor: 0, goalDate: "2027-01-01", preferredTone: "supportive" } })).statusCode).toBe(200);
     expect((await app.inject({ method: "POST", url: "/api/family/invite", headers: adult })).statusCode).toBe(201);
   });
+  it("permits in-app guardian declarations without mail and exports the method only for the signed-in child", async () => {
+    const { app } = await make({ mailEnabled: false });
+    const input = { policyVersion: servicePolicyVersion, adult: true, legalGuardian: true, accepted: true };
+    const endpoint = "/api/privacy/guardian-consent/in-app";
+    expect((await app.inject({ method: "POST", url: endpoint, payload: input })).statusCode).toBe(401);
+    const child = await registration(app, "child-in-app@example.com", "15-17");
+    for (const field of ["adult", "legalGuardian", "accepted"] as const) {
+      expect((await app.inject({ method: "POST", url: endpoint, headers: child, payload: { ...input, [field]: false } })).statusCode).toBe(422);
+    }
+    expect((await app.inject({ method: "POST", url: endpoint, headers: child, payload: { ...input, policyVersion: "old" } })).statusCode).toBe(409);
+    expect((await app.inject({ method: "POST", url: endpoint, headers: child, payload: input })).json().data).toMatchObject({ canWrite: true, guardianConsentMethod: "in-app" });
+    const exported = (await app.inject({ method: "GET", url: "/api/privacy/export", headers: child })).json().data;
+    expect(exported).toMatchObject({ account: { emailVerified: false }, eligibility: { guardianConsentMethod: "in-app" }, aiConsent: { granted: false } });
+    expect((await app.inject({ method: "GET", url: "/api/family", headers: child })).json().data).toBeNull();
+    const adult = await registration(app, "adult-in-app@example.com");
+    expect((await app.inject({ method: "POST", url: endpoint, headers: adult, payload: input })).json().code).toBe("guardian_not_applicable");
+    expect((await app.inject({ method: "GET", url: "/api/service-policy" })).json().data).toMatchObject({ guardianConsentMethod: "in-app", mailEnabled: false, emailVerificationRequired: false });
+  });
+
   it("serves static controlled education without account, AI consent or provider attribution", async () => {
     const { app } = await make();
     const response = await app.inject({ method: "GET", url: "/api/education/catalog" });

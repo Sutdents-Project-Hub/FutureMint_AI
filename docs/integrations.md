@@ -9,6 +9,7 @@
 | Coolify | 兩個 Dockerfile、ports、health checks、三 Resource 設定文件 | 使用者確認既有三 Resources 曾部署成功 | 本輪 live health、runtime／domain／SMTP、重新部署與完整主線待驗收 |
 | GitHub | private repository `main`、`.github/workflows/ci.yml` CI | 基線 `af7a5df` CI 成功：122 API／121 Flutter、未簽章 iOS 與 images | 本輪新狀態尚未執行遠端 CI；Auto Deploy 新狀態待驗收 |
 | 家庭帳號 | PostgreSQL family groups／members、邀請碼與摘要權限 | InMemory／PostgreSQL repository 契約與 service tests | 尚未做 production 多帳號實機驗收；已實作更新／停用，未提供家庭所有權轉移 |
+| 15–17 歲監護人聲明 | `GET /api/service-policy` 回報 `guardianConsentMethod=in-app`；登入本人呼叫 `/api/privacy/guardian-consent/in-app`；SMTP disabled 可用 | 本機 API／Flutter 測試 | App 內聲明不驗證法定代理人身分；新版本尚待部署與外部流程驗收 |
 | 第三方 AI 同意 | App 內 disclosure、啟用／撤回、versioned PostgreSQL state、量界 route server gate | Auth／HTTP／Flutter unit 與 widget tests | 量界／上游條款、retention、training、subprocessors 與 production E2E |
 | TWSE 市場資料 | 官方 OpenAPI adapter、timeout、schema、15 分鐘 cache、明確 fallback | 本機實際取得 2026-07-14 每日成交快照 | Coolify outbound HTTPS、上游可用性與長期欄位穩定性 |
 | 虛擬投資 | 教學標的、虛擬買賣、持倉／成本／配置／訂單、事件骰子 | API／Flutter tests、PostgreSQL 重啟持久化 | 不含即時行情、配息、手續費、公司行動或真實成交撮合 |
@@ -84,7 +85,7 @@ SMTP adapter 已實作 TLS、一次性驗證／密碼重設信與 sanitized erro
 
 ## 簡化部署的整合開關
 
-分類：已核准範圍調整。正式 iPhone 只啟動 API／PostgreSQL，Web 為選用測試。SMTP 為部署可選項；未填／disabled 時開放註冊與登入、不要求 Email 驗證，Email 只作未驗證登入識別，不寫入 emailVerifiedAt。新的驗證／寄信重設／監護人寄信回 mail_disabled；App 清楚說明功能停用。最低年齡 15 與 15–17 歲監護人資格仍維持，未完成同意者不能寫入受限資料，可使用訪客；SMTP 重新啟用後仍需驗證信箱，密碼重設只寄給已驗證信箱。
+分類：已核准範圍調整。正式 iPhone 只啟動 API／PostgreSQL，Web 為選用測試。SMTP 為部署可選項；未填／disabled 時開放註冊與登入、不要求 Email 驗證，Email 只作未驗證登入識別，不寫入 emailVerifiedAt。新的驗證／寄信重設／舊式監護人寄信回 mail_disabled；現行 15–17 歲可由家長或法定代理人在 App 內勾選聲明，不依賴 SMTP。此聲明不驗證身分；家庭摘要與 AI 授權仍分開，未完成監護人同意者不能寫入受限資料，可使用訪客。SMTP 啟用後仍需驗證信箱，密碼重設只寄給已驗證信箱。
 
 供應商公開接收方／說明／reviewed 可放 backend/src/config/providerPolicies.ts；既有 PROVIDER_DATA_* env 可覆寫，覆寫說明後需重新確認。缺少說明／未確認時不阻擋 API 啟動，但阻擋外部 AI 授權與呼叫，保留手動及固定教材。模型與 key 仍為所選 live provider 必要值，不自動 fallback；量界上游承諾尚未確認，初始設定不虛構內容。
 

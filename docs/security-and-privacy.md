@@ -89,9 +89,9 @@ API 啟動及每小時分批清理到期／撤銷 sessions、到期 action token
 
 ## 臺灣年齡、監護人與資料權利
 
-首次正式註冊提交 `ageDeclaration:{ageBand,policyVersion,accepted:true}`，版本為 `tw-service-age-15-v1`。`under-15` 拒正式帳號、可合成訪客體驗；`15-17` 在寄信模式需先完成 Email 驗證，兩種模式皆仍需監護人確認；`18-plus` 自行聲明。既有帳號缺資料即為待補聲明，不能預設成年。已聲明年齡分組不可直接覆寫；更正需客服查核，目前未提供後端 admin console，正式操作流程仍待營運建立。
+首次正式註冊提交 `ageDeclaration:{ageBand,policyVersion,accepted:true}`；現行版本為 `tw-service-age-15-in-app-v2`。`under-15` 拒正式帳號、可合成訪客體驗；`15-17` 由家長或法定代理人拿著已登入孩子的裝置，勾選單一同意框並確認；`18-plus` 自行聲明。App 內送出的三個聲明欄位（年滿 18 歲、法定代理人、已閱讀並同意）必須全為 true。這是本人帳號中的聲明紀錄，沒有監護人獨立登入或身分查核，不可稱為身分驗證。家庭角色／摘要分享與第三方 AI 授權仍須分別選擇；孩子可在設定撤回監護人同意。舊政策帳號重聲明時沿用原 age band，不得改成年；更正仍需營運客服查核。
 
-監護人信件標示 requester Email；接收者須確認已滿 18 歲、為法定代理人並接受政策。核准與撤回為單次 fragment token，資料庫只存 hash／revision，GET 不消耗、POST 才消耗；重寄會使舊 token 失效。Email 控制權及聲明不證明合法監護人身分，不可把家庭 parent role 或邀請碼当成監護人確認。家庭分享與 AI 授權需各自選擇。
+現行流程由孩子本人登入後呼叫 `POST /api/privacy/guardian-consent/in-app`，body 帶當前 policy version 與三個全為 true 的聲明；API 只接受 15–17 歲且年齡政策相符的帳號。transaction 內核准、將 email 清空、method 設為 `in-app`、revision 加一、清除舊 guardian tokens 並重設 `aiConsentRevision`。重複核准冪等，不會重複增加 revision；新增監護人核准不會復活先前的 AI 同意。孩子可以在設定撤回。此設計沒有家長個別登入或外部身分驗證，畫面與政策須清楚表達為聲明。舊 Email API 保留供相容，token 仍受政策版本、revision、到期及一次性限制；Email 控制權與聲明均不證明合法監護人身分。家庭角色、摘要分享與 AI 授權彼此獨立。
 
 待聲明／監護人未核准／撤回後，阻止新的正式寫入與外部 AI；本人仍可登入、讀取／匯出、求助、重試與刪除。匯出只含自己 JSON，不含密碼、session/token、秘密或其他家庭成員明細。所有 onboarding 狀態保留登出、刪除及 help/retry 入口。
 
@@ -103,7 +103,7 @@ iPhone／Android 提醒只在本機排程、不使用 APNs／FCM；通知正文�
 
 ## 可選設定的安全界線
 
-寄信未啟用時，在查帳號前就明確回 mail_disabled，避免忘記密碼畫面宣稱已寄出；實際 SMTP 送達失敗仍採 generic accepted 避免帳號探測。無 SMTP 可註冊／登入，不強制 Email ownership；Email 保持未驗證，年齡／監護人與 AI 同意門檻仍維持。SMTP 開啟後，新的重設信只寄給已驗證信箱；未驗證／未知信箱仍回相同 accepted，不能依收件能力取得未驗證識別所屬帳號。
+寄信未啟用時，在查帳號前就明確回 mail_disabled，避免忘記密碼畫面宣稱已寄出；實際 SMTP 送達失敗仍採 generic accepted 避免帳號探測。無 SMTP 可註冊／登入，不強制 Email ownership；Email 保持未驗證，年齡／監護人與 AI 同意門檻仍維持。現行 15–17 歲監護人聲明走 App 內流程，不要求 SMTP；SMTP 開啟後，新的重設信只寄給已驗證信箱；未驗證／未知信箱仍回相同 accepted，不能依收件能力取得未驗證識別所屬帳號。
 
 供應商說明可維護於版本化 providerPolicies.ts；初始未確認，不宣稱量界上游、保存或訓練政策已查核。未確認政策的舊AI授權亦不放行；必須補完整說明並確認，再由使用者同意當前 fingerprint。公開隱私與支援頁按備份0／寄信狀態顯示實際模式，提供繁中／English，原生 App 只調整能力提示。
 
@@ -115,6 +115,6 @@ iPhone／Android 提醒只在本機排程、不使用 APNs／FCM；通知正文�
 
 ## Client 停止分享與發布檢查（2026-10-02）
 
-孩子加入前以確認畫面選擇家庭摘要分享；邀請碼不證明監護人身分，也不取代年齡／監護人同意或 AI 授權。離開家庭及停用邀請是減少分享的操作，Client 不再以 `canWrite=false` 阻擋，後端仍驗證 session、角色及家長不可留下無主家庭。新增或更新邀請、加入家庭仍需服務資格。退出後不刪個人帳號、流水或監護人／AI 設定。
+孩子加入前以確認畫面選擇家庭摘要分享；邀請碼與 App 內監護人聲明都不驗證監護人身分，也不取代年齡資格或 AI 授權。離開家庭及停用邀請是減少分享的操作，Client 不再以 `canWrite=false` 阻擋，後端仍驗證 session、角色及家長不可留下無主家庭。新增或更新邀請、加入家庭仍需服務資格。退出後不刪個人帳號、流水或監護人／AI 設定。
 
-發布腳本只 GET 公開 health、service-policy、雙語 privacy／support；不傳 session／帳號／財務資料，不寄信或呼叫 AI。它檢查配置一致性，無法證明 SMTP 送達、合法監護人身分、客服收信或完整法遵；人工驗收仍必要。
+發布腳本只 GET 公開 health、service-policy、雙語 privacy／support；不傳 session／帳號／財務資料，不寄信或呼叫 AI。它要求現行 15+ 政策、`guardianConsentMethod=in-app`、註冊開啟，以及 mail／Email 驗證能力彼此一致；disabled mail 加 `emailVerificationRequired=false` 合法。檢查無法證明監護人法定身分、客服收信、SMTP 真實送達或完整法遵；人工驗收仍必要。

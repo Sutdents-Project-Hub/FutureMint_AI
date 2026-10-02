@@ -17,8 +17,9 @@ class ReleaseReadinessTests(unittest.TestCase):
         self.health = {'status': 'ok', 'mode': 'hosted', 'dataProvider': 'postgres',
                        'aiProvider': 'liangjie'}
         self.policy = {
-            'servicePolicyVersion': 'tw-service-age-15-v1', 'minimumAge': 15,
+            'servicePolicyVersion': 'tw-service-age-15-in-app-v2', 'minimumAge': 15,
             'country': 'TW', 'guardianRequiredUnder18': True, 'eligibilityRequired': True,
+            'guardianConsentMethod': 'in-app',
             'privacyPolicyVersion': 'synthetic-v1', 'registrationEnabled': True,
             'mailEnabled': True, 'emailVerificationRequired': True,
             'ai': {'provider': 'liangjie', 'reviewed': True, 'model': 'synthetic-model',
@@ -44,10 +45,26 @@ class ReleaseReadinessTests(unittest.TestCase):
         self.assertEqual(len(self.requests), 6)
         self.assertFalse(any('/auth/' in url or '/guardian/' in url for url, _ in self.requests))
 
-    def test_healthy_api_without_mail_still_blocks_minor_launch(self):
+    def test_in_app_guardian_allows_mail_disabled_without_email_verification(self):
         self.policy['mailEnabled'] = False
         self.policy['emailVerificationRequired'] = False
-        self.assertIn('新帳號與寄信功能', self.blocked())
+        self.assertEqual(self.blocked(), set())
+
+    def test_missing_in_app_guardian_or_stale_policy_blocks(self):
+        for key, value in [('guardianConsentMethod', None),
+                           ('guardianConsentMethod', 'email'),
+                           ('servicePolicyVersion', 'tw-service-age-15-v1')]:
+            with self.subTest(key=key, value=value):
+                original = self.policy[key]
+                self.policy[key] = value
+                self.assertIn('年齡與監護人政策', self.blocked())
+                self.policy[key] = original
+
+    def test_verification_without_mail_and_malformed_capabilities_block(self):
+        for mail, verification in [(False, True), (None, False), (False, None)]:
+            self.policy['mailEnabled'] = mail
+            self.policy['emailVerificationRequired'] = verification
+            self.assertIn('新帳號與寄信功能', self.blocked())
 
     def test_ai_unreviewed_or_demo_cannot_pass_an_ai_release(self):
         self.policy['ai']['reviewed'] = False

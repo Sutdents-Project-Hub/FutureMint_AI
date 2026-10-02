@@ -1,5 +1,26 @@
 # 測試與證據
 
+## App 內監護人確認與上架準備（2026-10-03）
+
+分類：使用者核准的流程簡化、首次上架資料準備。保留孩子／家長角色與 Email／密碼登入；15–17 歲改由監護人在孩子裝置勾選確認，沒有監護人 Email 或寄信依賴。勾選不是身分驗證，家庭分享與 AI 同意仍分開。新政策 `tw-service-age-15-in-app-v2` 要求舊帳號依原 age band 重聲明，不能改成年。
+
+| 本輪驗證 | 結果與界線 |
+|---|---|
+| Flutter | `flutter analyze --no-pub` 無問題；`flutter test --no-pub` **200／200** 通過。新增 API body 與 widget 回歸確認未預勾選、勾選後送出、沒有 guardian email、未自動啟用 AI，375×812／100% 與 200% 字級通過 |
+| Backend Node 22 | `npm --prefix backend test` **210 通過、24 跳過**；typecheck／build 通過。含本人 session、嚴格欄位驗證、舊 policy／age band、冪等、撤回後重同意、舊 AI 不復活及 SQL 欄位映射 |
+| PostgreSQL 限制 | 3 個整合 suite 共 24 tests 因未提供本機測試資料庫而跳過。Docker 查詢未取得可用服務；migration 012 尚未在真實 DB 執行，SQL 映射單元測試不能取代 migration 驗收 |
+| 發布檢查 | Python readiness **15／15** 通過；disabled mail＋verification=false 可接受，但舊 policy 或沒有 in-app capability 會阻擋。先前 packaging **1／1** 與 shell syntax 通過；本輪未改 packaging shell |
+| 畫面檢查 | 本機 Flutter Web 合成資格畫面、375×812 深色實際截圖確認文字與操作可讀，未勾選時主要按鈕停用。預覽不連正式 API；不代表真機或正式新帳號驗收 |
+| 獨立唯讀審查 | 核對本人 session、transaction／account lock、跨帳號隔離、同意 revision、舊 policy、Flutter 路由及 release gate，未發現阻擋合併問題 |
+| Apple | 帳號持有人完成協議後，註冊 `tw.futuremint.futuremintApp`，建立 App record `6818587553`。繁中描述／關鍵字／副標題、教育＋財經分類、審查帳密與依使用者指示沿用的聯絡人已保存；版本 1.0.0、手動發佈、免費／臺灣1地供應、Mac／Vision Pro 不供應已驗證。仍是準備提交，沒有 build 或送審 |
+| 簽章 | Xcode build settings 為 1.0.0(1)、iPhone family1／iOS13，未套用 Team；`security find-identity -v -p codesigning` 為 0 valid identities。沒有可上傳 IPA／matching archive |
+
+Flutter 日誌：`/tmp/futuremint-in-app-guardian-analyze.log`、`/tmp/futuremint-in-app-guardian-all-tests.log`。本機合成畫面預覽在忽略的 output 目錄；release 配置同樣被忽略且權限 0600，只含公開值，不含審查密碼。帳密與私人審查聯絡資訊不寫入 repository。
+
+本輪開始時的正式 API 檢查：health／hosted／postgres、双語 privacy／support 及公開聯絡資訊可讀；mail disabled、不要求 Email 驗證，當時舊 readiness 因 SMTP gate 失敗。審查帳號 login／me／eligibility／profile／dashboard／subscriptions／education/catalog／logout 均 HTTP200，成年、eligible、canWrite、profileComplete；兩次均登出，未改業務資料或呼叫 AI。Python 預設 User-Agent 曾收到403，使用 release-readiness User-Agent 後200，不據此推論原生連線驗收。
+
+目前 AI 公開 `reviewed=true` 說明仍明載上游名單、保存、訓練、地區與刪除方式的資訊缺口；格式檢查不等於正式條款查核。正式營運者目前仍為 Student Team，與版權需另確認。新版後端、migration012、runtime policy overrides、已簽章 App、新版審查帳號、商店截圖、App Privacy／年齡問卷與真機通知仍待完成；Git 同步不等同 backend 部署或 Apple 發布。
+
 ## iPhone／Android 本機提醒補齊與權限恢復（2026-10-02）
 
 分類：iPhone 權限恢復與帳號切換缺陷修正、使用者核准的 Android 本機提醒新能力。首次啟用才要求通知權限；iPhone 拒絕後不會再次彈出系統授權，提供「開啟通知設定」。Android 13+ 明確操作可在系統允許時重試；永久拒絕、App／通知頻道關閉時從設定恢復。返回 App 後離線重新讀取權限；首次拒絕不保存啟用偏好，允許後需再啟用。Android 使用非精準 AlarmManager 與通知頻道，不要求 exact-alarm／電池豁免，開機／App 更新恢復有效排程。

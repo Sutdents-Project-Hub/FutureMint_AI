@@ -79,6 +79,6 @@ PostgreSQL runtime 的 HTTP 原子限流、AI 台北日額度／concurrency leas
 
 不新增 resource；官方 OpenAI 與量界皆為 API runtime 外部 provider，iPhone 本機提醒不需要 APNs resource。既有備份目的地、排程與通知整合尚未確認，不能把 macOS credential store／Discord 頻道視為部署完成。
 
-MAIL_PROVIDER 未填／disabled 時不需 SMTP outbound／憑證，可註冊／登入、不要求 Email 驗證，新的寄信流程未開放；未成年人監護人門檻保留。測試 Web 要同時停止與關閉 Auto Deploy，否則 push main 的 webhook 仍可能重新部署該 Resource。API Auto Deploy 與 Apple 發布生命週期各自獨立。
+MAIL_PROVIDER 未填／disabled 時不需 SMTP outbound／憑證，可註冊／登入、不要求 Email 驗證，新的驗證、密碼重設與舊式監護人寄信流程未開放；現行 15–17 歲監護人聲明在 App 內完成，不需郵件 Resource 或 SMTP。聲明不代表身分查核。測試 Web 要同時停止與關閉 Auto Deploy，否則 push main 的 webhook 仍可能重新部署該 Resource。API Auto Deploy 與 Apple 發布生命週期各自獨立。
 
-公開隱私與支援頁由 API 提供 `/privacy`、`/support`，不依賴測試 Web Resource；繁中與英文可由頁面切換，或以 `?lang=zh-Hant`／`?lang=en` 指定，否則依瀏覽器語言。預設使用 App 的淺紫／靛色 tokens，另提供深色主題；公開內容尚未審核時維持 503。隱私版本預設為 `2026-10-02-optional-mail-v1`，既有 runtime 版本覆寫須同步；詳見部署文件。
+公開隱私與支援頁由 API 提供 `/privacy`、`/support`，不依賴測試 Web Resource；繁中與英文可由頁面切換，或以 `?lang=zh-Hant`／`?lang=en` 指定，否則依瀏覽器語言。預設使用 App 的淺紫／靛色 tokens，另提供深色主題；公開內容尚未審核時維持 503。隱私版本預設為 `2026-10-03-in-app-guardian-v2`；既有 `PRIVACY_POLICY_VERSION`／`MINOR_CONSENT_DISCLOSURE` runtime 覆寫須同步更新；詳見部署文件。

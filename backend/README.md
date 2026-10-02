@@ -88,9 +88,10 @@ curl http://localhost:3000/api/health
 | PUT | `/api/privacy/age-declaration` | Bearer |
 | GET | `/api/privacy/export` | Bearer；僅本人 JSON |
 | GET | `/api/education/catalog` | 公開受控教材，無帳戶資料／AI 呼叫／server completion |
-| POST | `/api/privacy/guardian-consent/request` | Bearer |
-| POST | `/api/privacy/guardian-consent/confirm`、`/withdraw` | 單次 token |
-| POST | `/api/privacy/guardian-consent/withdrawal-request` | 帳號及監護人 Email；generic accepted |
+| POST | `/api/privacy/guardian-consent/request` | Bearer；舊 Email 流程保留，受 policy／revision 限制 |
+| POST | `/api/privacy/guardian-consent/in-app` | 本人 Bearer；15–17 歲當前政策；三項聲明均須為 true |
+| POST | `/api/privacy/guardian-consent/confirm`、`/withdraw` | 舊 Email 流程的單次 token |
+| POST | `/api/privacy/guardian-consent/withdrawal-request` | 舊 Email 流程；帳號及監護人 Email；generic accepted |
 | DELETE | `/api/privacy/guardian-consent` | Bearer |
 | POST | `/api/subscriptions/compare` | Bearer |
 | POST | `/api/lessons/generate` | Bearer |
@@ -161,7 +162,7 @@ npm audit --omit=dev
 
 ## 正式環境與帳號恢復
 
-Production 需真實公開政策設定；最小變數見 `.env.coolify.example`，完整選項見 `.env.example`。SMTP 為部署可選項；未填／disabled 時開放註冊與登入、不要求 Email 驗證，Email 只作未驗證登入識別，不寫入 emailVerifiedAt。新的驗證／寄信重設／監護人寄信回 mail_disabled；App 清楚說明功能停用。最低年齡 15 與 15–17 歲監護人資格仍維持，未完成同意者不能寫入受限資料，可使用訪客；SMTP 重新啟用後仍需驗證信箱，密碼重設只寄給已驗證信箱。
+Production 需真實公開政策設定；最小變數見 `.env.coolify.example`，完整選項見 `.env.example`。SMTP 為部署可選項；未填／disabled 時開放註冊與登入、不要求 Email 驗證，Email 只作未驗證登入識別，不寫入 emailVerifiedAt。新的驗證／寄信重設／舊式監護人寄信回 mail_disabled；現行 15–17 歲流程由家長或法定代理人在 App 內勾選聲明並確認，不需 SMTP，也不驗證身分。未完成同意者不能寫入受限資料，可使用訪客；SMTP 重新啟用後仍需驗證信箱，密碼重設只寄給已驗證信箱。
 
 新增 API：`POST /api/auth/email-verification/request`（Bearer）、`POST /api/auth/email-verification/confirm`（token）、`POST /api/auth/password-reset/request`（email）、`POST /api/auth/password-reset/confirm`（token/password）。註冊與重設密碼採 8–128 字元、英文字母及數字規則；Client 與重設頁面要求再次輸入並比對密碼，API 只接收單一密碼。家庭邀請可用 `POST /api/family/invite/rotate` 更新、`DELETE /api/family/invite` 停用。
 
@@ -173,7 +174,7 @@ POST `/api/subscriptions` 必填 `idempotencyKey`，名稱、`amountMinor`（TWD
 
 GET `/api/subscriptions` 回 `items`、`monthlyCommitmentMinor`、`legacyCandidates`；付款 MoneyEvent 可帶 `subscriptionId`，月承諾成本與實付分析分開。GET `/api/money-events` 帶 query 時使用 cursor、預設 limit 50／最多 100，無 query 保留舊 array 相容；dashboard／insights 不依單頁統計。
 
-設定以 `src/config/aiConfig.ts`、`startupConfig.ts` 及 `src/http/runtime.ts` 為準，完整名稱見 `.env.example`。`npm run preflight` 驗證設定不開 socket、寄信、讀資料庫或 migration；Docker 在 migration 前執行，失敗只輸出安全變數名稱／階段，不含 values。migrations 008／009／010／011 為 additive，舊 checksum 不變。年齡、監護人／AI 政策與額度見 [安全](../docs/security-and-privacy.md)及[整合](../docs/integrations.md)。
+設定以 `src/config/aiConfig.ts`、`startupConfig.ts` 及 `src/http/runtime.ts` 為準，完整名稱見 `.env.example`。`npm run preflight` 驗證設定不開 socket、寄信、讀資料庫或 migration；Docker 在 migration 前執行，失敗只輸出安全變數名稱／階段，不含 values。migration 012 新增 guardian consent method 欄位；舊 migration checksum 不變。年齡、監護人／AI 政策與額度見 [安全](../docs/security-and-privacy.md)及[整合](../docs/integrations.md)。
 
 隔離備份還原可使用 `node dist/scripts/reconcileRestoredAccounts.js export|preview|apply /protected/latest.deletion-journal.json`。刪除 journal 只保存帳號 ID 雜湊與時間；套用 011 後才開始記錄。來源與還原必須不同資料庫名稱，apply 需維運確認無流量；完整 secret／保留／切換流程見 [部署文件](../docs/deployment.md#9-隔離還原與刪除帳號對帳)。
 
@@ -185,14 +186,14 @@ GET `/api/subscriptions` 回 `items`、`monthlyCommitmentMinor`、`legacyCandida
 
 量界條款資訊不完整時，使用者已核准以合成資料採用[揭露未知項目的三項 Runtime 設定](../docs/deployment.md#量界資訊不完整時的測試設定2026-10-02)。reviewed=true 表示營運者確認此告知，不證明上游、保存或訓練承諾已查核；既有帳號同意、撤回與限額不變。本輪未改遠端設定或驗收真實 AI 連線。
 
-`GET /api/service-policy` 提供 mailEnabled／registrationEnabled／emailVerificationRequired，直接取自 AuthService 能力。公開支援頁及 Flutter 依實際能力說明免寄信註冊、停用重設與監護人待同意；既有視覺元件沿用。未設定 SMTP 的訪客資料不永久保存。最小刪除 journal 仍保留；備份天數不控制或自動清除 Coolify 的排程／既有副本。
+`GET /api/service-policy` 提供 mailEnabled／registrationEnabled／emailVerificationRequired 與 `guardianConsentMethod=in-app`。`POST /api/privacy/guardian-consent/in-app` 要求本人登入、現行政策版本、15–17 歲資格，且 `adult`、`legalGuardian`、`accepted` 全為 true；同一 transaction 核准資格、清除舊 token、增加 revision 並清空 `aiConsentRevision`。重複核准冪等，不會重複旋轉 revision。公開支援頁及 Flutter 依實際能力說明免寄信註冊及停止寄信；未設定 SMTP 的訪客資料不永久保存。最小刪除 journal 仍保留；備份天數不控制或自動清除 Coolify 的排程／既有副本。
 
-公開隱私與支援頁由 API 提供 `/privacy`、`/support`，不依賴測試 Web Resource；繁中與英文可由頁面切換，或以 `?lang=zh-Hant`／`?lang=en` 指定，否則依瀏覽器語言。預設使用 App 的淺紫／靛色 tokens，另提供深色主題；公開內容尚未審核時維持 503。隱私版本預設為 `2026-10-02-optional-mail-v1`，既有 runtime 版本覆寫須同步；詳見部署文件。
+公開隱私與支援頁由 API 提供 `/privacy`、`/support`，不依賴測試 Web Resource；繁中與英文可由頁面切換，或以 `?lang=zh-Hant`／`?lang=en` 指定，否則依瀏覽器語言。預設使用 App 的淺紫／靛色 tokens，另提供深色主題；公開內容尚未審核時維持 503。隱私版本預設為 `2026-10-03-in-app-guardian-v2`；既有 runtime 的 `PRIVACY_POLICY_VERSION`／`MINOR_CONSENT_DISCLOSURE` 覆寫須同步；詳見部署文件。
 
 公開頁左上角使用 `public/app-icon.png`，與 iPhone 的 `Icon-App-40x40@3x.png`（120px）完全相同。`npm run build` 同時複製 `public/` 到 `dist/public/`，Docker build stage 含此目錄；`/app-icon.png` 由 API 同源提供，CSP 僅允許同源圖片。未來更新 App icon 時同步此檔案，沒有額外環境變數。
 
 ## 親子完整流程回歸（2026-10-02）
 
-`test/http/launchFlows.test.ts` 新增驗證信箱 → 監護人確認 → 個人設定 → 加入家庭 → 摘要權限 → 撤回／退出 → 密碼復原／帳號刪除的整合案例，以及 disabled mail 下成年可用、未成年不可繞過的案例。使用 memory repository 與 fake mailer，不代表真實 SMTP／PostgreSQL 驗收。API 路由、資料模型及 migration 本輪未變更。
+`test/http/launchFlows.test.ts` 新增驗證信箱 → 監護人確認 → 個人設定 → 加入家庭 → 摘要權限 → 撤回／退出 → 密碼復原／帳號刪除的整合案例，以及 disabled mail 下成年可用、未成年不可繞過的案例。使用 memory repository 與 fake mailer，不代表真實 SMTP／PostgreSQL 驗收。上述 10/2 驗收當時未變更 API 路由、資料模型及 migration；10/3 的 App 內流程另新增端點與 migration 012。
 
 Client 現在允許唯讀帳號呼叫既有的停用邀請／離開家庭 API，保持後端現行的資格與家庭所有權檢查。iPhone archive 的公開設定檢查見 [部署說明](../docs/deployment.md)；最小 API 啟動成功不代表完整 15+ 上架條件通過。

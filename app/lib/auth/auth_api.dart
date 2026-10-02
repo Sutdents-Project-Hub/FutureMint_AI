@@ -19,6 +19,8 @@ abstract class AuthGateway {
       throw UnimplementedError();
   Future<void> requestGuardian(String token, String email) async =>
       throw UnimplementedError();
+  Future<void> confirmGuardianInApp(String token) async =>
+      throw UnimplementedError();
   Future<void> withdrawGuardian(String token) async =>
       throw UnimplementedError();
   Future<AiConsentStatus> updateVersionedAiConsent({
@@ -186,6 +188,21 @@ class AuthApi implements AuthGateway {
       'privacy/guardian-consent/request',
       token: token,
       body: {'email': email},
+    );
+  }
+
+  @override
+  Future<void> confirmGuardianInApp(String token) async {
+    await _send(
+      'POST',
+      'privacy/guardian-consent/in-app',
+      token: token,
+      body: {
+        'policyVersion': agePolicyVersion,
+        'adult': true,
+        'legalGuardian': true,
+        'accepted': true,
+      },
     );
   }
 

@@ -59,7 +59,7 @@ Runtime 必填 `AI_PROVIDER=demo|liangjie|openai`，正式預設選用量界，`
 
 ### Register／login
 
-1. Client 送出 email/password 與 `ageDeclaration`（`ageBand`、當前政策版本、`accepted:true`）；production 未滿 15 歲拒正式註冊，15–17 歲另需監護人確認。
+1. Client 以 email/password 註冊，再送出 `ageDeclaration`（`ageBand`、當前政策版本、`accepted:true`）；production 未滿 15 歲拒正式註冊。臺灣 15–17 歲依 `tw-service-age-15-in-app-v2` 要家長或法定代理人於登入中的孩子帳號 App 內勾選聲明並確認，18 歲以上自行聲明。
 2. API 以 Zod 驗證，password 用 scrypt 與隨機 salt hash。
 3. PostgreSQL 保存 account；session 只保存 token hash，明文 token 只回傳一次給 Client。
 4. 後續 API 從 Bearer session 推導 account，不接受前端指定 user ID。
@@ -125,7 +125,7 @@ Runtime 必填 `AI_PROVIDER=demo|liangjie|openai`，正式預設選用量界，`
 
 ## 正式產品安全與帳號恢復
 
-AuthService 管理 Email 驗證與密碼重設；SMTP adapter 只在 API 持有憑證。Public pages 同由 API 提供 `/privacy`、`/support`、`/account/verify`、`/account/reset-password` 及自有 CSS／JS，不新增 executable component。`PUBLIC_BASE_URL` 必須指向可路由這些根路徑的 API 公開 HTTPS origin。
+AuthService 管理 Email 驗證、密碼重設與監護人資格；SMTP adapter 只在 API 持有憑證。本人登入後可經 `POST /api/privacy/guardian-consent/in-app` 完成 15–17 歲的 App 內監護人聲明；公開政策回報 `guardianConsentMethod=in-app`。舊 Email token 確認路由保留並受政策版本與資格 revision 限制。Public pages 同由 API 提供 `/privacy`、`/support`、`/account/verify`、`/account/reset-password` 及自有 CSS／JS，不新增 executable component。`PUBLIC_BASE_URL` 必須指向可路由這些根路徑的 API 公開 HTTPS origin。
 
 `withUsersTransaction` 以固定順序取得帳號鎖，並將 transaction-scoped repository 傳入 service；不得用 Pool.query 混用 transaction。家庭權限與虛擬交易依此保護跨 instance 並行操作。RateLimitStore 由相同 PostgreSQL resource 提供原子計數，沒有新增 Redis resource。
 
@@ -141,8 +141,8 @@ AuthService 管理 Email 驗證與密碼重設；SMTP adapter 只在 API 持有�
 
 ## 簡化啟動邊界
 
-MAIL_PROVIDER 未填／disabled 時不建立 SMTP transport，可啟動 production；AuthService 開放註冊／登入、不強制 Email 驗證，停用新的寄信請求；年齡、監護人、AI 及資料權限仍由 API 驗證。公開頁及 Client 依 mailEnabled／registrationEnabled／emailVerificationRequired 顯示可用流程。寄信停用不改年齡政策，也不把既有帳號標為已驗證。
+MAIL_PROVIDER 未填／disabled 時不建立 SMTP transport，可啟動 production；AuthService 開放註冊／登入、不強制 Email 驗證，停用新的驗證／重設／舊式監護人寄信請求；現行 15–17 歲監護人聲明走 App 內端點，不依賴 SMTP。Email 仍是未驗證登入識別。年齡、監護人、AI 及資料權限仍由 API 驗證。公開頁及 Client 依 mailEnabled／registrationEnabled／emailVerificationRequired／guardianConsentMethod 顯示可用流程。寄信停用不改年齡政策，也不把既有帳號標為已驗證。
 
 供應商 metadata 可由 providerPolicies.ts 或 runtime overrides 提供，reviewed=false 仍能建立服務；AuthService 在授權與 AI 呼叫前拒絕未確認政策，HTTP 層另保留檢查。配置缺失不會觸發自動 Demo／供應商切換。通用政策預設在 publicConfig.ts，公開 origin 與真實營運資料仍需填寫；備份0表示無定期備份，不更動資料庫。
 
-公開隱私與支援頁由 API 提供 `/privacy`、`/support`，不依賴測試 Web Resource；繁中與英文可由頁面切換，或以 `?lang=zh-Hant`／`?lang=en` 指定，否則依瀏覽器語言。預設使用 App 的淺紫／靛色 tokens，另提供深色主題；公開內容尚未審核時維持 503。隱私版本預設為 `2026-10-02-optional-mail-v1`，既有 runtime 版本覆寫須同步；詳見部署文件。
+公開隱私與支援頁由 API 提供 `/privacy`、`/support`，不依賴測試 Web Resource；繁中與英文可由頁面切換，或以 `?lang=zh-Hant`／`?lang=en` 指定，否則依瀏覽器語言。預設使用 App 的淺紫／靛色 tokens，另提供深色主題；公開內容尚未審核時維持 503。隱私版本預設為 `2026-10-03-in-app-guardian-v2`；`PRIVACY_POLICY_VERSION` 與 `MINOR_CONSENT_DISCLOSURE` 舊 runtime 覆寫須同步更新；詳見部署文件。

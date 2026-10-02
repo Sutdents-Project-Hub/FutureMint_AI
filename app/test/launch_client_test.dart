@@ -34,6 +34,9 @@ const policy = ServicePolicy(
   aiProvider: 'test',
   dataRecipients: ['test'],
   dataTerms: '合成條款',
+  guardianConsentMethod: 'in-app',
+  mailEnabled: false,
+  emailVerificationRequired: false,
 );
 
 class Repo extends GuestRepository {
@@ -158,6 +161,7 @@ class Auth extends FakeAuthGateway {
   );
   ServicePolicy metadata = policy;
   String? email, version;
+  int inAppConfirmations = 0;
   @override
   Future<ServicePolicy?> getServicePolicy() async => metadata;
   @override
@@ -165,6 +169,17 @@ class Auth extends FakeAuthGateway {
   @override
   Future<void> requestGuardian(String token, String value) async {
     email = value;
+  }
+
+  @override
+  Future<void> confirmGuardianInApp(String token) async {
+    inAppConfirmations++;
+    eligibility = const EligibilityStatus(
+      status: 'eligible',
+      canWrite: true,
+      ageBand: '15-17',
+      guardianStatus: 'approved',
+    );
   }
 
   @override
@@ -865,6 +880,45 @@ void main() {
       expect(c.subscriptionComparison!.currentName, '最新方案');
     },
   );
+  for (final scale in [1.0, 2.0]) {
+    testWidgets(
+      'in-app guardian requires an unchecked explicit choice at scale $scale',
+      (tester) async {
+        tester.view.physicalSize = const Size(375, 812);
+        tester.view.devicePixelRatio = 1;
+        tester.platformDispatcher.textScaleFactorTestValue = scale;
+        addTearDown(tester.view.resetPhysicalSize);
+        addTearDown(tester.view.resetDevicePixelRatio);
+        addTearDown(tester.platformDispatcher.clearTextScaleFactorTestValue);
+        final a = Auth(complete: false);
+        final s = controller(a, Repo());
+        addTearDown(s.dispose);
+        await s.start();
+        await tester.pumpWidget(FutureMintApp(session: s));
+        await tester.pumpAndSettle();
+        expect(find.text('監護人電子郵件'), findsNothing);
+        expect(find.text('寄送／重寄同意信'), findsNothing);
+        final button = find.widgetWithText(FilledButton, '確認同意並繼續');
+        expect(tester.widget<FilledButton>(button).onPressed, isNull);
+        final checkbox = find.byKey(const Key('guardian-in-app-consent'));
+        expect(tester.widget<CheckboxListTile>(checkbox).value, isFalse);
+        await tester.ensureVisible(checkbox);
+        await tester.tap(checkbox);
+        await tester.pumpAndSettle();
+        expect(tester.widget<FilledButton>(button).onPressed, isNotNull);
+        await tester.ensureVisible(button);
+        await tester.tap(button);
+        await tester.pumpAndSettle();
+        expect(a.inAppConfirmations, 1);
+        expect(a.email, isNull);
+        expect(s.status, SessionStatus.onboarding);
+        expect(a.version, isNull);
+        expect(a.consent.granted, isFalse);
+        expect(tester.takeException(), isNull);
+      },
+    );
+  }
+
   testWidgets('pending guardian keeps logout delete help accessible', (
     tester,
   ) async {
@@ -872,7 +926,7 @@ void main() {
     await s.start();
     await tester.pumpWidget(FutureMintApp(session: s));
     await tester.pumpAndSettle();
-    expect(find.text('等待監護人同意'), findsOneWidget);
+    expect(find.text('請監護人確認'), findsOneWidget);
     expect(find.text('刪除這個帳號'), findsOneWidget);
     expect(find.text('登出'), findsOneWidget);
     expect(find.text('使用說明與協助'), findsOneWidget);

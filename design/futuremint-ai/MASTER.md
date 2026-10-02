@@ -119,6 +119,7 @@ The approved iOS icon uses `assets/app-icon.png`: one warm gold coin with an ivo
 - FutureSeed: controls own the emphasis before calculation; presets, sliders and free-form coach input let the learner shape the question. After calculation, three selectable line paths share one unframed chart, with metrics and AI reading companion below. Curves must remain labeled and meaningful without relying only on color.
 - Investment lab: show portfolio totals and data freshness before the order form; market examples are a compact selectable list, while holdings and orders use shared surfaces with dividers. Buy/sell is a segmented control, quantity uses stepper/input controls, allocation uses labeled bars, and the event die is a learning prompt rather than a casino visual. Always show source date, fallback state, virtual-money label, and no-advice disclaimer.
 - Roles: child／parent uses explicit API authorization and an invite-code family relationship. Parents see only summary cards; never imply transaction-level cross-account visibility. Guest mode has no family controls.
+- Guardian consent: for Taiwan accounts aged 15–17, show a plain checkbox for a parent or legal guardian to declare they are at least 18, are the legal guardian, and agree to the service after reading the privacy notice. Keep it unchecked until the person taps it; do not collect guardian email. Explain that this in-app statement does not verify identity, family sharing and AI consent are separate, and consent can be withdrawn in the child account settings.
 - Forms: visible labels, helper text for financial assumptions, validation after submit/blur, and error text next to the field.
 - Age declaration dropdowns use a visible title above the control and a selection hint inside it, without a floating outlined-input label. Registration uses an 8–128-character password containing an English letter and a digit, plus a masked confirmation field with its own visibility toggle. Confirmation errors appear beside the field after interaction or submit, and changing the first password rechecks a nonempty confirmation; confirmation is never sent to the API.
 - Capture flow: input → parsing → confirmation. Show provider source and never equate parsed with saved.
@@ -166,6 +167,8 @@ iOS 只支援 iPhone。沿用既有設計，淺色／深色／系統主題需實
 ## 上架流程與狀態（2026-10-01）
 
 本輪不改既有布局、色彩、字級與插圖；年齡／監護人、AI 政策、手動紀錄、訂閱管理、匯出與 iPhone／Android 提醒入口重用原元件。等待資格、寄信失敗、撤回及政策過期均需保留可見的 help/retry、登出與刪除，不用不可退出的全螢幕同意流程。
+
+2026-10-03 15–17 歲監護人確認改為登入後在 App 內勾選家長／法定代理人聲明，不需監護人 Email 或寄信。勾選預設關閉，說明這是聲明而非身分驗證；家庭摘要與 AI 授權各自詢問，並提供孩子在設定撤回的入口。沿用現有表單元件及視覺。
 
 訂閱卡分開呈現合約承諾成本與實際付款，不能把新增合約顯示成已扣款。提醒文字明示 iPhone／Android 本機權限、系統送達限制與 Web App 內限制；遠端變更需同步。AI disclosure 顯示當前 provider、模型、資料接收方與政策版本；拒絕後手動功能仍有入口。微課標明受控教材與選題來源。
 

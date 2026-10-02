@@ -444,7 +444,7 @@ class _AuthScreenState extends State<AuthScreen> {
                                           false) ...[
                                         Text(
                                           _ageBand == '15-17'
-                                              ? '目前不寄送監護人確認信。建立帳號後仍須等待監護人同意，暫時無法使用正式記帳；可先使用訪客模式。'
+                                              ? '建立帳號後，請家長或法定代理人在 App 內確認同意，即可繼續設定，不需要寄信。'
                                               : '目前採免寄信註冊，信箱只作登入識別、不驗證所有權。沒有寄信重設密碼功能，請妥善保存密碼。',
                                           style: theme.textTheme.bodySmall,
                                         ),

@@ -30,8 +30,8 @@
 
 ### 假設與未決事項
 
-- 主 Persona 是開始管理零用錢與數位消費的中學生；正式服務採臺灣 15+，15–17 歲需監護人 Email 確認。服務資格、家庭摘要分享與 AI 授權各自獨立；Email 不證明法定代理人身分，正式未成年人營運條件仍待查核。
-- 主要 Demo 面保留 Flutter Web 或 Android；正式 iOS 僅支援 iPhone。Apple 簽章、正式 domain 與完整帳號 SMTP 送達仍待確認；使用者選擇本輪不建立定期資料庫備份。
+- 主 Persona 是開始管理零用錢與數位消費的中學生；正式服務採臺灣 15+，15–17 歲由家長或法定代理人在 App 內勾選聲明並確認。這不是身分驗證；服務資格、家庭摘要分享與 AI 授權各自獨立，正式未成年人營運條件仍待查核。
+- 主要 Demo 面保留 Flutter Web 或 Android；正式 iOS 僅支援 iPhone。Apple 簽章、正式 domain、Email 驗證與重設信的 SMTP 實際送達仍待確認；監護人同意可由 App 內完成。使用者選擇本輪不建立定期資料庫備份。
 - 訂閱方案資料來源及青少年可用性測試的同意／去識別方式尚待團隊定案。
 
 ## 專案事實與邊界
@@ -122,7 +122,7 @@
 ## 簡化部署契約（2026-10）
 
 - 正式只啟動 API／PostgreSQL；測試 Web 停止並關閉其 Auto Deploy，原生 iPhone 不依賴 Web。不得以 API deploy 冒充 App Store 發布。
-- `MAIL_PROVIDER` 未填或 `disabled` 可啟動 production、註冊及登入，不要求 Email 驗證；信箱只作未驗證登入識別、不改寫 emailVerifiedAt。新的驗證／重設／監護人寄信停用；15–17 歲仍待監護人同意、不能寫入受限資料。SMTP 啟用後要求信箱驗證，寄信重設只使用已驗證信箱；不依未驗證 Email 處理帳號復原或監護人核准。
+- `MAIL_PROVIDER` 未填或 `disabled` 可啟動 production、註冊及登入，不要求 Email 驗證；信箱只作未驗證登入識別、不改寫 emailVerifiedAt。新的驗證／重設／監護人寄信停用；符合新政策的 15–17 歲帳號可由本人登入後交由家長或法定代理人在 App 內勾選聲明，不以此證明身分。SMTP 啟用後要求信箱驗證，寄信重設只使用已驗證信箱；不依未驗證 Email 處理帳號復原。舊 email guardian token 流程仍存在，受服務政策版本與資格 revision 限制。
 - `BACKUP_RETENTION_DAYS` 預設 `0`，表示不建立定期資料庫備份；不刪 volume、既有備份或最小刪除 journal。
 - 公開說明的內建預設在 `backend/src/config/publicConfig.ts`；真實營運者、客服、API origin、資料地區與政策確認仍需設定。
 - 供應商公開說明可維護於 `backend/src/config/providerPolicies.ts` 或既有 `*_DATA_*` runtime overrides；缺少／未確認時只停用外部 AI，API 手動功能仍可啟動。不得虛構上游、保存或訓練承諾。

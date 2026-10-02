@@ -11,6 +11,7 @@ class ServicePolicy {
     this.mailEnabled = true,
     this.registrationEnabled = true,
     this.emailVerificationRequired = true,
+    this.guardianConsentMethod = 'email',
   });
   final String aiPolicyVersion, aiDisplayName, aiProvider, dataTerms;
   final String? model;
@@ -20,8 +21,10 @@ class ServicePolicy {
   final bool mailEnabled;
   final bool registrationEnabled;
   final bool emailVerificationRequired;
+  final String guardianConsentMethod;
+  bool get supportsInAppGuardianConsent => guardianConsentMethod == 'in-app';
   String get signature =>
-      '$aiPolicyVersion|$aiProvider|$aiDisplayName|$model|${dataRecipients.join('|')}|$dataTerms|$reviewed|$eligibilityRequired|$mailEnabled|$registrationEnabled|$emailVerificationRequired';
+      '$aiPolicyVersion|$aiProvider|$aiDisplayName|$model|${dataRecipients.join('|')}|$dataTerms|$reviewed|$eligibilityRequired|$mailEnabled|$registrationEnabled|$emailVerificationRequired|$guardianConsentMethod';
   factory ServicePolicy.fromJson(Map<String, dynamic> j) {
     final ai = j['ai'] as Map<String, dynamic>;
     return ServicePolicy(
@@ -30,6 +33,7 @@ class ServicePolicy {
       eligibilityRequired: j['eligibilityRequired'] as bool? ?? true,
       mailEnabled: j['mailEnabled'] as bool? ?? true,
       registrationEnabled: j['registrationEnabled'] as bool? ?? true,
+      guardianConsentMethod: j['guardianConsentMethod'] as String? ?? 'email',
       emailVerificationRequired:
           j['emailVerificationRequired'] as bool? ??
           (j['mailEnabled'] as bool? ?? true),
@@ -63,4 +67,4 @@ class EligibilityStatus {
       );
 }
 
-const agePolicyVersion = 'tw-service-age-15-v1';
+const agePolicyVersion = 'tw-service-age-15-in-app-v2';

@@ -24,7 +24,7 @@ import {
 
 import { InMemoryEligibilityStore, type EligibilityStore } from "../adapters/eligibilityStore";
 import {
-  ageDeclarationSchema, guardianRequestSchema, guardianConfirmationSchema, guardianWithdrawalSchema,
+  ageDeclarationSchema, guardianRequestSchema, guardianConfirmationSchema, guardianWithdrawalSchema, inAppGuardianConsentSchema,
   registrationSchema, versionedAiConsentSchema, servicePolicyVersion, providerAiPolicyVersion,
   type AgeDeclarationInput, type EligibilityRecord, type GuardianActionToken, type ServiceEligibility,
 } from "../contracts/servicePolicy";
@@ -343,7 +343,7 @@ export class AuthService {
     return { status, ageBand: record?.ageBand ?? null, policyVersion: record?.policyVersion ?? null,
       currentPolicyVersion: this.currentServicePolicy, declaredAt: record?.declaredAt ?? null,
       guardianStatus: record?.guardianStatus ?? null, guardianApprovedAt: record?.guardianApprovedAt ?? null,
-      guardianWithdrawnAt: record?.guardianWithdrawnAt ?? null, canWrite: status === "eligible" };
+      guardianWithdrawnAt: record?.guardianWithdrawnAt ?? null, guardianConsentMethod: record?.guardianConsentMethod ?? null, canWrite: status === "eligible" };
   }
 
   async getEligibility(userId: string): Promise<ServiceEligibility> {
@@ -393,13 +393,30 @@ export class AuthService {
     return { accepted: true };
   }
 
+  async confirmGuardianInApp(userId: string, input: unknown): Promise<ServiceEligibility> {
+    const parsed = inAppGuardianConsentSchema.parse(input);
+    if (parsed.policyVersion !== this.currentServicePolicy) throw new DomainError("service_policy_changed", "服務說明已更新，請重新閱讀並確認。", 409);
+    return this.eligibilityStore.withUserTransaction(userId, async (store) => {
+      if (!(await this.repository.findAccountById(userId))) throw unauthorized();
+      const record = await store.get(userId);
+      if (!record || record.policyVersion !== this.currentServicePolicy || record.ageBand !== "15-17") throw new DomainError("guardian_not_applicable", "請先確認適用的年齡與服務版本。", 409);
+      // Repeated confirmation never rotates the revision or silently revokes AI.
+      if (record.guardianStatus === "approved") return this.eligibilityFrom(record);
+      const approved: EligibilityRecord = { ...record, guardianStatus: "approved", guardianApprovedAt: this.now().toISOString(), guardianEmail: null,
+        guardianConsentMethod: "in-app", revision: record.revision + 1, aiConsentRevision: null };
+      await store.clearTokens(userId);
+      await store.save(approved);
+      return this.eligibilityFrom(approved);
+    });
+  }
+
   async confirmGuardian(input: { token: string; policyVersion: string; adult: true; legalGuardian: true; accepted: true }): Promise<{ approved: true; emailDeliveryPending?: boolean }> {
     const parsed = guardianConfirmationSchema.parse(input);
     if (parsed.policyVersion !== this.currentServicePolicy) throw new DomainError("service_policy_changed", "服務說明已更新，請重新申請同意。", 409);
     let deliveryPending = false;
     await this.withGuardianToken(parsed.token, "guardian-approve", async (store, record) => {
       if (record.guardianStatus !== "pending") throw this.invalidActionToken();
-      const approved = { ...record, guardianStatus: "approved" as const, guardianApprovedAt: this.now().toISOString() };
+      const approved = { ...record, guardianStatus: "approved" as const, guardianApprovedAt: this.now().toISOString(), guardianConsentMethod: "email" as const };
       await store.save(approved);
       await store.clearTokens(record.userId);
       // Approval itself remains valid if the subsequent withdrawal email fails.

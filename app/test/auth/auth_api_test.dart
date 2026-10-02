@@ -2,6 +2,7 @@ import 'dart:convert';
 
 import 'package:flutter_test/flutter_test.dart';
 import 'package:futuremint_app/auth/auth_api.dart';
+import 'package:futuremint_app/auth/service_policy.dart';
 import 'package:futuremint_app/auth/session_store.dart';
 import 'package:futuremint_app/data/api_repository.dart';
 import 'package:http/http.dart' as http;
@@ -9,6 +10,33 @@ import 'package:http/testing.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
 void main() {
+  test(
+    'in-app guardian consent sends only current policy and explicit declarations',
+    () async {
+      final api = AuthApi(
+        baseUri: Uri.parse('https://api.test/api/'),
+        client: MockClient((request) async {
+          expect(request.method, 'POST');
+          expect(request.url.path, '/api/privacy/guardian-consent/in-app');
+          expect(request.headers['authorization'], 'Bearer current-session');
+          expect(jsonDecode(request.body), {
+            'policyVersion': agePolicyVersion,
+            'adult': true,
+            'legalGuardian': true,
+            'accepted': true,
+          });
+          return http.Response(
+            jsonEncode({
+              'data': {'canWrite': true},
+            }),
+            200,
+          );
+        }),
+      );
+      await api.confirmGuardianInApp('current-session');
+    },
+  );
+
   test(
     'verification resend and password reset use the expected request contract',
     () async {

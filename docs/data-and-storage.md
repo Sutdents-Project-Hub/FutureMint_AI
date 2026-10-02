@@ -10,7 +10,7 @@
 
 ## PostgreSQL schema
 
-Schema 由 `backend/migrations/001` 至 `011` 的版本化 SQL 管理；008 新增訂閱與執行順序、009 新增服務資格／監護人 token、010 新增共享 AI 額度／leases，011 新增最小帳號刪除 journal。既有檔案 checksum 不變：
+Schema 由 `backend/migrations/001` 至 `012` 的版本化 SQL 管理；008 新增訂閱與執行順序、009 新增服務資格／監護人 token、010 新增共享 AI 額度／leases，011 新增最小帳號刪除 journal，012 新增 nullable guardian consent method 欄位。012 將既有已核准且有 Email 的紀錄標為 `email`，不改舊 migration checksum：
 
 | Table | 內容 | 重要約束 |
 |---|---|---|
@@ -68,7 +68,7 @@ Pool 目前上限 10 connections，connection／idle timeout 由 repository 設�
 
 `subscriptions` 保存穩定 ID／owner、名稱、TWD 整數金額、月／年週期、anchor DATE、原扣款日／月、active、idempotency key 及完整請求 fingerprint。續訂日由日曆確定計算並保證在未來；不存在月份的日期先截至月末，下一週期仍使用原扣款日。`money_events.subscription_id` 使用複合 owner FK；合約停止不刪除歷史實付。
 
-`service_eligibilities` 保存 age band、政策版本、監護人狀態與 revision；`guardian_action_tokens` 只保存 token hash／用途／到期／revision。既有帳號不會自動填成年聲明。`ai_usage_daily` 以台北日曆及雜湊 user subject 原子計數，`ai_operation_leases` 支援跨 instance 並行上限及到期回收。
+`service_eligibilities` 保存 age band、政策版本、監護人狀態、同意方式與 revision；`guardian_action_tokens` 只保存 token hash／用途／到期／revision。App 內核准記錄 `guardian_consent_method=in-app` 並清空 guardian email；舊 Email 核准記錄 `email`。既有帳號不會自動填成年聲明。`ai_usage_daily` 以台北日曆及雜湊 user subject 原子計數，`ai_operation_leases` 支援跨 instance 並行上限及到期回收。
 
 `virtual_investment_orders.execution_sequence` 在帳號鎖內遞增，重建依此序列；008 為舊資料回填序列。日後若啟用備份，升級前需在隔離資料庫確認 migration／restore；不修改舊 migration，不以舊 API rollback 宣稱完整新資料語意。
 
@@ -76,7 +76,7 @@ Pool 目前上限 10 connections，connection／idle timeout 由 repository 設�
 
 Client 為重試一致性保存帳號綁定的待確認訂閱／虛擬訂單 payload 與 key；原生系統安全儲存、Web browser storage。同帳號重新登入／重啟恢復原操作，登出保留，App 內刪除帳號清除；儲存失敗會停止首次送出，不以新 key 繼續不確定操作。
 
-SMTP 關閉時註冊仍保存帳號，但不寫入 `emailVerifiedAt`；未驗證 Email 僅作登入識別，不作為郵件重設或客服恢復帳號的唯一憑據。SMTP 關閉不會刪除既有驗證／監護人 token 或改寫既有帳號驗證狀態；有效 token 仍依原用途、到期與一次性限制使用。寄信與供應商說明的可選設定不新增 migration，也不改 schema、秘密或資料保存邊界。備份0不代表最小刪除journal立即清除；仍需涵蓋尚存的舊備份副本。
+SMTP 關閉時註冊仍保存帳號，但不寫入 `emailVerifiedAt`；未驗證 Email 僅作登入識別，不作為郵件重設或客服恢復帳號的唯一憑據。現行 15–17 歲 guardian consent 由登入帳號的 App 內端點寫入，不依賴 SMTP；已核准紀錄保存方式但不保存監護人 Email。舊 Email token 仍受政策版本、revision、到期與一次性限制。012 是新增 nullable 欄位，既有已核准 Email 紀錄回填 `email`，不改 schema 的帳號資料邊界或秘密處理。備份0不代表最小刪除journal立即清除；仍需涵蓋尚存的舊備份副本。
 
 ## 原生提醒裝置資料（2026-10-02）
 

@@ -32,10 +32,10 @@ export interface PublicConfig {
 
 // 公開、版本化的產品說明；部署時仍需填入真實營運者、信箱及資料地區。
 export const publicPolicyDefaults: Record<string, string> = {
-  PRIVACY_POLICY_VERSION: "2026-10-02-optional-mail-v1",
+  PRIVACY_POLICY_VERSION: "2026-10-03-in-app-guardian-v2",
   BACKUP_RETENTION_DAYS: "0",
   MINIMUM_AGE: "15",
-  MINOR_CONSENT_DISCLOSURE: "本服務限15歲以上使用；15至17歲需完成監護人Email確認。服務資格、家庭摘要分享及第三方AI授權分別處理；Email確認本身不證明法定代理人身分。",
+  MINOR_CONSENT_DISCLOSURE: "本服務限15歲以上使用；15至17歲須由監護人在孩子裝置內閱讀並明確聲明成年、法定代理人身分及同意使用。這是App內聲明，不是身分驗證；可於孩子裝置撤回或聯絡客服。服務資格、家庭摘要分享及第三方AI授權分別處理。",
   AI_DATA_TERMS_DISCLOSURE: "第三方AI功能需另外同意；解析只傳送本次輸入，教育功能使用必要摘要及問題。不同意或撤回後仍可手動記帳、管理訂閱及查看固定教材。供應商接收方及資料處理方式另列於本頁與App同意畫面。",
 };
 

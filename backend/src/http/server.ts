@@ -309,7 +309,7 @@ export const buildServer = async (
   });
   const ai = runtime.aiPolicy;
   const servicePolicy = {
-    servicePolicyVersion, minimumAge: 15, country: "TW", guardianRequiredUnder18: true, eligibilityRequired: runtime.eligibilityRequired ?? false,
+    servicePolicyVersion, minimumAge: 15, country: "TW", guardianRequiredUnder18: true, guardianConsentMethod: "in-app", eligibilityRequired: runtime.eligibilityRequired ?? false,
     privacyPolicyVersion: runtime.publicConfig?.policyVersion ?? "",
     ...runtime.authService.getCapabilities(),
     ai: { provider: runtime.aiProvider, displayName: ai?.providerName ?? (runtime.aiProvider === "openai" ? "OpenAI" : runtime.aiProvider === "liangjie" ? "量界智算" : "離線展示"),
@@ -344,6 +344,10 @@ export const buildServer = async (
     runtime.authService.requireMailDelivery();
     const account = await requireAuthenticatedUser(request, runtime);
     return success(request, reply, await runtime.authService.requestGuardian(account.id, request.body as never));
+  });
+  app.post("/api/privacy/guardian-consent/in-app", authRateLimit, async (request, reply) => {
+    const account = await requireAuthenticatedUser(request, runtime, true);
+    return success(request, reply, await runtime.authService.confirmGuardianInApp(account.id, request.body));
   });
   app.post("/api/privacy/guardian-consent/confirm", authRateLimit, async (request, reply) =>
     success(request, reply, await runtime.authService.confirmGuardian(guardianConfirmationSchema.parse(request.body))));
