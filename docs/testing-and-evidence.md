@@ -1,5 +1,16 @@
 # 測試與證據
 
+## 公開團隊、素材來源與行情顯名（2026-10-03）
+
+分類：上架資料釐清與既有行情授權聲明補齊，不改 API／資料庫或投資計算。
+
+- 使用者確認公開營運名稱「FutureMint AI 團隊」、原角色為團隊使用 ChatGPT 生成。ASC 版權已保存為 `2026 FutureMint AI 團隊`；本機忽略的 App 公開配置已更新，`validate_release_config.dart` 通過。線上 API 的營運名稱仍待同步，不能以本機配置冒充部署完成。
+- 已核對 OpenAI 輸出權利條款與政府資料開放平臺 TWSE 個股日成交資料集 11549。投資練習場來源區新增「行情資料授權」標準對話框，包含提供機關、資料集、年份、授權連結及非背書說明。
+- `flutter analyze --no-pub lib test` 無問題；`flutter test --no-pub test/features/investment_lab_screen_test.dart` 3／3 通過，含 200% 字級與虛擬買賣既有回歸。最初全目錄 analyze 另讀入被忽略的舊 `output/guardian_preview.dart`，有 3 項缺少 override 的提示；未改動該暫存預覽檔。
+- iPhone simulator debug build 成功（Xcode 21.0 秒）；iPhone 17 Pro Max／iOS 26.4 訪客實際操作確認授權入口、完整對話框及關閉返回均正常。沒有執行真實下單、登入帳號或呼叫 AI；正式 signed archive 仍未執行。
+- Xcode 已登入正確團隊，建立憑證選項載入後可用；本機仍為 0 valid identities，網站可見既有雲端管理的 Distribution 憑證。尚未新增或撤銷憑證，等待新增簽章能力的確認。
+- 使用者確認原角色無未授權的第三方參考素材，並明確授權內容權利聲明；ASC 已保存，重新載入驗證保留。App Privacy 與年齡問卷仍未完成；來源查核不能代替未確認的 AI 供應商用途。商店狀態仍為準備提交。
+
 ## 上架接續與簽章配置（2026-10-03）
 
 分類：已核准的 iPhone 發布配置與上架現況更新。Runner Debug／Profile／Release 設定 `CODE_SIGN_STYLE=Automatic` 與已確認的 Team；沒有修改功能或資料流程。

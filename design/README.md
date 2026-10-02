@@ -22,20 +22,20 @@
 
 目前學生 UI 的 Demo 預設為深靛黑畫布、紫色發光重點與本機角色插圖；亮色 token 仍保留作為主題支援。紫色與綠色光效只用於 Hero 與重點行動，不延伸到所有內容卡。一般卡片以深淺表面與必要的細框區隔，不以大量陰影製造層次。
 
-`app/assets/images/` 的插圖目前只作為學生提供的本機 Demo 資產；在公開發表、上架或部署前，團隊必須補記每個插圖的作者、來源與授權，或以自有／明確可用的素材替換。未確認前不得把它們宣稱為第三方可再散布素材。
+`app/assets/images/` 的角色插圖來源依使用者 2026-10-03 確認：紫色、黃色等角色由團隊使用 ChatGPT 生成；它們不是學生自繪，也不是從第三方下載。依 [OpenAI 使用條款](https://openai.com/policies/row-terms-of-use/) 的 Content 條款，使用者與 OpenAI 之間的生成輸出權利歸使用者；團隊依此提供 App 使用。此紀錄不宣稱獨占著作權或保證不存在第三方權利。使用者另確認沒有使用未獲授權的他人圖片／知名角色，且團隊同意用於 App 上架。未提供的原始生成日期與逐張提示不另行杜撰。既有原角色 PNG 的來源描述依此更新，App Store 使用狀態見 [上架素材與來源](app-store/README.md)。
 
 ## iPhone App icon（2026-10-01）
 
 - 使用者核准替換 iOS icon；原稿為 [app-icon.png](futuremint-ai/assets/app-icon.png)，由 Codex 內建 imagegen 依本專案品牌方向產生，沒有使用第三方圖片或商標作為輸入。
 - 視覺為靛紫滿版背景、暖金幣及象牙白／淡紫嫩芽，表達預算、儲蓄與學習。原稿保留完整方形、不透明背景，圓角由 iOS 呈現。
 - 在 `app/` 執行 `python3 tool/generate_ios_icons.py`，使用 macOS `sips` 按現有 `AppIcon.appiconset/Contents.json` 輸出全部尺寸；1024px 項目亦由同一原稿產生。
-- 本次範圍為 iOS launcher icon；App 內畫面、Web／Android 原有向量品牌與啟動畫面沿用既有資產。其他學生插圖的來源紀錄不因本次生成而完成。
+- 本次範圍為 iOS launcher icon；App 內畫面、Web／Android 原有向量品牌與啟動畫面沿用既有資產。其他角色的來源確認與權利查核不因本次生成而完成。
 - 生成提示：FutureMint 青少年金錢教育與預算教練的單一方形 App icon；置中的金幣與雙葉嫩芽整合標記，靛紫 `#6D5BD0` 滿版背景，暖金色、象牙白與淡紫色，清楚輪廓及柔和立體陰影，縮小至 60px 可辨識；無文字、貨幣符號、數字、商標、水印、手機 mockup、外框、預先圓角或透明角落。
 - 完整 imagegen 提示存於 [app-icon.prompt.txt](futuremint-ai/assets/app-icon.prompt.txt)。生成原稿為 1254×1254，尺寸輸出由腳本負責，沒有對原稿重新繪製。
 
 ## 人工品質檢查
 
-學習路線卡片的紫色探頭角色使用 `app/assets/images/mascot_peek_purple_level.png`。內建 imagegen 以原有學生角色為參考，整理為水平底緣與抓邊的雙手；只裁去透明畫布留白（1176×744），角色身體底緣位於圖像 y=642。角色與卡片上界共用此縮放錨點，依最新使用者指示不再額外畫紫色橫線。角色縮為 112／136dp 並左移，頭部右側為等大 12dp、等距 8dp 的兩圓一菱形；角色與裝飾共用卡片上方的預留空間，取消原本獨立裝飾列，收短標題下方間距。此素材沿用原角色，原素材的來源／授權查核仍需保留。生成提示見 [learning-mascot.prompt.txt](futuremint-ai/assets/learning-mascot.prompt.txt)。
+學習路線卡片的紫色探頭角色使用 `app/assets/images/mascot_peek_purple_level.png`。內建 imagegen 以原有學生角色為參考，整理為水平底緣與抓邊的雙手；只裁去透明畫布留白（1176×744），角色身體底緣位於圖像 y=642。角色與卡片上界共用此縮放錨點，依最新使用者指示不再額外畫紫色橫線。角色縮為 112／136dp 並左移，頭部右側為等大 12dp、等距 8dp 的兩圓一菱形；角色與裝飾共用卡片上方的預留空間，取消原本獨立裝飾列，收短標題下方間距。依使用者 2026-10-03 確認，角色系列由團隊使用 ChatGPT 生成；本素材的原始生成日期及提示未提供，不影響保存已確認的來源紀錄。既有編修提示見 [learning-mascot.prompt.txt](futuremint-ai/assets/learning-mascot.prompt.txt)。
 
 - 375px、768px、1024px、1440px 與 landscape 不溢位。
 - 可用的 desktop post-rail 寬度達 900dp 時，登入後的主要頁面必須填滿該網頁畫布（保留規定 gutter），不可置中成狹窄 App 卡片；登入、說明與設定彈窗則維持聚焦寬度。

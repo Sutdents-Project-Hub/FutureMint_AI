@@ -64,23 +64,23 @@ Apple 的「其他財務資訊」涵蓋收入等資料；不連銀行不等於�
 
 目前程式沒有廣告 SDK／跨 App 廣告追蹤、相片上傳或定位權限；AI 接收方與上游用途仍需核對，不能以「沒有廣告 SDK」推論所有第三方用途。年齡分級由 Apple 問卷產生，服務資格 15+ 不等同商店分級；不得直接猜填分級或兒童類別。
 
-內容權利仍有具體缺口：[Design README](../design/README.md) 記錄原有學生角色 PNG 尚待作者、來源與商用授權確認；新 iOS icon 的生成紀錄不涵蓋其他插圖。這不能由 repository 的 LICENSE 宣告或本輪截圖替代。年齡問卷可依固定金融教材、不提供使用者互相聊天或一般網頁瀏覽等程式事實回答；家庭摘要及自我年齡／家長聲明不冒充身分驗證或內容家長控制。
+使用者於 2026-10-03 確認公開營運名稱為「FutureMint AI 團隊」，並確認紫色、黃色等角色由團隊使用 ChatGPT 生成，並非學生自繪或第三方下載。來源及 OpenAI 輸出權利條款見 [Design README](../design/README.md)。新 iOS icon 的生成紀錄仍只涵蓋該 icon。年齡問卷可依固定金融教材、不提供使用者互相聊天或一般網頁瀏覽等程式事實回答；家庭摘要及自我年齡／家長聲明不冒充身分驗證或內容家長控制。
 
 參考：[Apple App Privacy Details](https://developer.apple.com/app-store/app-privacy-details/)、[管理 App 隱私權](https://developer.apple.com/help/app-store-connect/manage-app-information/manage-app-privacy/)。
 
 ## 尚待取得與製作
 
 - Apple 協議、Bundle ID 註冊及 App record 已完成；仍需 Apple signing identity、signed build 與 TestFlight。
-- 審查聯絡姓名／電話／Email 已依使用者指示沿用 EmoChess；公開營運者與版權名称尚待確認，與審查聯絡人分開。
+- 審查聯絡姓名／電話／Email 已依使用者指示沿用 EmoChess；公開營運名稱已由使用者於 2026-10-03 確認為「FutureMint AI 團隊」，ASC 版權欄位已保存為「2026 FutureMint AI 團隊」，production 公開設定仍待同步，並與審查聯絡人分開。
 - 已從目前 1.0.0(1) 模擬器版本製作六張 1320×2868 繁中 iPhone 6.9 吋截圖，見 [素材與來源](../design/app-store/README.md)。使用合成訪客資料，原生 PNG 保留，JPEG 無透明通道；已上傳 ASC 並重新載入確認六張，6.5 吋沿用 6.9 吋；仍待最終 signed build 對照。
 - 新版 API／migration 與 App 內監護人流程、AI 資料處理條款與功能、通知真機驗收，以及新版審查帳號完整流程。
-- 免費價格及臺灣供應已保存；仍須 App Privacy、年齡問卷、內容權利、加密、build 選擇與提交檢查。
+- 免費價格及臺灣供應已保存；內容權利聲明已保存；仍須 App Privacy、年齡問卷、加密、build 選擇與提交檢查。
 
 ## 剩餘人工資料與接續操作（2026-10-03）
 
-- **Apple 登入**：Xcode → Settings → Apple Accounts → ＋ → Apple Account，直接在 Apple 視窗輸入開發者帳號並完成雙重驗證。Runner 已配置已確認的開發團隊及 Automatic signing；登入完成後仍須確認憑證／profile、正式 archive 與 Apple 上傳驗證，不把 Team 設定視為已簽章。不要將密碼或驗證碼寫入文件。
-- **公開名稱**：提供實際負責本服務的個人或組織公開名稱，以同步商店版權、App 公開配置及政策；審查聯絡人已填，不能據此推定營運主體。
-- **原插圖**：確認角色素材為自製、AI 生成或第三方來源；自製需確認作者同意使用，第三方需提供來源與適用授權。新 App icon 的生成來源不涵蓋其他角色。
+- **Apple 登入**：使用者已完成 Xcode 登入，顯示已確認的 MIN HSIEN LI 團隊。Runner 已配置已確認的開發團隊及 Automatic signing；尚無本機有效簽章憑證；網站已有雲端管理的 Distribution 憑證。仍須取得本機簽章／profile、正式 archive 與 Apple 上傳驗證，不把 Team 設定視為已簽章。不要將密碼或驗證碼寫入文件。
+- **公開名稱**：名稱已確認為「FutureMint AI 團隊」；ASC 已保存「2026 FutureMint AI 團隊」；本機 App 公開配置已更新並通過格式驗證；production 政策仍待同步。
+- **原插圖**：使用者確認紫色、黃色等角色由團隊使用 ChatGPT 生成，非學生自繪或第三方下載；已核對 OpenAI 條款中的輸出權利，詳見 Design README。新 App icon 的生成來源不涵蓋其他角色。
 - **年齡問卷**：App 有自行選擇年齡及服務資格門檻，不查驗身分證件；是否依 Apple 當前定義填入「年齡確認」已請營運者確認。問卷尚未保存，不能將準備中的回答視為完成。
 - **App Privacy**：程式端收集項目已整理於上節；正式 API／平台請求日誌的欄位、保存期限及供應商處理用途仍待證據。診斷資料與用途分類尚未保存或發布。
 
@@ -89,3 +89,5 @@ Apple 的「其他財務資訊」涵蓋收入等資料；不連銀行不等於�
 > 我們預計在臺灣上架含 15–17 歲監護人同意流程的教育 App，使用量界 gpt-4o-mini API。請提供適用此 API 的隱私政策／資料處理條款及營運主體，並說明實際上游服務商、傳送內容及回覆是否用於訓練／人工審閱／廣告或跨公司追蹤、prompt／回覆／IP／日誌／備份的保存期限、處理國家、刪除申請與上游刪除方式，以及是否允許上述未成年人使用情境。請附可引用的文件或書面答覆；我們不會寄送使用者資料或 API 金鑰。
 
 公開頁面查核目前未取得足以填補上述用途、保存及上游資訊的條款；沒有證據時不宣稱第三方「不保存／不訓練／不追蹤」。取得書面資料後再完成問卷與公開告知。
+
+內容權利聲明已完成：已核對 TWSE 開放資料 11549 與顯名義務，App 補上「行情資料授權」；使用者確認 AI 角色沒有使用未授權的第三方圖片／知名角色，且團隊同意用於上架。依明確授權在 ASC 保存「是，此 App 具有第三方內容的必要權利」，重新載入確認保留。

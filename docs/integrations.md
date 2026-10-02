@@ -45,6 +45,7 @@ API 只透過 parameterized SQL 存取 Coolify PostgreSQL。`DATABASE_URL` 只�
 ## 市場資料與模擬交易
 
 - [臺灣證券交易所 OpenAPI](https://openapi.twse.com.tw/) 的 `/v1/exchangeReport/STOCK_DAY_ALL` 提供每日成交統計，不需在 Client 或 API 設定市場資料金鑰。本專案只取內建五個跨產業教學標的，保留來源日期，並在 API 記憶體快取 15 分鐘。
+- 2026-10-03 核對政府資料開放平臺[資料集 11549](https://data.gov.tw/dataset/11549)：同一個股日成交資料採[政府資料開放授權條款第 1 版](https://data.gov.tw/license)，可用於產品但需顯名。Client 行情來源區的「行情資料授權」提供機關、資料集、年份、條款網址及非背書說明；不將此授權擴大到即時行情或其他來源。
 - 來源逾時、HTTP 失敗或 schema 改變時，API 回傳明確標示 `educational-snapshot` 的版本化快照；Client 同時顯示來源與「降級資料」，不把舊值當成即時行情。
 - 虛擬訂單只更新 FutureMint 自己的 PostgreSQL／記憶體資料，不送往證交所、券商或任何 paper-trading account。程式驗證現金、持有數量與 idempotency，骰子只從版本化事件牌組選出學習題目。
 

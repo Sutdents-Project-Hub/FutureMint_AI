@@ -97,6 +97,7 @@ iOS Client 本身只使用系統 HTTPS／TLS，沒有實作自訂或非豁免加
 - 投資練習場只建立虛擬訂單。登入帳號保存到 PostgreSQL；訪客持倉與訂單只留在記憶體，重新整理後清除。
 - 畫面中的五個標的是跨產業教學範例，不是推薦清單；骰子只產生學習事件，不代替使用者決定買賣。
 - 不連銀行、支付或真實金融帳戶。
+- 投資練習場行情來源區提供「行情資料授權」，可查看盤後開放資料的提供機關、資料集及政府資料開放授權條款；行情來源與備援標示維持原樣。
 - Android／iOS 不是目前 Coolify deployment resources；原生 build／簽章狀態見 [測試證據](../docs/testing-and-evidence.md)。
 
 視覺規則見 [Design System](../design/README.md)；架構、安全與部署見 [系統架構](../docs/architecture.md)、[安全與隱私](../docs/security-and-privacy.md)、[部署說明](../docs/deployment.md)。

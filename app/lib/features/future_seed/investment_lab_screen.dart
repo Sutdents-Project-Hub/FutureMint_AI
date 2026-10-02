@@ -431,6 +431,33 @@ class _MarketSourceStrip extends StatelessWidget {
                     market.isFallback ? '目前為備援快照' : '盤後資料，非即時',
                     style: TextStyle(color: foreground),
                   ),
+                  TextButton(
+                    onPressed: () => showDialog<void>(
+                      context: context,
+                      builder: (dialogContext) => AlertDialog(
+                        title: const Text('行情資料授權'),
+                        content: const SingleChildScrollView(
+                          child: SelectableText(
+                            '正式盤後行情來源：金融監督管理委員會證券期貨局／臺灣證券交易所。'
+                            '資料集：盤後資訊 > 個股日成交資訊（資料集 11549，2017 年釋出；資料日期依畫面標示）。\n\n'
+                            '此開放資料依政府資料開放授權條款第 1 版進行公眾釋出；'
+                            '使用者於遵守條款各項規定之前提下，得利用之。\n'
+                            '資料集：https://data.gov.tw/dataset/11549\n'
+                            '授權條款：https://data.gov.tw/license\n\n'
+                            '本 App 選取部分標的並計算虛擬練習結果，未獲資料提供機關背書。'
+                            '備援快照與訪客合成資料均依畫面標示，不代表即時行情。',
+                          ),
+                        ),
+                        actions: [
+                          TextButton(
+                            onPressed: () => Navigator.of(dialogContext).pop(),
+                            child: const Text('關閉'),
+                          ),
+                        ],
+                      ),
+                    ),
+                    child: const Text('行情資料授權'),
+                  ),
                 ],
               ),
             ),

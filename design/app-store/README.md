@@ -1,6 +1,6 @@
 # App Store iPhone 截圖
 
-2026-10-03 從 FutureMint AI `1.0.0 (1)`、程式版本 `55d030f` 的 iPhone 17 Pro Max／iOS 26.4 模擬器實際擷取。一般 `lib/main.dart` 入口，production 公開配置，使用 App 既有的合成訪客模式；沒有登入真實帳號、上傳私人資料或呼叫外部 AI。
+2026-10-03 從 FutureMint AI `1.0.0 (1)`、程式版本 `55d030f` 的 iPhone 17 Pro Max／iOS 26.4 模擬器實際擷取。一般 `lib/main.dart` 入口，production 公開配置，使用 App 既有的合成訪客模式；沒有登入真實帳號、上傳私人資料或呼叫外部 AI。使用者於 2026-10-03 確認公開營運名稱為「FutureMint AI 團隊」。
 
 ## 素材與順序
 
@@ -21,6 +21,6 @@
 - 對照 [Apple 截圖規格](https://developer.apple.com/help/app-store-connect/reference/app-information/screenshot-specifications/) 與 ASC 6.9 吋欄位列出的 1320 × 2868。
 - 截圖完成不代表 signed build 或 TestFlight 驗收；這次是模擬器 debug 產物。最終送審 build 如有 UI 差異須重拍。
 - 六張 JPEG 已透過 Chrome 原生選檔器上傳至 ASC 繁體中文 iPhone 6.9 吋欄位；重新載入後確認共六張，6.5 吋沿用 6.9 吋素材。未變更瀏覽器擴充功能的檔案存取權限。
-- 原有角色插圖權利查核仍依 [Design README](../README.md)；此次截圖不補足原素材作者／來源／商用授權紀錄。
+- 原有紫色、黃色等角色依使用者 2026-10-03 確認為團隊使用 ChatGPT 生成；不是學生自繪或第三方下載。來源及 OpenAI 輸出權利條款見 [Design README](../README.md)。
 
 建置產物的 `UIDeviceFamily=[1]`，沒有 native iPad target。這不等同排除 iPad 的 iPhone 相容模式；沒有加入虛假的硬體限制。Mac／Vision Pro 供應已於 ASC 關閉。
