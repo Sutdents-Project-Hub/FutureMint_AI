@@ -49,6 +49,8 @@
 
 本機直接啟動 API 時，秘密只放已忽略的 `backend/.env`；本機 Docker Compose 則只放已忽略的根目錄 `.env`，由 Compose 在 API runtime 注入。歷史上可能存在的 ignored `local.settings.json` 不再使用，也不得讀取、提交或複製。GitHub repository、Dockerfile、build arguments、Flutter bundle、文件、測試 fixture 與 log 都不得含真實 key、password、token、connection URL 或學生資料。
 
+SMTP 單元測試只用明示的合成帳密及 `smtp.example.invalid` 主機；啟動設定驗證不建立 transport，寄信測試使用 mock，不連真實 SMTP。收到秘密掃描通知時先對照原始 commit／檔案與 fixture；若是真實憑證，先由供應商撤銷／輪替，再更新 runtime secrets，不能把刪檔或改 private 當成撤銷。合成 fixture 誤報的證據與線上結案狀態見 `docs/testing-and-evidence.md`。
+
 ## Log 與錯誤
 
 - API log 只記 request ID、route outcome、provider event type 與安全的 latency／錯誤類型。

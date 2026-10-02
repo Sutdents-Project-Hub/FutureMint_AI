@@ -1,5 +1,21 @@
 # 測試與證據
 
+## SMTP 憑證通知查證（2026-10-02）
+
+分類：釐清與測試 fixture 修正。GitGuardian 原始通知的 push 時間為 2026-10-02 00:22:30（Asia/Taipei），通知信於 00:24:02 寄出；寄件網域的 SPF、DKIM、DMARC 通過。通知指向 `d8fe11f900a78b184237291eb6f088b0165ce5c7` 的 `backend/test/config/startupConfig.test.ts`，diff 連結定位至 fixture 起始行 4，SMTP 組合位於原檔行 9。GitHub 原始檔與本機該 commit 一致：帳號及密碼為明示合成值，配上真實 SMTP 主機造成測試憑證通報；未發現此筆通知涉及真實供應商秘密。
+
+查證範圍為本機所有 refs 可達的 36 個 commits 內 SMTP 變數與文字設定；唯讀 `git ls-remote` 確認遠端 4 個 branch heads 都與本機 tracking refs 一致、沒有 tag。具體 SMTP 帳密組合僅出現在兩個測試檔且皆為合成值，環境範本帳密為空。本機根目錄及 backend 均無 `.env`；未讀取 production／Coolify secrets、未嘗試用測試憑證登入 SMTP。此查證不涵蓋 GitHub 已刪除 refs、fork、PR 隱藏 refs、外部快取或 production 的真實設定。
+
+兩個 SMTP fixtures 的 host 統一為 `smtp.example.invalid`，保留合成帳密及既有公開 URL 驗證條件。`validateStartupConfig`／`validateMailerConfig` 不建立 transport；寄信測試 mock `nodemailer.createTransport`／`sendMail`，不寄信或連外。只改測試及安全／證據文件，production runtime 行為不變。
+
+| 驗證 | 實際結果 |
+|---|---|
+| Node.js 22.22.3：`npm test -- test/config/startupConfig.test.ts test/auth/accountMailer.test.ts` | 2 files、7 tests 通過 |
+| Node.js 22.22.3：`npm run typecheck` | 通過 |
+| `git diff --check` | 通過 |
+
+判定此筆為合成測試憑證誤報，沒有因這筆通知輪替正式憑證或重寫歷史。GitGuardian 線上標記仍未完成，需由有權限的帳號登入後標記為測試憑證並確認結果。本節只記錄本機查證與修正；沒有 commit、push、PR 或部署。
+
 ## iPhone 逐頁排版優化（2026-10-02）
 
 分類：已核准範圍內的 UI 調整與缺陷修正。沿用既有品牌與插圖，調整首次設定／資格等待／Email 驗證的表單、支援及帳號分區；記帳生成草稿後收起鍵盤並捲至確認表單，下一筆輸入在後；手動草稿移除不適用的解析信心與 AI 建議文案；FutureSeed 控制與結果優先於投資練習入口，手機試算成功後直接捲至結果。另整理訂閱表單間距、設定支援入口，修復預算編輯彈窗因 intrinsic layout 失敗而空白，以及提醒卡在大字級下橫向溢位。

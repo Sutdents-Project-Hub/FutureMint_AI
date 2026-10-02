@@ -1,7 +1,8 @@
 import nodemailer from "nodemailer";
 import { describe, expect, it, vi } from "vitest";
 import { createAccountMailer, validateMailerConfig } from "../../src/auth/accountMailer";
-const env = { NODE_ENV: "test", MAIL_PROVIDER: "smtp", SMTP_HOST: "synthetic.mail.local", SMTP_USER: "synthetic", SMTP_PASSWORD: "synthetic-only", SMTP_FROM: "synthetic@futuremint.ai", PUBLIC_BASE_URL: "https://futuremint.ai" };
+// Synthetic fixture only; sendMail is mocked and the SMTP host cannot resolve.
+const env = { NODE_ENV: "test", MAIL_PROVIDER: "smtp", SMTP_HOST: "smtp.example.invalid", SMTP_USER: "synthetic", SMTP_PASSWORD: "synthetic-only", SMTP_FROM: "synthetic@futuremint.ai", PUBLIC_BASE_URL: "https://futuremint.ai" };
 describe("guardian mail", () => {
   it("validates SMTP configuration without allocating a transport", () => {
     const transport = vi.spyOn(nodemailer, "createTransport");
