@@ -842,12 +842,29 @@ class _FamilySection extends StatefulWidget {
 class _FamilySectionState extends State<_FamilySection> {
   final _inviteController = TextEditingController();
   String? _actionError;
+  String? _loadError;
+  bool _loading = true;
 
   @override
   void initState() {
     super.initState();
     WidgetsBinding.instance.addPostFrameCallback((_) {
-      if (mounted) context.read<AppController>().loadFamily();
+      if (mounted) _loadFamily(context.read<AppController>());
+    });
+  }
+
+  Future<void> _loadFamily(AppController controller) async {
+    setState(() {
+      _loading = true;
+      _loadError = null;
+    });
+    final loaded = await controller.loadFamily();
+    if (!mounted) return;
+    setState(() {
+      _loading = false;
+      if (!loaded) {
+        _loadError = controller.errorMessage ?? '暫時無法確認家庭關聯，請重新載入。';
+      }
     });
   }
 
@@ -871,10 +888,34 @@ class _FamilySectionState extends State<_FamilySection> {
       setState(() => _actionError = '請貼上完整的 24 碼家長邀請碼，並保留英文大小寫。');
       return;
     }
+    final confirmed = await showDialog<bool>(
+      context: context,
+      builder: (dialog) => AlertDialog(
+        title: const Text('分享摘要給這個家庭？'),
+        scrollable: true,
+        content: const Text(
+          '請先向家長確認邀請碼來源。加入後，這個家庭的家長帳號可查看你的預算、收支、訂閱與目標進度摘要，不會看到交易明細、原始輸入、Email 或投資訂單。\n\n你可隨時離開家庭停止分享。家庭關聯不會取代監護人同意，也不會啟用 AI。',
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(dialog, false),
+            child: const Text('取消'),
+          ),
+          FilledButton(
+            key: const Key('confirm-join-family'),
+            onPressed: () => Navigator.pop(dialog, true),
+            child: const Text('同意並加入'),
+          ),
+        ],
+      ),
+    );
+    if (confirmed != true || !mounted) return;
     setState(() => _actionError = null);
     await controller.joinFamily(code);
     if (mounted && controller.errorMessage != null) {
       setState(() => _actionError = controller.errorMessage);
+    } else if (mounted && controller.familyOverview != null) {
+      _inviteController.clear();
     }
   }
 
@@ -894,6 +935,30 @@ class _FamilySectionState extends State<_FamilySection> {
   }
 
   Future<void> _leaveFamily(AppController controller) async {
+    final confirmed = await showDialog<bool>(
+      context: context,
+      builder: (dialog) => AlertDialog(
+        title: const Text('離開家庭關聯？'),
+        scrollable: true,
+        content: Text(
+          controller.profile?.accountRole == AccountRole.parent
+              ? '將關閉這個家庭與邀請碼。你的個人帳號和紀錄會保留；之後可重新建立家庭。'
+              : '家長將無法再查看你的摘要。你的個人帳號和紀錄會保留；再次加入需要有效邀請碼。監護人同意與 AI 設定維持原狀。',
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(dialog, false),
+            child: const Text('取消'),
+          ),
+          FilledButton(
+            key: const Key('confirm-leave-family'),
+            onPressed: () => Navigator.pop(dialog, true),
+            child: const Text('離開並停止分享'),
+          ),
+        ],
+      ),
+    );
+    if (confirmed != true || !mounted) return;
     setState(() => _actionError = null);
     await controller.leaveFamily();
     if (mounted && controller.errorMessage != null) {
@@ -907,6 +972,10 @@ class _FamilySectionState extends State<_FamilySection> {
     final profile = controller.profile;
     final family = controller.familyOverview;
     final isParent = profile?.accountRole == AccountRole.parent;
+    final parentHasChildren =
+        isParent &&
+        (family?.members.any((member) => member.role == AccountRole.child) ??
+            false);
     return SoftCard(
       key: const Key('family-section'),
       color: Theme.of(context).brightness == Brightness.dark
@@ -931,18 +1000,32 @@ class _FamilySectionState extends State<_FamilySection> {
           const SizedBox(height: FutureMintTokens.space2),
           const Text('預設採最少揭露：家長只能查看孩子的預算與趨勢摘要，不會看到交易明細、原始輸入、帳號 email 或投資訂單。'),
           const SizedBox(height: FutureMintTokens.space3),
-          if (family == null && isParent) ...[
-            const Text('建立邀請碼，讓孩子帳號加入這個家庭。'),
+          if (_loading)
+            const Text('正在確認家庭關聯…')
+          else if (_loadError != null) ...[
+            Text(_loadError!),
+            TextButton.icon(
+              key: const Key('retry-family'),
+              onPressed: controller.busy ? null : () => _loadFamily(controller),
+              icon: const Icon(Icons.refresh),
+              label: const Text('重新載入家庭'),
+            ),
+          ] else if (family == null && isParent) ...[
+            const Text(
+              '1. 建立邀請碼並交給孩子。\n2. 孩子使用自己的 Email 註冊，完成年齡／監護人確認與個人設定。\n3. 孩子在這裡輸入邀請碼，同意分享後即可查看摘要。\n\n家長不會在自己的帳號內代建孩子帳號；邀請碼不代表監護人同意。',
+            ),
             const SizedBox(height: FutureMintTokens.space2),
             FilledButton.icon(
               key: const Key('create-family-invite'),
-              onPressed: controller.busy
+              onPressed: controller.busy || !controller.canWrite
                   ? null
                   : () => _createInvite(controller),
               icon: const Icon(Icons.vpn_key_outlined),
               label: const Text('建立家庭邀請碼'),
             ),
           ] else if (family == null) ...[
+            const Text('家庭分享可自由選擇。先向家長取得邀請碼；不加入也能使用自己的帳號。'),
+            const SizedBox(height: FutureMintTokens.space2),
             TextField(
               key: const Key('family-invite-code'),
               controller: _inviteController,
@@ -959,7 +1042,9 @@ class _FamilySectionState extends State<_FamilySection> {
             const SizedBox(height: FutureMintTokens.space2),
             FilledButton.icon(
               key: const Key('join-family'),
-              onPressed: controller.busy ? null : () => _joinFamily(controller),
+              onPressed: controller.busy || !controller.canWrite
+                  ? null
+                  : () => _joinFamily(controller),
               icon: const Icon(Icons.link_outlined),
               label: const Text('加入家庭'),
             ),
@@ -1029,7 +1114,7 @@ class _FamilySectionState extends State<_FamilySection> {
               const SizedBox(height: FutureMintTokens.space2),
               OutlinedButton.icon(
                 key: const Key('rotate-family-invite'),
-                onPressed: controller.busy
+                onPressed: controller.busy || !controller.canWrite
                     ? null
                     : () => _updateInvite(controller, revoke: false),
                 icon: const Icon(Icons.refresh),
@@ -1086,14 +1171,19 @@ class _FamilySectionState extends State<_FamilySection> {
                 ),
             ],
             const SizedBox(height: FutureMintTokens.space2),
+            if (parentHasChildren) const Text('孩子仍在此家庭；請先由孩子帳號離開，家長才能關閉家庭。'),
             OutlinedButton.icon(
               key: const Key('leave-family'),
-              onPressed: controller.busy
+              onPressed: controller.busy || parentHasChildren
                   ? null
                   : () => _leaveFamily(controller),
               icon: const Icon(Icons.link_off_outlined),
               label: const Text('離開家庭關聯'),
             ),
+          ],
+          if (!_loading && _loadError == null && !controller.canWrite) ...[
+            const SizedBox(height: FutureMintTokens.space2),
+            const Text('唯讀模式仍可離開家庭或停用邀請碼；完成服務資格後才能新增分享。'),
           ],
           if (_actionError != null) ...[
             const SizedBox(height: FutureMintTokens.space2),

@@ -79,7 +79,9 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
                         children: [
                           Text('使用角色', style: theme.textTheme.titleMedium),
                           const SizedBox(height: FutureMintTokens.space2),
-                          const Text('角色只調整內容與說明角度，不會開放查看另一個帳號的明細。'),
+                          const Text(
+                            '孩子管理自己的紀錄；家長可在設定建立家庭邀請，再由孩子同意分享摘要。兩者都不會取得另一個帳號的交易明細。',
+                          ),
                           const SizedBox(height: FutureMintTokens.space3),
                           LayoutBuilder(
                             builder: (context, constraints) {
@@ -147,6 +149,12 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
                           ),
                           const SizedBox(height: FutureMintTokens.space5),
                           Text('預算與目標', style: theme.textTheme.titleMedium),
+                          const SizedBox(height: FutureMintTokens.space2),
+                          Text(
+                            _accountRole == AccountRole.parent
+                                ? '這裡填的是家長自己的預算與目標。孩子會在自己的帳號設定；完成後可到「設定 → 家庭共學關聯」建立邀請。'
+                                : '這裡填的是你自己的預算與目標。家庭分享是選用功能，之後可在設定加入。',
+                          ),
                           const SizedBox(height: FutureMintTokens.space3),
                           TextFormField(
                             controller: _monthlyBudget,

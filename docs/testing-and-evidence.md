@@ -360,3 +360,43 @@ docker build \
 ```
 
 PostgreSQL migration 與 E2E 需使用獨立 local test database，`DATABASE_URL` 只透過 shell／ignored `.env` 注入，不把 credential 寫入文件或 repository。
+
+## 2026-10-02 親子帳號與發布配置補強
+
+分類：缺陷修正、既有流程釐清及新能力（只讀公開發布配置檢查）。本輪從 `d52b830` 的乾淨 `main` 建立本機 `codex/account-release-readiness` 分支；未 commit、push、部署或操作 Apple 帳號。
+
+- 首次設定說明目前登入者的預算歸屬；家庭加入／離開增加確認，分享與監護人／AI 授權獨立。查詢失敗可重試；唯讀可退出／停用邀請，新增分享仍受資格限制。家長有孩子關聯時仍不可關閉家庭。
+- 修正前，新增的唯讀孩子退出／家長停用邀請 widget 回歸皆失敗（repository 呼叫數為 0）；修正後通過。後端既有權限及路由未變更。
+- 正式 IPA 腳本加入 `check_release_readiness.py`；只 GET health、service-policy、雙語 privacy／support，不寄信、不呼叫 AI、不寫遠端資料。CI 增加合成發布檢查測試，不連 production。
+
+| 驗證 | 實際結果與範圍 |
+|---|---|
+| Flutter 格式與 `flutter analyze --no-pub` | 通過，未發現問題 |
+| Flutter 指定 8 檔整合／版面／設定回歸 | **80 tests 通過**，含家庭、首次設定、登入、session、launch client、mobile layout、widget、release config |
+| Node.js 22.22.3 的 Vitest 指定 7 檔 | **59 tests 通過**，含完整親子、復原及刪除；memory repository／fake mailer |
+| TypeScript `tsc --noEmit` | 通過 |
+| Python 發布配置回歸 | **13 tests 通過**，含無 SMTP、未核准 AI、null／錯誤型別、unsafe URL、Cloudflare 公開 Email 改寫及語系／公開設定不符 |
+| Python release staging 隔離 | **1 test 通過**；`bash -n tool/build_ios_release.sh` 通過 |
+| iPhone 17／iOS 26.4 debug build 與操作 | 合成、無網路家庭預覽完成加入確認 → 已連結 → 離開確認 → 恢復未加入；畫面文字及按鈕正常。完成後重建一般 App，原帳號仍停在尚未送出的首次設定；未保存真實 profile |
+| 375dp／200% 字級 | 家長首次設定、分享取消確認及既有手機版面回歸通過 |
+| 線上公開發布檢查 | health hosted／postgres、現行 15+ policy、雙語公開頁及 App 公開資訊一致性通過；寄信功能 disabled、AI reviewed=false 被阻擋，exit code 1 為預期配置阻擋 |
+
+可重現的選定測試（非全套／遠端 CI）：
+
+```bash
+cd app
+flutter test --no-pub test/features/family_invite_test.dart test/features/onboarding_layout_test.dart test/features/auth_screen_test.dart test/state/session_controller_test.dart test/launch_client_test.dart test/features/mobile_layout_test.dart test/widget_test.dart test/release_config_test.dart
+python3 tool/test_release_readiness.py
+python3 tool/test_release_packaging.py
+```
+
+在 `backend/` 使用 Node.js 22：
+
+```bash
+node node_modules/vitest/vitest.mjs run test/http/launchFlows.test.ts test/auth/serviceEligibility.test.ts test/auth/accountRecovery.test.ts test/http/auth.test.ts test/http/runtime.test.ts test/config/startupConfig.test.ts test/application/futureMintService.test.ts
+node node_modules/typescript/bin/tsc --noEmit
+```
+
+本輪未驗證真實 SMTP 送達、PostgreSQL 跨重啟親子流程、外部 AI 連線、合法監護人身分、客服收信、signed IPA／TestFlight、App Privacy／年齡問卷或送審。Xcode 原始專案仍無 Development Team 設定。發布配置檢查只證明公開配置契約；營運者欄位與 Email 格式不證明身分或收信能力。
+
+同步 README、Client／API README、產品／範圍、安全、部署、設計及展示文件。沒有新資料欄位、migration、API 路由、AI provider 或部署拓樸變更，既有 architecture／data-and-storage／integrations／hosting-resources 的邊界仍一致，未為本輪新增重複規範。

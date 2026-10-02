@@ -666,7 +666,7 @@ class AppController extends ChangeNotifier {
     });
   }
 
-  Future<void> loadFamily() => _run(() async {
+  Future<bool> loadFamily() => _perform(() async {
     familyOverview = await repository.getFamilyOverview();
   });
 
@@ -680,7 +680,7 @@ class AppController extends ChangeNotifier {
 
   Future<void> revokeFamilyInvite() => _run(() async {
     familyOverview = await repository.revokeFamilyInvite();
-  }, write: true);
+  });
 
   Future<void> joinFamily(String inviteCode) => _run(() async {
     familyOverview = await repository.joinFamily(inviteCode);
@@ -689,7 +689,7 @@ class AppController extends ChangeNotifier {
   Future<void> leaveFamily() => _run(() async {
     await repository.leaveFamily();
     familyOverview = null;
-  }, write: true);
+  });
 
   Future<void> loadInvestmentLab() => _run(() async {
     investmentLab = await repository.getInvestmentLab();

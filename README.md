@@ -290,3 +290,9 @@ API runtime 設定來源為 `backend/src/config/aiConfig.ts`、`startupConfig.ts
 公開隱私與支援頁由 API 提供 `/privacy`、`/support`，不依賴測試 Web Resource；繁中與英文可由頁面切換，或以 `?lang=zh-Hant`／`?lang=en` 指定，否則依瀏覽器語言。預設使用 App 的淺紫／靛色 tokens，另提供深色主題；公開內容尚未審核時維持 503。隱私版本預設為 `2026-10-02-optional-mail-v1`，既有 runtime 版本覆寫須同步；詳見部署文件。
 
 公開頁品牌圖示使用 iPhone App icon，隨 API 的 `public/` 靜態資產一起建置，不需部署 Web 或新增環境變數。
+
+## 2026-10-02 親子流程與上架檢查
+
+分類：缺陷修正、既有流程釐清與新能力（公開發布配置檢查）。家長與孩子各自註冊、完成資格及自己的預算設定；家長在設定建立邀請碼，孩子確認摘要分享後加入。家長不代建孩子帳號；監護人同意、家庭分享與 AI 同意仍獨立。唯讀帳號可離開家庭或停用邀請碼，新增分享仍需服務資格；家庭查詢失敗會顯示重試。
+
+`app/tool/build_ios_release.sh` 現在先執行公開服務檢查，核對 hosted／PostgreSQL、15+ 年齡政策、註冊與 SMTP 功能、AI 公開政策及雙語隱私／支援頁。未通過時停止正式 IPA 建置；`MAIL_PROVIDER=disabled` 仍可啟動最小 API，但不能當作完整 15+ 上架配置。檢查不登入、不寄信、不呼叫 AI、不寫資料。命令及人工驗收見 [部署說明](docs/deployment.md)，實際結果見 [測試與證據](docs/testing-and-evidence.md)。

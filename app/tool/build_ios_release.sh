@@ -46,6 +46,8 @@ if [[ "${IOS_EXPORT_METHOD}" != "app-store" ]]; then
   exit 1
 fi
 
+python3 "${script_dir}/check_release_readiness.py"
+
 project_file="${app_dir}/ios/Runner.xcodeproj"
 settings_file="$(mktemp "${TMPDIR:-/tmp}/futuremint-settings.XXXXXX")"
 trap 'rm -f "${settings_file}"' EXIT

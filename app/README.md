@@ -120,3 +120,11 @@ iPhone 使用 native MethodChannel／UserNotifications 本機提醒，使用者�
 SMTP 為部署可選項；未填／disabled 時開放註冊與登入、不要求 Email 驗證，Email 只作未驗證登入識別，不寫入 emailVerifiedAt。新的驗證／寄信重設／監護人寄信回 mail_disabled；App 清楚說明功能停用。最低年齡 15 與 15–17 歲監護人資格仍維持，未完成同意者不能寫入受限資料，可使用訪客；SMTP 重新啟用後仍需驗證信箱，密碼重設只寄給已驗證信箱。未完成供應商公開說明時外部 AI 停用，手動功能及固定教材仍可用。本輪只調整登入／監護人狀態提示，沿用既有視覺；公開政策與支援頁使用同產品雙語頁面。
 
 登入頁會讀取公開 service policy，依 `mailEnabled`、`registrationEnabled`、`emailVerificationRequired` 顯示註冊與寄信狀態；政策取得失敗不會阻擋訪客入口，送出後仍以 API 授權為準。App 保留原本無 query 的隱私／支援 URL；開啟後網頁可切換繁中／英文及明暗主題，App Store 可使用同一 `/privacy` 網址。
+
+## 親子帳號與正式 archive 檢查（2026-10-02）
+
+首次設定的預算屬於目前登入者；家長設定不會寫入孩子帳號。完成後到「設定 → 家庭共學關聯」建立邀請，孩子在自己的帳號完成資格及設定後加入。孩子加入前確認共享範圍，離開前確認停止分享且保留個人資料。家長有孩子關聯時不可關閉家庭。唯讀模式可離開／停用邀請，不能建立／更新邀請或加入；查詢失敗提供重試。
+
+正式 IPA 腳本會執行 `python3 tool/check_release_readiness.py`，使用同一份 build 公開設定核對實際 API 與政策頁；失敗即停止。單獨執行時從環境讀取 `API_BASE_URL`、`PRIVACY_POLICY_URL`、`SUPPORT_URL`、`SUPPORT_EMAIL`、`SERVICE_OPERATOR`，也可用同名 kebab-case CLI 參數。只 GET 公開端點，無帳號／SMTP／AI 測試副作用。最小 disabled API 與 CI validation build 不等同正式 archive；人工驗收見 [部署文件](../docs/deployment.md)。
+
+發布工具的合成回歸：`python3 tool/test_release_readiness.py`、`python3 tool/test_release_packaging.py`。前者也納入 CI，CI 不連 production、不替代真實送達或 Apple 驗收。

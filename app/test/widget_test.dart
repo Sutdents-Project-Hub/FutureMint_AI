@@ -11,6 +11,7 @@ import 'package:shared_preferences/shared_preferences.dart';
 
 Future<AppController> createController({
   AppMode mode = AppMode.guest,
+  bool canWrite = true,
   String? accountEmail,
   AiConsentStatus aiConsent = const AiConsentStatus.notGranted(),
   Future<AiConsentStatus> Function(bool granted)? onAiConsentChanged,
@@ -20,6 +21,7 @@ Future<AppController> createController({
   final controller = AppController(
     repository: await GuestRepository.create(),
     mode: mode,
+    canWrite: canWrite,
     accountEmail: accountEmail,
     aiConsent: aiConsent,
     onAiConsentChanged: onAiConsentChanged,

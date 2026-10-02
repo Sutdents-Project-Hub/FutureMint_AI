@@ -124,7 +124,30 @@ LIANGJIE_DATA_TERMS_REVIEWED=false
 4. 確認 `/privacy`、`/support` 及 `/api/service-policy` 回應；disabled 時應為 `mailEnabled=false`、`registrationEnabled=true`、`emailVerificationRequired=false`，`ai.reviewed` 仍以供應商實際審核狀態為準。
 5. 無 SMTP 以合成成年帳號驗收註冊→年齡聲明→profile→保存→重新登入／API 重啟後持久化→匯出／刪除；15–17 歲需確認待監護人同意仍阻擋受限寫入。啟用 SMTP 時另驗證註冊→驗證信→年齡／監護人流程、已驗證信箱的重設與真實送達。未啟用寄信功能應得到明確錯誤。
 6. 外部AI只在供應商說明確認與使用者同意後驗收合成輸入；health200不代表SMTP／AI成功。
-7. iPhone另在已忽略的app/.env.appstore.local設定API_BASE_URL（以/api/結尾）、PRIVACY_POLICY_URL（/privacy）、SUPPORT_URL（/support）、客服／營運者與Apple資訊，再產生signed IPA、TestFlight及完成商店表單／實機驗收。API部署不會更新已安裝App。
+7. iPhone另在已忽略的app/.env.appstore.local設定API_BASE_URL（以/api/結尾）、PRIVACY_POLICY_URL（/privacy）、SUPPORT_URL（/support）、客服／營運者與Apple資訊。正式 archive 腳本先執行下述公開檢查，通過後才產生 signed IPA；再完成 TestFlight、商店表單及實機驗收。API部署不會更新已安裝App。
+
+### iPhone 正式 archive 的公開配置檢查（2026-10-02）
+
+`app/tool/check_release_readiness.py` 使用 Python 3 標準函式庫，只 GET 公開端點，不登入、寄信、呼叫 AI 或寫入資料。`build_ios_release.sh` 會在建置前強制執行；不提供略過阻擋的選項。可先獨立檢查：
+
+```bash
+cd app
+set -a
+source .env.appstore.local
+set +a
+python3 tool/check_release_readiness.py
+```
+
+需要檢查：正式 HTTPS URL；health 為 hosted／postgres；臺灣 15+ 現行政策及服務資格 gate；註冊、寄信及信箱驗證開啟；外部 AI 公開政策完整且已核准；繁中／英文隱私及支援頁均為 200，營運者／客服與 App build 一致。Cloudflare 對公開 Email 的 HTML 改寫會在本機解碼核對，不執行網頁 script。失敗回非零 exit code，阻止正式 IPA。
+
+`MAIL_PROVIDER=disabled` 仍是最小 API 啟動選項；目前沒有新的免寄信監護人管道，不能作完整 15+ 上架配置。上架版須提供真實 SMTP runtime 設定並驗收送達；AI reviewed 只能在實際查核供應商後確認。此檢查不取代以下人工驗收：
+
+- 合成成年與 15–17 歲帳號：註冊、Email 驗證、監護人確認、個人設定、家庭加入／退出；家長只看摘要，孩子不看家長帳務。
+- 信件送達、過期／重寄、已驗證信箱的密碼重設與舊 session 失效；客服信箱可收信，不能依未驗證 Email 復原。
+- API 重啟後仍能重新登入及取回資料、匯出／刪除；真實 PostgreSQL 跨帳號隔離。
+- 已核准 provider／model 的真實 AI 連線、限額及資料條款；Apple Team、Bundle ID、signed TestFlight、真機、App Privacy／年齡問卷及送審資訊。
+
+上述動作另依授權操作。純設定檢查通過、CI validation build 或 API healthy 皆不表示已送審或正式營運驗收完成。
 
 本輪沒有新增migration、不改舊checksum、不刪volume。沒有備份時仍不得用舊API回滾來冒充schema／資料完整回復。
 

@@ -75,6 +75,8 @@ jobs:
         run: flutter analyze
       - name: Verify release staging isolation
         run: python3 tool/test_release_packaging.py
+      - name: Verify public release contract checks
+        run: python3 tool/test_release_readiness.py
       - name: Run Flutter tests
         run: flutter test
       - name: Build Flutter Web release bundle

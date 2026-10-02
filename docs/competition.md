@@ -76,3 +76,7 @@
 可描述基線 `af7a5df` 的 GitHub CI 成功（122 API／121 Flutter、未簽章 iOS／images），不得說本輪修改已經遠端 CI 或 production 驗收。既有 Coolify Resources 曾成功部署是使用者提供事實，現在 live health 尚未本輪驗證。本輪不建立定期備份；SMTP／domain、供應商政策與 signed TestFlight／App Privacy／年齡問卷依啟用範圍仍須實證。日後若啟用備份，另驗收還原與刪除不復活。
 
 簡化部署仍保留原年齡與資料權限；未啟用寄信時可用未驗證 Email 註冊／登入，不能宣稱信箱驗證或監護人確認成功；未完成供應商說明時外部AI未開放。不得將訪客或API啟動成功描述為完整正式帳號／AI／App Store驗收。
+
+## 親子與上架證據界線（2026-10-02）
+
+本機已補親子生命週期整合、Client 分享確認／唯讀退出及公開發布配置檢查，詳見 [測試證據](testing-and-evidence.md)。新增 API 整合使用合成資料與 fake mailer；iPhone 家庭操作使用無網路的合成預覽。不得宣稱正式 SMTP、真實未成年人流程、PostgreSQL 持久化、AI 連線或 Apple 上架已驗收。

@@ -188,3 +188,9 @@ GET `/api/subscriptions` 回 `items`、`monthlyCommitmentMinor`、`legacyCandida
 公開隱私與支援頁由 API 提供 `/privacy`、`/support`，不依賴測試 Web Resource；繁中與英文可由頁面切換，或以 `?lang=zh-Hant`／`?lang=en` 指定，否則依瀏覽器語言。預設使用 App 的淺紫／靛色 tokens，另提供深色主題；公開內容尚未審核時維持 503。隱私版本預設為 `2026-10-02-optional-mail-v1`，既有 runtime 版本覆寫須同步；詳見部署文件。
 
 公開頁左上角使用 `public/app-icon.png`，與 iPhone 的 `Icon-App-40x40@3x.png`（120px）完全相同。`npm run build` 同時複製 `public/` 到 `dist/public/`，Docker build stage 含此目錄；`/app-icon.png` 由 API 同源提供，CSP 僅允許同源圖片。未來更新 App icon 時同步此檔案，沒有額外環境變數。
+
+## 親子完整流程回歸（2026-10-02）
+
+`test/http/launchFlows.test.ts` 新增驗證信箱 → 監護人確認 → 個人設定 → 加入家庭 → 摘要權限 → 撤回／退出 → 密碼復原／帳號刪除的整合案例，以及 disabled mail 下成年可用、未成年不可繞過的案例。使用 memory repository 與 fake mailer，不代表真實 SMTP／PostgreSQL 驗收。API 路由、資料模型及 migration 本輪未變更。
+
+Client 現在允許唯讀帳號呼叫既有的停用邀請／離開家庭 API，保持後端現行的資格與家庭所有權檢查。iPhone archive 的公開設定檢查見 [部署說明](../docs/deployment.md)；最小 API 啟動成功不代表完整 15+ 上架條件通過。

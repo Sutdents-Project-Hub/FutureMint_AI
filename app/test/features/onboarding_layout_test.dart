@@ -132,6 +132,20 @@ void _expectRequiredEntrances() {
 }
 
 void main() {
+  testWidgets('parent setup explains whose budget is saved at 200% text', (
+    tester,
+  ) async {
+    await _pumpOnboarding(tester, brightness: Brightness.light);
+    final parent = find.text('家長陪伴');
+    await tester.ensureVisible(parent);
+    await tester.tap(parent);
+    await tester.pumpAndSettle();
+    expect(find.textContaining('這裡填的是家長自己的預算與目標。'), findsOneWidget);
+    final save = find.text('儲存並開始使用');
+    await tester.ensureVisible(save);
+    await tester.pumpAndSettle();
+    expect(tester.takeException(), isNull);
+  });
   for (final brightness in Brightness.values) {
     testWidgets(
       'keeps required onboarding entrances reachable at 375dp and 200% text ($brightness)',
