@@ -110,18 +110,32 @@ LIANGJIE_DATA_TERMS_DISCLOSURE=
 LIANGJIE_DATA_TERMS_REVIEWED=false
 ```
 
-初始只有已知供應商名稱，條款未完成、reviewed=false。這不阻擋API啟動，但外部AI授權與請求回ai_policy_unavailable；可手動記錄、管理訂閱及查看固定教材。要使用真實AI，先補實際接收方（含上游）、用途、保存、訓練、地區與條款，再確認reviewed=true；只填旗標而缺條款仍拒啟動。不能把通用AI說明當成供應商資料條款。
+初始只有已知供應商名稱，條款未完成、reviewed=false。這不阻擋API啟動，但外部AI授權與請求回ai_policy_unavailable；可手動記錄、管理訂閱及查看固定教材。要使用真實AI，先準備接收方、傳送資料、用途、保存、訓練、地區與刪除方式的公開說明，再由營運者確認 reviewed=true；只填旗標而缺說明仍拒啟動。供應商資訊無法核對時必須明寫資訊缺口，不得以通用說明捏造上游承諾。
 
 覆寫接收方／說明後，不沿用內建reviewed狀態，須明確重新確認。provider／model／接收方／說明／隱私版本變更會旋轉fingerprint，使用者需再次同意。正式key、model權限、額度與連線仍待真實驗收。
 
 官方OpenAI僅明確AI_PROVIDER=openai時使用OPENAI_MODEL、OPENAI_API_KEY及對應OPENAI_DATA_*；模型需在程式allowlist，base固定官方endpoint，不接受任意轉接key。
+
+### 量界資訊不完整時的測試設定（2026-10-02）
+
+分類：已核准範圍調整。使用者同意採用如實揭露未知項目的簡化測試方式。量界離線文件第 164 頁說明它是支援 OpenAI／Gemini 格式的中轉接口；本輪檢索 169 頁全文及檢視目錄、API 說明，未找到完整保存、訓練、處理地區、刪除或上游名單條款。登入後的「記錄請求與錯誤日誌 IP」關閉只代表該 IP 設定，不證明 prompt 不保存或不訓練。
+
+以下三項可貼入 API Resource 的 Runtime Environment Variables；不勾 Buildtime。`reviewed=true` 表示營運者閱讀並採用這份包含資訊缺口的公開告知，不表示供應商已獨立查核或正式營運／上架驗收完成。保留既有 provider、base URL、model、key 及隱私版本，勿使用離線文件內的範例 key。
+
+```dotenv
+LIANGJIE_DATA_RECIPIENTS=量界智算,量界選用的上游AI服務（完整名單無法獨立核對）
+LIANGJIE_DATA_TERMS_DISCLOSURE=本服務透過量界智算的 API 中轉服務協助解析記帳文字及選擇金融教育主題。依功能傳送你主動輸入的記帳文字、語言與參考時間、教練問題與主題，或使用角色、事件分類、是否設定目標、有訂閱或用途尚不明確的支出等摘要；不自動附帶登入密碼或帳號 Email。課程及教練正文使用固定教育教材，記帳原文不寫入本服務交易紀錄或一般應用日誌。量界及其上游的完整接收者名單、資料保存期限、訓練用途、處理地區與刪除方式，本服務沒有可獨立核對的完整資訊，因此不承諾第三方不保存、不訓練或僅在臺灣處理資料。請勿輸入姓名、帳號、卡號、聯絡方式或其他敏感資料。你可選擇不啟用，或在設定撤回 AI 同意，仍可使用手動記帳、訂閱管理、固定教材及教育試算；撤回會阻止新的 AI 請求，已開始的請求可能完成，已送出的資料仍依第三方實際處理方式處理。
+LIANGJIE_DATA_TERMS_REVIEWED=true
+```
+
+使用者自行保存並重新部署 API 後，先讀 `/api/service-policy` 確認新說明及 `ai.reviewed=true`，重新開啟 App 取得政策並同意，再以合成資料驗證 AI。本輪只檢查上述公開設定可通過 parser、false／缺說明仍會阻擋、政策版本會更新；未設定 Coolify、部署或呼叫外部 AI，實際 key／model 權限及連線仍待驗收。
 
 ## 5. 部署與驗收順序
 
 1. PostgreSQL healthy，保留原volume並取得Internal URL。
 2. API填完整最小Runtime設定，確認公開政策後設PRIVACY_POLICY_REVIEWED=true。Docker先pure preflight，再套用尚未執行的migration、最後listen；沒有新migration不重寫schema。
 3. 使用者Deploy API，確認migration／啟動log及HTTPS /api/health回200。錯誤只輸出missing／invalid變數名稱與階段，不記秘密。
-4. 確認 `/privacy`、`/support` 及 `/api/service-policy` 回應；disabled 時應為 `mailEnabled=false`、`registrationEnabled=true`、`emailVerificationRequired=false`，`ai.reviewed` 仍以供應商實際審核狀態為準。
+4. 確認 `/privacy`、`/support` 及 `/api/service-policy` 回應；disabled 時應為 `mailEnabled=false`、`registrationEnabled=true`、`emailVerificationRequired=false`，`ai.reviewed` 表示營運者已確認當前公開 AI 說明，不證明第三方承諾已查核。
 5. 無 SMTP 以合成成年帳號驗收註冊→年齡聲明→profile→保存→重新登入／API 重啟後持久化→匯出／刪除；15–17 歲需確認待監護人同意仍阻擋受限寫入。啟用 SMTP 時另驗證註冊→驗證信→年齡／監護人流程、已驗證信箱的重設與真實送達。未啟用寄信功能應得到明確錯誤。
 6. 外部AI只在供應商說明確認與使用者同意後驗收合成輸入；health200不代表SMTP／AI成功。
 7. iPhone另在已忽略的app/.env.appstore.local設定API_BASE_URL（以/api/結尾）、PRIVACY_POLICY_URL（/privacy）、SUPPORT_URL（/support）、客服／營運者與Apple資訊。正式 archive 腳本先執行下述公開檢查，通過後才產生 signed IPA；再完成 TestFlight、商店表單及實機驗收。API部署不會更新已安裝App。

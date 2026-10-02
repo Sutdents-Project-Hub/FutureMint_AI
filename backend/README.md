@@ -183,6 +183,8 @@ GET `/api/subscriptions` 回 `items`、`monthlyCommitmentMinor`、`legacyCandida
 
 `src/config/providerPolicies.ts` 維護公開供應商資料，初始 reviewed=false；既有 LIANGJIE_/OPENAI_DATA_* 可覆寫。缺少完整說明或未確認時，API 可啟動但授權／呼叫外部 AI 回 ai_policy_unavailable。單改 reviewed=true 而未提供條款仍拒絕啟動。mail_disabled 明確回報寄信未開放，不冒充已寄信；無 SMTP 仍可註冊與登入。
 
+量界條款資訊不完整時，使用者已核准以合成資料採用[揭露未知項目的三項 Runtime 設定](../docs/deployment.md#量界資訊不完整時的測試設定2026-10-02)。reviewed=true 表示營運者確認此告知，不證明上游、保存或訓練承諾已查核；既有帳號同意、撤回與限額不變。本輪未改遠端設定或驗收真實 AI 連線。
+
 `GET /api/service-policy` 提供 mailEnabled／registrationEnabled／emailVerificationRequired，直接取自 AuthService 能力。公開支援頁及 Flutter 依實際能力說明免寄信註冊、停用重設與監護人待同意；既有視覺元件沿用。未設定 SMTP 的訪客資料不永久保存。最小刪除 journal 仍保留；備份天數不控制或自動清除 Coolify 的排程／既有副本。
 
 公開隱私與支援頁由 API 提供 `/privacy`、`/support`，不依賴測試 Web Resource；繁中與英文可由頁面切換，或以 `?lang=zh-Hant`／`?lang=en` 指定，否則依瀏覽器語言。預設使用 App 的淺紫／靛色 tokens，另提供深色主題；公開內容尚未審核時維持 503。隱私版本預設為 `2026-10-02-optional-mail-v1`，既有 runtime 版本覆寫須同步；詳見部署文件。

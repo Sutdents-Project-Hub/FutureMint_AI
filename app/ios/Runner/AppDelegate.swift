@@ -8,6 +8,7 @@ import UserNotifications
   private var owner: String?
   private var generation = 0
   private var pendingOpenOwner: String?
+  private var pendingPermission: (generation: Int, result: FlutterResult)?
   private let reminderPrefix = "futuremint.subscription."
 
   override func application(_ application: UIApplication,
@@ -76,6 +77,8 @@ import UserNotifications
     }
     if call.method == "bind" {
       generation += 1
+      pendingPermission?.result(nil)
+      pendingPermission = nil
       owner = args["owner"] as? String
       let expected = generation
       removeOwned(expected: expected) {
@@ -89,14 +92,29 @@ import UserNotifications
     }
     guard let account = args["owner"] as? String, account == owner else { result(nil); return }
     let expected = generation
+    if call.method == "status" {
+      state(result, account: account, expected: expected)
+      return
+    }
+    if call.method == "openSettings" {
+      let settingsURL: String
+      if #available(iOS 16.0, *) { settingsURL = UIApplication.openNotificationSettingsURLString }
+      else { settingsURL = UIApplication.openSettingsURLString }
+      guard let url = URL(string: settingsURL) else { result(false); return }
+      UIApplication.shared.open(url, options: [:]) { opened in result(opened) }
+      return
+    }
     if call.method == "setEnabled", let value = args["enabled"] as? Bool {
       if !value {
         UserDefaults.standard.set(false, forKey: "futuremint.reminders.enabled.\(account)")
         removeOwned(expected: expected) { self.state(result, account: account, expected: expected) }
       } else {
         // Permission is requested only after the user explicitly toggles on.
+        pendingPermission = (generation: expected, result: result)
         UNUserNotificationCenter.current().requestAuthorization(options: [.alert, .sound, .badge]) { allowed, _ in
           DispatchQueue.main.async {
+            guard self.pendingPermission?.generation == expected else { return }
+            self.pendingPermission = nil
             guard expected == self.generation, account == self.owner else { result(nil); return }
             UserDefaults.standard.set(allowed, forKey: "futuremint.reminders.enabled.\(account)")
             self.state(result, account: account, expected: expected)
@@ -123,7 +141,13 @@ import UserNotifications
               let request = SubscriptionReminderRequest.make(identifier: id, at: at, owner: account)
               group.enter()
               UNUserNotificationCenter.current().add(request) { error in
-                DispatchQueue.main.async { if error != nil { failed = true }; group.leave() }
+                DispatchQueue.main.async {
+                  if expected != self.generation || account != self.owner {
+                    UNUserNotificationCenter.current().removePendingNotificationRequests(withIdentifiers: [id])
+                    UNUserNotificationCenter.current().removeDeliveredNotifications(withIdentifiers: [id])
+                  } else if error != nil { failed = true }
+                  group.leave()
+                }
               }
             }
             group.notify(queue: .main) {
@@ -135,6 +159,20 @@ import UserNotifications
       return
     }
     result(FlutterMethodNotImplemented)
+  }
+
+  override func userNotificationCenter(_ center: UNUserNotificationCenter,
+    willPresent notification: UNNotification,
+    withCompletionHandler completionHandler: @escaping (UNNotificationPresentationOptions) -> Void) {
+    if notification.request.identifier.hasPrefix(reminderPrefix) {
+      guard notification.request.content.userInfo["futuremintOwner"] as? String == owner else {
+        completionHandler([]); return
+      }
+      if #available(iOS 14.0, *) { completionHandler([.banner, .list, .sound]) }
+      else { completionHandler([.alert, .sound]) }
+    } else {
+      super.userNotificationCenter(center, willPresent: notification, withCompletionHandler: completionHandler)
+    }
   }
 
   override func userNotificationCenter(_ center: UNUserNotificationCenter,

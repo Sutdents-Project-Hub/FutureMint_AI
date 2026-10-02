@@ -34,41 +34,109 @@ Future<void> showAiConsentDisclosure(BuildContext context) => showDialog<void>(
       builder: (dialogContext, controller, _) => AlertDialog(
         key: const Key('ai-consent-disclosure'),
         title: const Text('啟用 AI 前的資料說明'),
-        content: ConstrainedBox(
-          constraints: const BoxConstraints(maxWidth: 520),
+        insetPadding: const EdgeInsets.symmetric(horizontal: 24, vertical: 24),
+        titlePadding: const EdgeInsets.fromLTRB(24, 24, 24, 16),
+        contentPadding: const EdgeInsets.symmetric(horizontal: 24, vertical: 8),
+        actionsPadding: const EdgeInsets.fromLTRB(24, 12, 24, 20),
+        content: SizedBox(
+          width: 520,
           child: SingleChildScrollView(
             child: Column(
               mainAxisSize: MainAxisSize.min,
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                Text(
-                  (controller.servicePolicy == null ||
-                          !controller.servicePolicy!.reviewed)
-                      ? '供應商資料暫時無法載入，請重新連線後再決定。'
-                      : '第三方服務：${controller.servicePolicy!.aiDisplayName}。',
+                _AiDisclosureSection(
+                  title: '使用哪個 AI',
+                  children: [
+                    if (controller.servicePolicy != null) ...[
+                      Text('第三方服務：${controller.servicePolicy!.aiDisplayName}。'),
+                      Text(
+                        '資料接收方：${controller.servicePolicy!.dataRecipients.join('、')}。',
+                      ),
+                    ] else
+                      const Text('等待供應商資料載入。'),
+                    if (controller.servicePolicy?.model != null) ...[
+                      Text('請求模型：${controller.servicePolicy!.model}。'),
+                      Text(
+                        '模型 ID 不代表已驗證上游模型權重。',
+                        style: Theme.of(dialogContext).textTheme.bodySmall,
+                      ),
+                    ],
+                  ],
                 ),
-                if (controller.servicePolicy != null)
-                  Text(
-                    '同意版本：${controller.servicePolicy!.aiPolicyVersion}；資料接收方：${controller.servicePolicy!.dataRecipients.join('、')}。',
+                const SizedBox(height: FutureMintTokens.space5),
+                const _AiDisclosureSection(
+                  title: '會傳送哪些資料',
+                  children: [
+                    Text('依使用的功能，後端會傳送你主動輸入的記帳文字、事件分類與是否設定目標等摘要，以及教練提問。'),
+                    Text('AI 協助解析記帳與選擇金融教育主題；課程與教練回覆使用固定教育內容。'),
+                    Text('請勿輸入帳號、聯絡方式或其他敏感資訊。'),
+                  ],
+                ),
+                const SizedBox(height: FutureMintTokens.space5),
+                _AiDisclosureSection(
+                  title: '目前啟用狀態',
+                  children: [
+                    if (controller.servicePolicy == null ||
+                        !controller.servicePolicy!.reviewed)
+                      const Text('供應商資料暫時無法載入，請重新連線後再決定。'),
+                    Text(
+                      controller.servicePolicy?.dataTerms ??
+                          '供應商、資料保留與處理地區等條件載入後，才可啟用第三方 AI。',
+                    ),
+                  ],
+                ),
+                const SizedBox(height: FutureMintTokens.space3),
+                TextButtonTheme(
+                  data: TextButtonThemeData(
+                    style:
+                        (Theme.of(dialogContext).textButtonTheme.style ??
+                                const ButtonStyle())
+                            .copyWith(
+                              padding: const WidgetStatePropertyAll(
+                                EdgeInsets.only(right: 12),
+                              ),
+                              minimumSize: const WidgetStatePropertyAll(
+                                Size(48, 48),
+                              ),
+                              alignment: Alignment.centerLeft,
+                            ),
                   ),
-                if (controller.servicePolicy?.model != null)
-                  Text(
-                    '請求模型：${controller.servicePolicy!.model}。模型 ID 不代表已驗證上游模型權重。',
+                  child: const SizedBox(
+                    key: Key('ai-disclosure-links'),
+                    width: double.infinity,
+                    child: PrivacySupportLinks(),
                   ),
-                const SizedBox(height: FutureMintTokens.space2),
-                const Text(
-                  '依使用的功能，後端會傳送你主動輸入的記帳文字、事件分類與是否設定目標等摘要，以及教練提問。AI 協助解析記帳與選擇金融教育主題；課程與教練回覆使用固定教育內容。請勿輸入帳號、聯絡方式或其他敏感資訊。',
                 ),
-                const SizedBox(height: FutureMintTokens.space2),
-                Text(
-                  controller.servicePolicy?.dataTerms ??
-                      '供應商、資料保留與處理地區等條件載入後，才可啟用第三方 AI。',
+                const SizedBox(height: FutureMintTokens.space5),
+                const _AiDisclosureSection(
+                  title: '你的選擇',
+                  children: [
+                    Text('不會傳送你的密碼。'),
+                    Text(
+                      '你可以拒絕，預算、紀錄、FutureSeed 與虛擬投資等非 AI 功能仍可使用；之後也可在設定隨時撤回。',
+                    ),
+                  ],
                 ),
-                const SizedBox(height: FutureMintTokens.space2),
-                const PrivacySupportLinks(),
-                const Text(
-                  '不會傳送你的密碼。你可以拒絕，預算、紀錄、FutureSeed 與虛擬投資等非 AI 功能仍可使用；之後也可在設定隨時撤回。',
-                ),
+                if (controller.servicePolicy != null) ...[
+                  const SizedBox(height: FutureMintTokens.space3),
+                  ExpansionTile(
+                    key: const Key('ai-disclosure-details'),
+                    tilePadding: EdgeInsets.zero,
+                    childrenPadding: const EdgeInsets.only(bottom: 12),
+                    expandedCrossAxisAlignment: CrossAxisAlignment.start,
+                    title: const Text('詳細資訊'),
+                    children: [
+                      Align(
+                        alignment: Alignment.centerLeft,
+                        child: Text(
+                          '同意版本：${controller.servicePolicy!.aiPolicyVersion}',
+                          style: Theme.of(dialogContext).textTheme.bodySmall,
+                        ),
+                      ),
+                    ],
+                  ),
+                ],
                 if (controller.errorMessage != null) ...[
                   const SizedBox(height: FutureMintTokens.space3),
                   Semantics(
@@ -112,6 +180,39 @@ Future<void> showAiConsentDisclosure(BuildContext context) => showDialog<void>(
   ),
 );
 
+class _AiDisclosureSection extends StatelessWidget {
+  const _AiDisclosureSection({required this.title, required this.children});
+
+  final String title;
+  final List<Widget> children;
+
+  @override
+  Widget build(BuildContext context) => Column(
+    crossAxisAlignment: CrossAxisAlignment.start,
+    children: [
+      Text(
+        title,
+        style: Theme.of(
+          context,
+        ).textTheme.titleSmall?.copyWith(fontWeight: FontWeight.w700),
+      ),
+      const SizedBox(height: FutureMintTokens.space2),
+      DefaultTextStyle.merge(
+        style: const TextStyle(height: 1.5),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            for (var index = 0; index < children.length; index++) ...[
+              if (index > 0) const SizedBox(height: FutureMintTokens.space2),
+              children[index],
+            ],
+          ],
+        ),
+      ),
+    ],
+  );
+}
+
 class _SettingsSheet extends StatelessWidget {
   const _SettingsSheet();
 
@@ -125,7 +226,8 @@ class _SettingsSheet extends StatelessWidget {
     String? actionError;
     await showDialog<void>(
       context: sheetContext,
-      builder: (dialogContext) => StatefulBuilder(
+      builder: (dialogContext) => _SettingsDialogBody(
+        controllers: [password, confirmation],
         builder: (context, setDialogState) {
           final ready =
               password.text.isNotEmpty && confirmation.text.trim() == '刪除帳號';
@@ -224,8 +326,6 @@ class _SettingsSheet extends StatelessWidget {
         },
       ),
     );
-    password.dispose();
-    confirmation.dispose();
   }
 
   Future<void> _editProfile(
@@ -250,7 +350,8 @@ class _SettingsSheet extends StatelessWidget {
     var saving = false;
     await showDialog<void>(
       context: context,
-      builder: (dialogContext) => StatefulBuilder(
+      builder: (dialogContext) => _SettingsDialogBody(
+        controllers: [budget, goalName, goalTarget, goalSaved],
         builder: (context, setDialogState) => AlertDialog(
           title: const Text('設定預算與目標'),
           content: SizedBox(
@@ -440,10 +541,6 @@ class _SettingsSheet extends StatelessWidget {
         ),
       ),
     );
-    budget.dispose();
-    goalName.dispose();
-    goalTarget.dispose();
-    goalSaved.dispose();
   }
 
   @override
@@ -587,14 +684,38 @@ class _SettingsSheet extends StatelessWidget {
                           SwitchListTile(
                             key: const Key('subscription-reminder-toggle'),
                             contentPadding: EdgeInsets.zero,
-                            title: const Text('iPhone 訂閱本機提醒'),
+                            title: const Text('訂閱本機提醒'),
                             subtitle: const Text(
-                              '續訂前一天 09:00（台灣時間）；通知只顯示一般提醒，不含名稱或金額。',
+                              '續訂前一天 09:00（台灣時間）排程，實際送達受系統設定與省電限制影響；通知不含名稱或金額。',
                             ),
                             value: controller.reminders!.enabled,
                             onChanged: controller.busy
                                 ? null
                                 : controller.setRemindersEnabled,
+                          ),
+                        if (controller.reminders?.supported == true &&
+                            controller.reminders!.permission == 'denied')
+                          Padding(
+                            key: Key('subscription-reminder-permission'),
+                            padding: const EdgeInsets.only(bottom: 12),
+                            child: Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                const Text(
+                                  '通知權限已關閉。請在系統設定允許 FutureMint AI 通知，回到 App 後再啟用提醒；App 內仍可查看提醒。',
+                                ),
+                                TextButton.icon(
+                                  key: const Key(
+                                    'subscription-reminder-settings',
+                                  ),
+                                  onPressed: controller.busy
+                                      ? null
+                                      : controller.openReminderSettings,
+                                  icon: const Icon(Icons.settings_outlined),
+                                  label: const Text('開啟通知設定'),
+                                ),
+                              ],
+                            ),
                           ),
                         if (controller.onGuardianWithdrawn != null)
                           TextButton(
@@ -606,7 +727,7 @@ class _SettingsSheet extends StatelessWidget {
                                       builder: (dialog) => AlertDialog(
                                         title: const Text('撤回監護人同意？'),
                                         content: const Text(
-                                          '服務將停止寫入資料，並清除這台 iPhone 的訂閱提醒。家庭分享與監護人同意是不同設定。',
+                                          '服務將停止寫入資料，並清除這台裝置的訂閱提醒。家庭分享與監護人同意是不同設定。',
                                         ),
                                         actions: [
                                           TextButton(
@@ -681,8 +802,9 @@ class _SettingsSheet extends StatelessWidget {
                                             onPressed: () => downloadJson(text),
                                             child: const Text('下載 JSON 檔案'),
                                           ),
-                                        if (controller.reminders?.supported ==
-                                            true)
+                                        if (!kIsWeb &&
+                                            defaultTargetPlatform ==
+                                                TargetPlatform.iOS)
                                           TextButton(
                                             onPressed: () async {
                                               await const MethodChannel(
@@ -1196,4 +1318,29 @@ class _FamilySectionState extends State<_FamilySection> {
       ),
     );
   }
+}
+
+// A dialog's popped Future resolves while its reverse transition is running.
+// Release field controllers when the dialog subtree actually unmounts.
+class _SettingsDialogBody extends StatefulWidget {
+  const _SettingsDialogBody({required this.controllers, required this.builder});
+
+  final List<TextEditingController> controllers;
+  final StatefulWidgetBuilder builder;
+
+  @override
+  State<_SettingsDialogBody> createState() => _SettingsDialogBodyState();
+}
+
+class _SettingsDialogBodyState extends State<_SettingsDialogBody> {
+  @override
+  void dispose() {
+    for (final controller in widget.controllers) {
+      controller.dispose();
+    }
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) => widget.builder(context, setState);
 }

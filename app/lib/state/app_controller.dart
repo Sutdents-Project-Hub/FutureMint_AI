@@ -277,6 +277,7 @@ class AppController extends ChangeNotifier {
 
   Future<void> refresh() async {
     final generation = ++_snapshotGeneration;
+    final reminderGeneration = reminders?.bindingGeneration;
     final launch = repository is LaunchRepository
         ? repository as LaunchRepository
         : null;
@@ -302,7 +303,9 @@ class AppController extends ChangeNotifier {
     insights = results[3] as FinancialInsights;
     if (launch != null) subscriptions = results[4] as SubscriptionCollection;
     summariesLoaded = true;
-    if (reminders != null) {
+    if (reminders != null &&
+        reminderGeneration == reminders!.bindingGeneration &&
+        (intentOwner == null || reminders!.isBoundTo(intentOwner!))) {
       try {
         await reminders!.synchronize(subscriptions.items);
       } catch (_) {
@@ -442,12 +445,43 @@ class AppController extends ChangeNotifier {
     if (reminders == null || !reminders!.supported) {
       throw const FormatException('此平台保留 App 內提醒。');
     }
+    if (intentOwner != null && !reminders!.isBoundTo(intentOwner!)) return;
+    final binding = reminders!.bindingGeneration;
     await reminders!.setEnabled(enabled);
+    if (_disposed || binding != reminders!.bindingGeneration) return;
     await reminders!.synchronize(subscriptions.items);
     if (enabled && !reminders!.enabled) {
-      noticeMessage = '尚未允許通知；請到 iPhone 設定開啟 FutureMint 通知。';
+      noticeMessage = '尚未允許通知；可在此開啟系統通知設定，再啟用提醒。';
+    } else {
+      noticeMessage = null;
     }
   });
+
+  Future<bool> openReminderSettings() => _perform(() async {
+    if (await reminders?.openSettings() != true) {
+      throw const FormatException('無法開啟系統設定，請手動到設定允許 FutureMint AI 通知。');
+    }
+  });
+
+  Future<void> refreshReminderPermission() async {
+    if (_disposed || !canWrite || reminders?.supported != true) return;
+    if (intentOwner != null && !reminders!.isBoundTo(intentOwner!)) return;
+    final binding = reminders!.bindingGeneration;
+    try {
+      await reminders!.refreshPermission();
+      if (_disposed || binding != reminders!.bindingGeneration) return;
+      if (reminders!.permission == 'authorized' &&
+          noticeMessage == '尚未允許通知；可在此開啟系統通知設定，再啟用提醒。') {
+        noticeMessage = null;
+      }
+      await reminders!.synchronize(subscriptions.items);
+    } catch (_) {
+      if (_disposed) return;
+      noticeMessage = '本機提醒狀態暫時無法更新；App 內仍可查看訂閱。';
+    }
+    _notifyListeners();
+  }
+
   Future<Map<String, dynamic>?> exportSelf() async {
     Map<String, dynamic>? result;
     await _perform(() async {

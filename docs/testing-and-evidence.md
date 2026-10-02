@@ -1,5 +1,72 @@
 # 測試與證據
 
+## iPhone／Android 本機提醒補齊與權限恢復（2026-10-02）
+
+分類：iPhone 權限恢復與帳號切換缺陷修正、使用者核准的 Android 本機提醒新能力。首次啟用才要求通知權限；iPhone 拒絕後不會再次彈出系統授權，提供「開啟通知設定」。Android 13+ 明確操作可在系統允許時重試；永久拒絕、App／通知頻道關閉時從設定恢復。返回 App 後離線重新讀取權限；首次拒絕不保存啟用偏好，允許後需再啟用。Android 使用非精準 AlarmManager 與通知頻道，不要求 exact-alarm／電池豁免，開機／App 更新恢復有效排程。
+
+帳號 bind 立即取消未完成的權限結果與舊提醒，後續操作等待清理；舊 generation／controller 不得將舊帳號的訂閱排到新帳號。Android 通知點擊及 receiver 驗證 owner／隨機綁定 token；iOS 前景通知只接受目前 owner。通知正文維持一般文字，不含名稱或金額。Android 啟用提醒能力後，JSON 原生分享入口仍只在有實作的 iOS 顯示。
+
+| 最終本機驗證 | 結果與界線 |
+|---|---|
+| `flutter test --no-pub` | **197／197 通過**，含拒絕 → 開啟設定 → 返回 → 再啟用、375dp／200% 字級、離線權限刷新、權限／狀態延遲回覆、登出不等待視窗及舊 controller 不能跨帳號同步 |
+| `flutter analyze --no-pub` | No issues found；最終 Dart 相關 6 檔 **65／65** 定向回歸通過 |
+| Android `:app:testDebugUnitTest` | **8／8 通過**：UTC／裝置時區、非法／過去日期、最早 60 筆／ID 去重、首次拒絕／重試／永久拒絕、owner／generation／token／權限隔離 |
+| Android debug APK | 最終 `flutter build apk --debug --no-pub` 成功；使用既有公開 API／政策設定。已有 secure_storage 對 compileSdk 37 的警告仍存在，未升級依賴或改 AGP |
+| iPhone simulator debug build | 最終 `flutter build ios --debug --simulator --no-pub` 成功（14.0 秒）；重新安裝並恢復既有登入及合成資料 |
+| iPhone 17／iOS 26.4 實際操作 | 看見共用提醒開關、拒絕原因及設定按鈕；按鈕開啟系統設定，返回時仍正確呈現拒絕。此模擬器設定沒有可調整的 FutureMint 通知選項，尚未實際恢復授權或驗證送達 |
+| iOS XCTest | 已嘗試 `xcodebuild test ... -only-testing:RunnerTests CODE_SIGNING_ALLOWED=NO`，測試 host 安裝失敗（IXErrorDomain 2／Failed to create IXPlaceholder），**未執行**，不能算通過；其後重新啟動同一模擬器並安裝一般 App 成功 |
+| 獨立唯讀 review | 找到舊 controller 在權限回覆後同步新帳號的問題；已加 binding／owner／disposed 檢查及回歸，最終全套通過。Android 明確重試為已選定的平台行為 |
+
+日誌：`/tmp/futuremint-reminders-all-tests.log`、`/tmp/futuremint-reminders-final-tests.log`、`/tmp/futuremint-reminders-analyze.log`、`/tmp/futuremint-reminders-ios-build.log`、`/tmp/futuremint-reminders-ios-tests.log`、`/tmp/futuremint-reminders-android-build.log`；Android JUnit XML 位於 `app/build/app/test-results/testDebugUnitTest/`。
+
+同步根／Client README、Product Spec／Overview、Architecture、Data／Security、Design README／MASTER、Demo／Competition。本輪沒有 API 或資料庫 schema 變更、新遠端通知服務、commit、push、部署或商店發布。Android 無已連線裝置，通知授權視窗、實際送達、點擊／冷啟動及重開機恢復仍待裝置驗收；iPhone 真機權限恢復與送達亦未完成。編譯／unit／widget tests 不代表 production 或商店驗收。
+
+## AI 資料說明閱讀排版（2026-10-02）
+
+分類：使用者核准的局部 UI 調整。`showAiConsentDisclosure` 分為供應商、傳送內容、啟用狀態及個人選擇四段，內文行高 1.5、段落間 24dp、段內間隔 8dp；供應商／接收方／模型分行。完整同意版本收進「詳細資訊」，隱私及支援連結靠左對齊正文，底部操作獨立於可捲動內文。原資料用途、選擇及啟用條件維持，沒有變更後端、授權或供應商設定。
+
+| 本輪驗證 | 實際結果 |
+|---|---|
+| `flutter test --no-pub test/features/ai_disclosure_layout_test.dart test/features/settings_transparency_test.dart test/features/ai_notice_layout_test.dart` | 16／16 通過；375×812、亮／暗 × 100%／200% 字級可捲至各段及完整版本，連結左對齊及 48dp 高度正常，缺政策／未確認仍禁止啟用；既有同意失敗、取消及提示卡回歸通過 |
+| `flutter analyze --no-pub lib/features/settings/settings_sheet.dart test/features/ai_disclosure_layout_test.dart` | No issues found |
+| 兩個本輪 Dart 檔格式檢查 | 0 changed |
+| iPhone 17／iOS 26.4 模擬器 | 一般入口 debug build 10.3 秒完成，既有登入與資料保留；實際開啟四段說明、向下捲動、連結對齊及版本展開皆確認，當前未核准政策的啟用按鈕維持停用 |
+
+日誌：`/tmp/futuremint-disclosure-layout-tests.log`、`/tmp/futuremint-disclosure-layout-analyze.log`、`/tmp/futuremint-disclosure-layout-run.log`。同頁亮／暗及 200% 字級由 widget tests 驗證；本輪未重跑全套測試或變更同意，沒有呼叫真實 AI、commit、push 或遠端部署。同步根／Client README、Design README／MASTER、Demo 與競賽說明；資料、安全、API 及部署契約維持。
+
+## 已登入 iPhone 實際操作與缺陷修正（2026-10-02）
+
+分類：使用者核准的 AI 提示排版調整、實際操作測試與缺陷修正。使用使用者已登入、明示可操作的測試帳號，在 iPhone 17／iOS 26.4 模擬器的一般 `lib/main.dart` 入口連接既有 API；輸入皆為合成收支、訂閱與虛擬訂單。下列結果補充前輪只檢查首次設定、未送出表單的紀錄，不代表真機或 App Store 驗收。
+
+| 功能 | 實際操作結果 |
+|---|---|
+| 首次設定、首頁及保存 | 空表單阻擋保存；完成孩子角色、月預算 3,000、目標 6,000／2026-12-31。模擬器重新啟動與 App 重新開啟後，登入、預算、紀錄及訂閱仍存在。後續編輯目標已存 600，首頁進度 10%／還差 5,400 |
+| 手動收支、分類與分帳 | 支出 75 編輯為 `QA DRINK` 90／需要；另新增收入 1,500。`QA SPLIT` 390、4 人分帳的個人負擔保存為 98。紀錄篩選、需要 90／想要 98／未分類 1,200、已分類想要占比 52% 正確；最終月支出 1,388、剩餘 1,612。紀錄永久刪除只驗證確認與取消，未刪除 |
+| 訂閱與提醒中心 | 新增月訂閱 120、不建立初次付款，編輯為 240；新增年訂閱 1,200 並建立一筆 1,200 的付款。月負擔為 340，停止月訂閱追蹤後為 100；付款未重複。合成方案比較與資格提示、提醒中心及跳至訂閱頁正常 |
+| 學習與服務協助 | 固定教材可在 AI 未啟用時閱讀、答題並顯示下一步；使用步驟與腳本式服務諮詢可開啟。只驗證當次教材答題，未驗證課程進度跨裝置保存 |
+| FutureSeed | 從零開始：每月 300、3 年、本金 10,800；低／中／高波動情境分別顯示期末 11,054／11,934／13,493，最大回落 0%／2.4%／8.6%，結果自動捲入可見區。皆為合成教育路徑 |
+| 投資練習場 | 虛擬資金不足及無持股賣出被阻擋。0050 虛擬買入 2 股、賣出 1 股，以及修正後再次買入 1 股成功；最後現金 791、持有市值 226、總資產 1,017。新增成交回饋卡實際顯示單價 112.90、資料日 2026-10-01、金額 113。市場事件骰子返回教育情境；未啟用 AI 時點說明會要求查看用途，未呼叫第三方 AI |
+| 設定、匯出與公開頁 | 預算 3,000→3,500→3,000、已存目標 600 保存，欄位仍有焦點時關閉亦正常。JSON 匯出顯示 API 結果並打開約 5 KB JSON 的 iOS 分享面板，隨後取消；未傳送資料、未驗證下載檔案內容。隱私及支援頁在模擬器 Safari 載入；亮／暗主題可切換，結束時回復系統主題 |
+| 通知、家庭及帳號門檻 | 拒絕 iOS 通知權限後，提醒保持關閉，設定顯示重新開啟的路徑。空家庭邀請碼要求完整 24 碼。刪除帳號彈窗要求密碼與確切確認文字，空值禁止提交，焦點後取消可正常返回；未刪除帳號 |
+
+修正與根因：
+
+- 原黃色全寬 AI 提示改為有頁面留白的淡紫資訊卡，標題／補充文字分層，資料用途入口維持至少 48dp；窄畫面及放大字級改為上下排列。亮／暗主題已在模擬器確認，200% 字級由 widget tests 覆蓋。
+- 訂閱保存後空白、紀錄頁 layout assertion，以及預算保存後 `TextEditingController was used after being disposed`，均由彈窗退場動畫尚未結束就釋放欄位 controller 引起。改由彈窗 State 真正卸載時釋放；新增、編輯、空值驗證後保存及有焦點取消已回歸。帳號刪除彈窗採同一生命週期修正。
+- 虛擬訂單原文承諾畫面價格，但伺服器行情更新會改變執行價格。改為預估說明並在操作區呈現新訂單的實際金額／單價／資料日；價格、日期或來源改變時標示行情更新。既有 API／伺服器價格計算維持，重試既有訂單或失敗不顯示新的成功卡。
+- 通知遭拒時增加設定內的恢復說明，避免僅看見開關回到關閉。
+
+| 最終本機驗證 | 結果 |
+|---|---|
+| `flutter test --no-pub` | 185／185 通過，包含訂閱與設定彈窗生命週期、行情更新／失敗回饋、通知拒絕說明及 AI 提示的亮／暗與 200% 字級 |
+| `flutter analyze --no-pub` | No issues found |
+| `dart --suppress-analytics format --output=none --set-exit-if-changed lib test integration_test` | 77 files、0 changed |
+| iPhone 17 debug | 一般 App build 成功，修正後熱重啟／熱重載及上述實際流程正常；原例外已另以回歸測試重現並驗證修正 |
+
+日誌為本機暫存檔：`/tmp/futuremint-simulator-qa-final-all-tests.log`、`/tmp/futuremint-simulator-qa-final-analyze.log`、`/tmp/futuremint-simulator-qa-run.log`。run log 保留修正前的例外；不能把舊例外當作最新熱重載後仍發生。此次沒有 API、資料格式、資格／家庭權限、AI 供應商或同意契約變更；同步 README、Client README、Architecture、Design README／MASTER、Demo 與競賽說明。
+
+剩餘限制：供應商資料處理說明未完成，AI 啟用被阻擋，沒有真實 AI 品質／解析驗收；未執行 SMTP、有效家庭配對及跨帳號分享、本機通知送達、JSON 下載檔案完整性、登出再登入或永久刪除。沒有建立新帳號或修改密碼。測試帳號與合成資料保留，通知權限仍為拒絕。本輪沒有 commit、push、PR、遠端部署、Apple 簽章或上架。
+
 ## SMTP 憑證通知查證（2026-10-02）
 
 分類：釐清與測試 fixture 修正。GitGuardian 原始通知的 push 時間為 2026-10-02 00:22:30（Asia/Taipei），通知信於 00:24:02 寄出；寄件網域的 SPF、DKIM、DMARC 通過。通知指向 `d8fe11f900a78b184237291eb6f088b0165ce5c7` 的 `backend/test/config/startupConfig.test.ts`，diff 連結定位至 fixture 起始行 4，SMTP 組合位於原檔行 9。GitHub 原始檔與本機該 commit 一致：帳號及密碼為明示合成值，配上真實 SMTP 主機造成測試憑證通報；未發現此筆通知涉及真實供應商秘密。
@@ -416,3 +483,11 @@ node node_modules/typescript/bin/tsc --noEmit
 本輪未驗證真實 SMTP 送達、PostgreSQL 跨重啟親子流程、外部 AI 連線、合法監護人身分、客服收信、signed IPA／TestFlight、App Privacy／年齡問卷或送審。Xcode 原始專案仍無 Development Team 設定。發布配置檢查只證明公開配置契約；營運者欄位與 Email 格式不證明身分或收信能力。
 
 同步 README、Client／API README、產品／範圍、安全、部署、設計及展示文件。沒有新資料欄位、migration、API 路由、AI provider 或部署拓樸變更，既有 architecture／data-and-storage／integrations／hosting-resources 的邊界仍一致，未為本輪新增重複規範。
+
+## 2026-10-02 量界離線文件與簡化測試設定
+
+分類：已核准範圍調整及部署說明釐清。使用者提供 169 頁量界離線 PDF；已擷取全文、檢索隱私／保存／訓練／上游／日誌等關鍵字，並檢視目錄及第 164 頁 API 說明。文件確認中轉服務支援 OpenAI／Gemini 格式，未找到完整資料處理條款。登入網站的 IP 記錄開關關閉；此項不作 prompt 保存或訓練政策證據。
+
+依使用者核准方向，部署文件提供明寫未知條件的三項 Runtime 範本。Node.js 22.22.3、dotenv 及實際 `parseAiConfig` 以合成 key 驗證：設定可解析且 reviewed=true；接收方為兩項；公開內容改變會更新 fingerprint；改成 false 仍不放行，清空說明會拋出 AiConfigurationError。最終範本的告知長度為 354 字元，沒有修改 parser 或授權 gate。
+
+同步根 README、backend README、backend/.env.example 註解、部署、安全及整合文件。未提交、推送、修改 Coolify、部署、使用真實憑證或呼叫外部 AI；實際模型權限、額度、連線及 App 新同意流程仍須在使用者套用設定後驗收。此次文件與公開設定檢查不替代先前 Client 回歸或正式營運／上架驗收。

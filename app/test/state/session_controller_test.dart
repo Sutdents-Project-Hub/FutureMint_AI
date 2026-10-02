@@ -7,6 +7,7 @@ import 'package:futuremint_app/auth/session_store.dart';
 import 'package:futuremint_app/data/api_repository.dart';
 import 'package:futuremint_app/data/guest_repository.dart';
 import 'package:futuremint_app/state/session_controller.dart';
+import 'package:futuremint_app/reminders/subscription_reminders.dart';
 
 class FakeStore implements SessionPersistence {
   String? token;
@@ -129,6 +130,7 @@ void main() {
       store: store,
       authenticatedRepository: (_) => throw UnimplementedError(),
       guestRepository: GuestRepository.create,
+      reminders: SubscriptionReminders(supported: false),
     );
   });
 
@@ -191,6 +193,7 @@ void main() {
         store: store,
         authenticatedRepository: (_) => repository,
         guestRepository: GuestRepository.create,
+        reminders: SubscriptionReminders(supported: false),
       );
 
       await signedIn.login(
@@ -220,6 +223,7 @@ void main() {
         store: store,
         authenticatedRepository: (_) => repository,
         guestRepository: GuestRepository.create,
+        reminders: SubscriptionReminders(supported: false),
       );
 
       await signedIn.login(
@@ -247,6 +251,7 @@ void main() {
         store: store,
         authenticatedRepository: (_) => throw UnimplementedError(),
         guestRepository: GuestRepository.create,
+        reminders: SubscriptionReminders(supported: false),
       );
 
       await controller.start();
@@ -269,6 +274,7 @@ void main() {
       store: store,
       authenticatedRepository: (_) => repository,
       guestRepository: GuestRepository.create,
+      reminders: SubscriptionReminders(supported: false),
     );
 
     await signedIn.login(
@@ -315,6 +321,7 @@ void main() {
         store: store,
         authenticatedRepository: (_) => repository,
         guestRepository: GuestRepository.create,
+        reminders: SubscriptionReminders(supported: false),
       );
       await signedIn.login(
         email: 'student@example.com',
@@ -393,6 +400,7 @@ void main() {
         store: store,
         authenticatedRepository: (_) => repository,
         guestRepository: GuestRepository.create,
+        reminders: SubscriptionReminders(supported: false),
       );
       await signedIn.login(
         email: 'student@example.com',

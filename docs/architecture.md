@@ -39,6 +39,10 @@ flowchart LR
 - 瀏覽器 bundle 只含 API URL、公開政策／支援網址及營運者等非秘密 build 設定，不含 AI／database secret。
 - 登入模式呼叫 API；訪客模式只用當次記憶體，沒有背景同步或偽造 API 成功。
 
+### 原生本機提醒
+
+Flutter 透過 `futuremint/subscription-reminders` 呼叫 iOS UserNotifications 與 Android NotificationManager／AlarmManager；`bind` 立即失效舊帳號與未完成的權限回覆，其他操作等待綁定清理。`status` 只讀權限，`openSettings` 使用系統 App／通知設定入口；回到前景可離線更新權限並用已載入的訂閱重排。Android receivers 不對外開放，開機／套件更新恢復使用本機 owner、綁定 token 與 id／時間檢查，舊帳號通知不得送達或導頁。Android 使用非精準排程，不要求 exact-alarm 或電池豁免；無 APNs／FCM 或新遠端服務。
+
 ### Fastify API
 
 - `contracts/`：Zod input／output schema、錯誤與資料模型。
@@ -89,6 +93,7 @@ Runtime 必填 `AI_PROVIDER=demo|liangjie|openai`，正式預設選用量界，`
 1. Client 從 API 取得五個內建教學標的的 TWSE 每日成交快照；API 驗證上游 schema 並快取 15 分鐘。
 2. 登入使用者送出標的、買賣方向、數量與 idempotency key。API 從 session 推導帳號，不接受前端指定 user ID 或價格。
 3. Domain 依伺服器行情檢查現金／持有量，再保存虛擬訂單；持倉、平均成本、配置與報酬每次由訂單重建。
+   Client 畫面金額是預估，行情快取可能在送單前更新；回應後在操作區顯示實際訂單的單價／資料日，與原行情不同時明示更新。失敗或只有既有訂單的回應不宣稱新成交。
 4. 市場事件骰子由版本化牌組與帳號／日期／次數產生可重現結果，只用於學習提問。
 5. 不建立券商連線，不模擬真實撮合、手續費、稅、配息或公司行動；畫面始終標示延遲與教育用途。
 

@@ -7,6 +7,7 @@ import 'package:futuremint_app/auth/session_store.dart';
 import 'package:futuremint_app/data/guest_repository.dart';
 import 'package:futuremint_app/design/tokens.dart';
 import 'package:futuremint_app/state/session_controller.dart';
+import 'package:futuremint_app/reminders/subscription_reminders.dart';
 
 class _Store implements SessionPersistence {
   @override
@@ -64,6 +65,7 @@ void main() {
       store: _Store(),
       authenticatedRepository: (_) => throw UnimplementedError(),
       guestRepository: GuestRepository.create,
+      reminders: SubscriptionReminders(supported: false),
     );
     await session.start();
 
@@ -93,6 +95,7 @@ void main() {
       store: _Store(),
       authenticatedRepository: (_) => throw UnimplementedError(),
       guestRepository: GuestRepository.create,
+      reminders: SubscriptionReminders(supported: false),
     );
     await session.start();
     tester.view.physicalSize = const Size(1440, 900);

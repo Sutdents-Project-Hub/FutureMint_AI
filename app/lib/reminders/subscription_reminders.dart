@@ -47,14 +47,20 @@ class SubscriptionReminders {
     : _channel =
           channel ?? const MethodChannel('futuremint/subscription-reminders'),
       supported =
-          supported ?? (!kIsWeb && defaultTargetPlatform == TargetPlatform.iOS);
+          supported ??
+          (!kIsWeb &&
+              (defaultTargetPlatform == TargetPlatform.iOS ||
+                  defaultTargetPlatform == TargetPlatform.android));
   final MethodChannel _channel;
   final bool supported;
+  int get bindingGeneration => _generation;
+  bool isBoundTo(String owner) => _owner == owner;
   String? _owner;
   int _generation = 0;
   bool enabled = false;
   String permission = 'notDetermined';
   Future<void> _queue = Future<void>.value();
+  Future<void> _binding = Future<void>.value();
   void Function(String owner)? onOpen;
   Future<void> bind(String? owner) async {
     _owner = owner;
@@ -68,7 +74,9 @@ class SubscriptionReminders {
         onOpen?.call(call.arguments as String);
       }
     });
-    await _enqueue(() async {
+    // Binding invalidates pending permission callbacks immediately, even while
+    // a system prompt is open. Other mutations still wait for binding cleanup.
+    final nextBinding = () async {
       final state = await _channel.invokeMapMethod<String, dynamic>('bind', {
         'owner': owner,
         'generation': generation,
@@ -76,11 +84,16 @@ class SubscriptionReminders {
       if (generation != _generation) return;
       enabled = state?['enabled'] == true;
       permission = state?['permission'] as String? ?? 'notDetermined';
-    });
+    }();
+    _binding = nextBinding;
+    await nextBinding;
   }
 
   Future<void> _enqueue(Future<void> Function() action) {
-    final next = _queue.then((_) => action());
+    final next = _queue.then((_) async {
+      await _binding;
+      await action();
+    });
     _queue = next.catchError((Object _) {});
     return next;
   }
@@ -99,6 +112,38 @@ class SubscriptionReminders {
       permission = state?['permission'] as String? ?? 'denied';
     });
     return enabled;
+  }
+
+  /// Read system settings without prompting or clearing the account binding.
+  Future<void> refreshPermission() async {
+    final owner = _owner, generation = _generation;
+    if (!supported || owner == null) return;
+    await _enqueue(() async {
+      if (generation != _generation) return;
+      final state = await _channel.invokeMapMethod<String, dynamic>('status', {
+        'owner': owner,
+        'generation': generation,
+      });
+      if (generation != _generation) return;
+      enabled = state?['enabled'] == true;
+      permission = state?['permission'] as String? ?? 'notDetermined';
+    });
+  }
+
+  Future<bool> openSettings() async {
+    final owner = _owner, generation = _generation;
+    if (!supported || owner == null) return false;
+    var opened = false;
+    await _enqueue(() async {
+      if (generation != _generation) return;
+      opened =
+          await _channel.invokeMethod<bool>('openSettings', {
+            'owner': owner,
+            'generation': generation,
+          }) ==
+          true;
+    });
+    return opened;
   }
 
   Future<void> synchronize(

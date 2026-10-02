@@ -61,7 +61,11 @@ class _FutureMintAppState extends State<FutureMintApp>
 
   @override
   void didChangeAppLifecycleState(AppLifecycleState state) {
-    if (state == AppLifecycleState.resumed) widget.session?.resume();
+    if (state == AppLifecycleState.resumed) {
+      // Notification settings must refresh even if the API is offline.
+      (widget.session?.app ?? widget.controller)?.refreshReminderPermission();
+      widget.session?.resume();
+    }
   }
 
   @override

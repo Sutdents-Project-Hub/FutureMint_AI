@@ -16,6 +16,8 @@ Android、iPhone 與 Web 共用 Client；App Store 只支援 iPhone。正式 Web
 - Web PWA 與 Android launcher 使用本機 FutureMint 靛紫種子圖示；Web 不鎖直向，支援決賽投影與手機 landscape 備援。
 - 已登入資料只經 HTTPS API 保存；Client 不接受或傳送可竄改的 user ID。
 
+iPhone／Android 設定提供「訂閱本機提醒」；首次啟用才請求系統權限，拒絕後可直接開啟通知設定，回到 App 即更新狀態。提醒於續訂前一天台灣時間 09:00 排程，不含名稱或金額；Android 非精準排程可能受省電限制延後，重開機／App 更新會恢復有效排程。Web 保留 App 內提醒；不使用 APNs／FCM。登出／切換／刪除清除提醒，權限對話框不阻擋清除。裝置送達限制見 [測試證據](../docs/testing-and-evidence.md)。
+
 ## 本機執行
 
 iPhone launcher icon 原稿位於 `design/futuremint-ai/assets/app-icon.png`（Codex 內建 imagegen 產生）。替換原稿後，在 `app/` 執行 `python3 tool/generate_ios_icons.py`，按既有 Xcode asset catalog 重建各尺寸，再重新 build／安裝原生 App；hot reload 不會更新系統主畫面 icon。設計與來源見 [Design System](../design/README.md)。
@@ -23,6 +25,10 @@ iPhone launcher icon 原稿位於 `design/futuremint-ai/assets/app-icon.png`（C
 學習頁的紫色探頭角色與「我的理財學習路線」卡片共用局部版位和縮放底緣錨點；頭部預留在卡片上方，雙手跨在上內距，不額外畫紫色橫線。兩圓一菱形在角色頭部右側，三個圖形可見範圍均為 12dp、間距均為 8dp，不依賴裝置畫面座標。
 
 2026-10-02 手機排版調整：首次設定、資格確認與 Email 驗證將主流程、支援及帳號操作分區；記帳草稿生成後直接捲至確認表單，下一筆輸入在表單後；FutureSeed 先呈現控制與結果，手機成功試算後直接捲至曲線，再提供投資練習場入口。另整理訂閱表單間距、設定支援入口，修復預算編輯彈窗空白及放大字級的提醒卡溢位。手動草稿不顯示 AI 解析資訊。設計規範與 [驗證範圍](../docs/testing-and-evidence.md) 已同步。
+
+同日以目前登入的合成測試帳號實際操作後，AI 未啟用提示改為淡紫資訊卡；修復訂閱、預算及帳號刪除彈窗退場時提早釋放輸入控制器的錯誤。虛擬下單以伺服器送單時行情定價，畫面只提供預估；操作區呈現實際成交單價／資料日，行情不同時明示更新。通知權限拒絕時在設定內顯示恢復方法。真實 AI、家庭雙帳號、重新登入、通知送達及永久刪除的實際驗收範圍見測試證據。
+
+AI 資料說明另整理為四段、小標題與較寬行距；供應商／接收方／模型分行，長同意版本收於「詳細資訊」。隱私與支援入口靠左對齊正文，內文捲動時底部操作保留；資料揭露及原啟用條件維持。
 
 先啟動根 README 所述的 Fastify API：
 
@@ -109,7 +115,7 @@ iOS Client 本身只使用系統 HTTPS／TLS，沒有實作自訂或非豁免加
 
 訂閱合約可建立／編輯／停止，可另外記實付或採用舊付款；相同保存意圖沿用 key 重試，合約及付款不重複入帳。紀錄採 cursor 分頁，摘要不依目前頁數；設定可匯出本人 JSON。內容 source 明示手動／AI／合成來源，月預算學習規劃與微課按需使用，無每週背景推課。
 
-iPhone 使用 native MethodChannel／UserNotifications 本機提醒，使用者啟用才詢問 permission；台北續訂前一天 09:00，排最早 60 筆未來提醒，payload 不含訂閱名稱／金額。CRUD、resume／同步後重排；登出、刪除與切換帳號清除。其他裝置修改需同步才會反映。Web／Android 只有 App 內提醒，無 APNs。需在簽章 iPhone／TestFlight 另驗 notification permission、點擊、時區及重登入，不把 unit tests 當實機驗收。
+iPhone 使用 UserNotifications，Android 使用 NotificationManager／AlarmManager，皆透過 native MethodChannel。使用者啟用才詢問通知權限；拒絕後提供系統設定入口，返回時離線更新權限。台灣續訂前一天 09:00 排最早 60 筆，通知不含名稱／金額；Android 使用非精準排程，省電可延後，開機／App 更新恢復有效排程。CRUD、resume／同步後重排；登出、刪除與切換帳號清除，舊 controller／權限回覆不能排入新帳號。其他裝置修改需同步才會反映。Web 只有 App 內提醒，無 APNs／FCM；通知權限、送達、點擊與重登入仍需 iPhone／Android 裝置驗收。
 
 拒絕／撤回 AI 授權或目前唯讀時，學習頁可經 `/api/education/catalog` 讀取固定受控教材；不產生外部 AI 請求。Catalog 不含個人摘要，完成標記僅在當前 Client 記憶體，不保存於帳戶；AI 個人化選題仍需當前資格及授權。
 

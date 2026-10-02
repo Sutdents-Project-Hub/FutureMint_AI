@@ -23,6 +23,8 @@ class _InvestmentLabScreenState extends State<InvestmentLabScreen> {
   InvestmentOrderSide side = InvestmentOrderSide.buy;
   String? quantityError;
   bool requested = false;
+  VirtualInvestmentOrder? latestOrder;
+  bool executionQuoteChanged = false;
 
   @override
   void didChangeDependencies() {
@@ -52,11 +54,43 @@ class _InvestmentLabScreenState extends State<InvestmentLabScreen> {
       return;
     }
     setState(() => quantityError = null);
-    await controller.placeInvestmentOrder(
-      symbol: quote.symbol,
-      side: side,
-      quantity: value,
+    await _runOrder(
+      controller,
+      () => controller.placeInvestmentOrder(
+        symbol: quote.symbol,
+        side: side,
+        quantity: value,
+      ),
+      expectedQuote: quote,
     );
+  }
+
+  Future<void> _runOrder(
+    AppController controller,
+    Future<void> Function() request, {
+    MarketQuote? expectedQuote,
+  }) async {
+    final knownIds =
+        controller.investmentLab?.orders.map((o) => o.id).toSet() ?? <String>{};
+    setState(() {
+      latestOrder = null;
+      executionQuoteChanged = false;
+    });
+    await request();
+    if (!mounted || controller.errorMessage != null) return;
+    final added = controller.investmentLab?.orders.where(
+      (order) => !knownIds.contains(order.id),
+    );
+    if (added == null || added.isEmpty) return;
+    final saved = added.first;
+    setState(() {
+      latestOrder = saved;
+      executionQuoteChanged =
+          expectedQuote != null &&
+          (saved.unitPrice != expectedQuote.price ||
+              saved.quoteAsOf != expectedQuote.asOf ||
+              saved.quoteSource != expectedQuote.source);
+    });
   }
 
   @override
@@ -103,7 +137,10 @@ class _InvestmentLabScreenState extends State<InvestmentLabScreen> {
                     OutlinedButton(
                       onPressed: controller.busy || !controller.canWrite
                           ? null
-                          : controller.retryPendingOrder,
+                          : () => _runOrder(
+                              controller,
+                              controller.retryPendingOrder,
+                            ),
                       child: const Text('重試原訂單'),
                     ),
                   ],
@@ -140,6 +177,8 @@ class _InvestmentLabScreenState extends State<InvestmentLabScreen> {
                     side: side,
                     quantityController: quantityController,
                     quantityError: quantityError,
+                    latestOrder: latestOrder,
+                    executionQuoteChanged: executionQuoteChanged,
                     busy: controller.busy,
                     onSideChanged: (value) => setState(() => side = value),
                     onQuantityChanged: () => setState(() {
@@ -586,6 +625,8 @@ class _OrderPanel extends StatelessWidget {
     required this.side,
     required this.quantityController,
     required this.quantityError,
+    required this.latestOrder,
+    required this.executionQuoteChanged,
     required this.busy,
     required this.onSideChanged,
     required this.onQuantityChanged,
@@ -597,6 +638,8 @@ class _OrderPanel extends StatelessWidget {
   final InvestmentOrderSide side;
   final TextEditingController quantityController;
   final String? quantityError;
+  final VirtualInvestmentOrder? latestOrder;
+  final bool executionQuoteChanged;
   final bool busy;
   final ValueChanged<InvestmentOrderSide> onSideChanged;
   final VoidCallback onQuantityChanged;
@@ -764,9 +807,26 @@ class _OrderPanel extends StatelessWidget {
                   ),
             label: Text(side == InvestmentOrderSide.buy ? '確認虛擬買入' : '確認虛擬賣出'),
           ),
+          if (latestOrder != null) ...[
+            const SizedBox(height: FutureMintTokens.space3),
+            Column(
+              key: const Key('investment-lab-order-result'),
+              crossAxisAlignment: CrossAxisAlignment.stretch,
+              children: [
+                Text(
+                  executionQuoteChanged
+                      ? '虛擬訂單已保存；行情已更新，以下為實際成交結果。'
+                      : '虛擬訂單已保存，以下為實際成交結果。',
+                  style: const TextStyle(fontWeight: FontWeight.w700),
+                ),
+                const SizedBox(height: FutureMintTokens.space2),
+                _OrderRow(order: latestOrder!),
+              ],
+            ),
+          ],
           const SizedBox(height: FutureMintTokens.space3),
           Text(
-            '成交價採畫面所示盤後價；本練習未計入費用與稅。',
+            '畫面金額為預估；送出時以伺服器當前盤後資料計算，行情更新可能改變成交價。未計入費用與稅。',
             style: Theme.of(context).textTheme.bodySmall,
           ),
         ],

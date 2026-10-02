@@ -481,39 +481,90 @@ class _AiConsentNotice extends StatelessWidget {
   final VoidCallback onOpen;
 
   @override
-  Widget build(BuildContext context) => Container(
-    key: const Key('ai-consent-notice'),
-    color: Theme.of(context).brightness == Brightness.dark
-        ? FutureMintTokens.darkSurfaceRaised
-        : FutureMintTokens.sunSoft,
-    padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 9),
-    child: Row(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        const Padding(
-          padding: EdgeInsets.only(top: 2),
-          child: Icon(Icons.auto_awesome_outlined, size: 20),
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    final brandInk = FutureMintTokens.brandInk(context);
+    return Padding(
+      padding: EdgeInsets.fromLTRB(
+        FutureMintTokens.pageGutter(context),
+        FutureMintTokens.space1,
+        FutureMintTokens.pageGutter(context),
+        FutureMintTokens.space2,
+      ),
+      child: Material(
+        key: const Key('ai-consent-notice'),
+        color: FutureMintTokens.isDark(context)
+            ? FutureMintTokens.darkSurfaceRaised
+            : FutureMintTokens.lavenderSoft,
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.circular(FutureMintTokens.radiusSmall),
+          side: BorderSide(color: brandInk.withValues(alpha: .12)),
         ),
-        const SizedBox(width: FutureMintTokens.space3),
-        Expanded(
-          child: Wrap(
-            spacing: FutureMintTokens.space3,
-            runSpacing: FutureMintTokens.space1,
-            crossAxisAlignment: WrapCrossAlignment.center,
+        clipBehavior: Clip.antiAlias,
+        child: Padding(
+          padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+          child: Row(
+            crossAxisAlignment: CrossAxisAlignment.center,
             children: [
-              Text(
-                'AI 尚未啟用，非 AI 功能仍可使用。',
-                style: Theme.of(
-                  context,
-                ).textTheme.bodyMedium?.copyWith(fontWeight: FontWeight.w700),
+              Icon(Icons.auto_awesome_outlined, size: 20, color: brandInk),
+              const SizedBox(width: FutureMintTokens.space3),
+              Expanded(
+                child: LayoutBuilder(
+                  builder: (context, constraints) {
+                    final stack =
+                        constraints.maxWidth < 240 ||
+                        MediaQuery.textScalerOf(context).scale(1) >= 1.3;
+                    final message = Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        Text(
+                          'AI 尚未啟用',
+                          style: theme.textTheme.bodyMedium?.copyWith(
+                            fontWeight: FontWeight.w700,
+                          ),
+                        ),
+                        const SizedBox(height: 2),
+                        Text(
+                          '手動功能照常使用',
+                          style: theme.textTheme.bodySmall?.copyWith(
+                            color: theme.colorScheme.onSurfaceVariant,
+                          ),
+                        ),
+                      ],
+                    );
+                    final action = TextButton(
+                      onPressed: onOpen,
+                      style: TextButton.styleFrom(
+                        foregroundColor: brandInk,
+                        minimumSize: const Size(48, 48),
+                        padding: const EdgeInsets.symmetric(horizontal: 8),
+                      ),
+                      child: const Text('查看資料用途'),
+                    );
+                    if (stack) {
+                      return Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        mainAxisSize: MainAxisSize.min,
+                        children: [message, action],
+                      );
+                    }
+                    return Row(
+                      children: [
+                        Expanded(child: message),
+                        const SizedBox(width: FutureMintTokens.space2),
+                        action,
+                      ],
+                    );
+                  },
+                ),
               ),
-              TextButton(onPressed: onOpen, child: const Text('查看資料用途')),
             ],
           ),
         ),
-      ],
-    ),
-  );
+      ),
+    );
+  }
 }
 
 class _GlobalMessage extends StatelessWidget {

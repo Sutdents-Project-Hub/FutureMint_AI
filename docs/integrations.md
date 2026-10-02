@@ -87,3 +87,5 @@ SMTP adapter 已實作 TLS、一次性驗證／密碼重設信與 sanitized erro
 分類：已核准範圍調整。正式 iPhone 只啟動 API／PostgreSQL，Web 為選用測試。SMTP 為部署可選項；未填／disabled 時開放註冊與登入、不要求 Email 驗證，Email 只作未驗證登入識別，不寫入 emailVerifiedAt。新的驗證／寄信重設／監護人寄信回 mail_disabled；App 清楚說明功能停用。最低年齡 15 與 15–17 歲監護人資格仍維持，未完成同意者不能寫入受限資料，可使用訪客；SMTP 重新啟用後仍需驗證信箱，密碼重設只寄給已驗證信箱。
 
 供應商公開接收方／說明／reviewed 可放 backend/src/config/providerPolicies.ts；既有 PROVIDER_DATA_* env 可覆寫，覆寫說明後需重新確認。缺少說明／未確認時不阻擋 API 啟動，但阻擋外部 AI 授權與呼叫，保留手動及固定教材。模型與 key 仍為所選 live provider 必要值，不自動 fallback；量界上游承諾尚未確認，初始設定不虛構內容。
+
+2026-10-02 核准的簡化測試方式使用[如實揭露未知條件的 Runtime 範本](deployment.md#量界資訊不完整時的測試設定2026-10-02)，沿用既有 parser 及帳號授權。`reviewed` 是營運者確認公開告知，不能當作供應商條款查核證據；本輪無真實外部請求，文件支援 OpenAI／Gemini 格式也不證明所選 model、額度或結構化回覆可用。

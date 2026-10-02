@@ -663,7 +663,7 @@ class SessionController extends ChangeNotifier {
     try {
       await reminders.clear();
     } catch (_) {
-      notice = '本機提醒暫時無法清除，請到 iPhone 設定關閉 FutureMint 通知。';
+      notice = '本機提醒暫時無法清除，請到系統設定關閉 FutureMint AI 通知。';
     }
   }
 

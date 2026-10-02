@@ -3,13 +3,104 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:futuremint_app/auth/auth_models.dart';
 import 'package:futuremint_app/app/future_mint_app.dart';
 import 'package:futuremint_app/core/models.dart';
+import 'package:futuremint_app/core/launch_models.dart';
 import 'package:futuremint_app/data/api_repository.dart';
 import 'package:futuremint_app/features/settings/settings_sheet.dart';
+import 'package:futuremint_app/reminders/subscription_reminders.dart';
+import 'package:futuremint_app/state/app_controller.dart';
 import 'package:provider/provider.dart';
 
 import '../widget_test.dart';
 
+class DeniedReminders extends SubscriptionReminders {
+  DeniedReminders() : super(supported: true);
+
+  bool settingsOpened = false;
+  bool allowedInSettings = false;
+
+  @override
+  Future<bool> openSettings() async {
+    settingsOpened = true;
+    return true;
+  }
+
+  @override
+  Future<void> refreshPermission() async {
+    permission = allowedInSettings ? 'authorized' : 'denied';
+  }
+
+  @override
+  Future<bool> setEnabled(bool value) async {
+    permission = allowedInSettings ? 'authorized' : 'denied';
+    enabled = value && allowedInSettings;
+    return enabled;
+  }
+
+  @override
+  Future<void> synchronize(
+    List<ActiveSubscription> items, {
+    DateTime? now,
+  }) async {}
+}
+
 void main() {
+  testWidgets(
+    'denied notification permission opens settings and refreshes on return',
+    (tester) async {
+      final base = await createController();
+      final reminders = DeniedReminders();
+      final controller = AppController(
+        repository: base.repository,
+        mode: AppMode.authenticated,
+        reminders: reminders,
+      );
+      await controller.initialize();
+      tester.view.physicalSize = const Size(375, 812);
+      tester.view.devicePixelRatio = 1;
+      tester.platformDispatcher.textScaleFactorTestValue = 2;
+      addTearDown(tester.view.resetPhysicalSize);
+      addTearDown(tester.view.resetDevicePixelRatio);
+      addTearDown(tester.platformDispatcher.clearTextScaleFactorTestValue);
+      await tester.pumpWidget(FutureMintApp(controller: controller));
+      await tester.pumpAndSettle();
+      await tester.tap(find.byTooltip('設定'));
+      await tester.pumpAndSettle();
+      final toggle = find.byKey(const Key('subscription-reminder-toggle'));
+      await tester.ensureVisible(toggle);
+      await tester.pumpAndSettle();
+      await tester.tap(toggle);
+      await tester.pumpAndSettle();
+      final explanation = find.byKey(
+        const Key('subscription-reminder-permission'),
+      );
+      await tester.ensureVisible(explanation);
+      await tester.pumpAndSettle();
+      expect(explanation, findsOneWidget);
+      expect(find.textContaining('系統設定允許 FutureMint AI 通知'), findsOneWidget);
+      expect(tester.widget<SwitchListTile>(toggle).value, isFalse);
+      final settings = find.byKey(const Key('subscription-reminder-settings'));
+      await tester.ensureVisible(settings);
+      await tester.pumpAndSettle();
+      await tester.tap(settings);
+      await tester.pumpAndSettle();
+      expect(reminders.settingsOpened, isTrue);
+      // A first denial does not opt in. Returning after granting system
+      // permission removes the recovery prompt; the user can now enable.
+      reminders.allowedInSettings = true;
+      tester.binding.handleAppLifecycleStateChanged(AppLifecycleState.inactive);
+      tester.binding.handleAppLifecycleStateChanged(AppLifecycleState.resumed);
+      await tester.pumpAndSettle();
+      expect(explanation, findsNothing);
+      expect(tester.widget<SwitchListTile>(toggle).value, isFalse);
+      await tester.ensureVisible(toggle);
+      await tester.pumpAndSettle();
+      await tester.tap(toggle);
+      await tester.pumpAndSettle();
+      expect(tester.widget<SwitchListTile>(toggle).value, isTrue);
+      expect(tester.takeException(), isNull);
+    },
+  );
+
   for (final theme in [ThemeMode.light, ThemeMode.dark]) {
     testWidgets('profile dialog opens and can be cancelled on a phone '
         '(${theme.name}, 2x text)', (tester) async {

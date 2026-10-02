@@ -77,3 +77,7 @@ Pool 目前上限 10 connections，connection／idle timeout 由 repository 設�
 Client 為重試一致性保存帳號綁定的待確認訂閱／虛擬訂單 payload 與 key；原生系統安全儲存、Web browser storage。同帳號重新登入／重啟恢復原操作，登出保留，App 內刪除帳號清除；儲存失敗會停止首次送出，不以新 key 繼續不確定操作。
 
 SMTP 關閉時註冊仍保存帳號，但不寫入 `emailVerifiedAt`；未驗證 Email 僅作登入識別，不作為郵件重設或客服恢復帳號的唯一憑據。SMTP 關閉不會刪除既有驗證／監護人 token 或改寫既有帳號驗證狀態；有效 token 仍依原用途、到期與一次性限制使用。寄信與供應商說明的可選設定不新增 migration，也不改 schema、秘密或資料保存邊界。備份0不代表最小刪除journal立即清除；仍需涵蓋尚存的舊備份副本。
+
+## 原生提醒裝置資料（2026-10-02）
+
+iOS UserDefaults、Android 私有 SharedPreferences 保存每帳號提醒偏好；Android 另保存當前 owner、隨機綁定 token、通知 occurrence id／UTC 時間及是否請求過權限，以供非精準排程與開機恢復。沒有保存名稱、金額或原始輸入，也不新增伺服器資料表。登出／切換／刪除清除排程及已送通知；每帳號偏好與系統授權各自獨立，未授權時有效開關為關閉。

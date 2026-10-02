@@ -38,7 +38,9 @@ Future<void> showSubscriptionEditor(
     isScrollControlled: true,
     useSafeArea: true,
     showDragHandle: true,
-    builder: (sheet) => StatefulBuilder(
+    builder: (sheet) => _SubscriptionEditorBody(
+      name: name,
+      amount: amount,
       builder: (context, update) => SingleChildScrollView(
         padding: EdgeInsets.fromLTRB(
           24,
@@ -191,6 +193,34 @@ Future<void> showSubscriptionEditor(
       ),
     ),
   );
-  name.dispose();
-  amount.dispose();
+}
+
+// The modal's popped Future completes before its reverse animation ends.
+// Keep the field controllers alive until the sheet subtree is unmounted.
+class _SubscriptionEditorBody extends StatefulWidget {
+  const _SubscriptionEditorBody({
+    required this.name,
+    required this.amount,
+    required this.builder,
+  });
+
+  final TextEditingController name;
+  final TextEditingController amount;
+  final StatefulWidgetBuilder builder;
+
+  @override
+  State<_SubscriptionEditorBody> createState() =>
+      _SubscriptionEditorBodyState();
+}
+
+class _SubscriptionEditorBodyState extends State<_SubscriptionEditorBody> {
+  @override
+  void dispose() {
+    widget.name.dispose();
+    widget.amount.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) => widget.builder(context, setState);
 }
