@@ -91,22 +91,15 @@
 
 ## Git、Commit 與 Pull Request
 
-- 全新專案初始化的固定例外是：執行 `git init -b main`，安全掃描通過後只 stage 初始化產物，並建立 `chore(init): 初始化學生專案結構`。既有 Git repository 不適用此例外。
-- 除上述固定初始 commit 外，只有使用者明確要求時才可 commit、push、建立 PR、merge、release 或部署；各項授權彼此獨立。
-- 每次 branch、commit、merge、push 或 PR 前，先執行 `git status --short --branch`、`git branch --show-current` 與 `git remote -v`，確認目前分支、working tree、變更範圍、remote 與本次授權。
-- **未設定 remote**：只執行本機 branch、commit 與 merge；不得虛構 push 或 PR，也不得自行建立 remote 或 GitHub repository。
-- **已設定 remote**：遵守遠端保護規則。Pull Request 是團隊協作的建議流程，不是每項任務的固定要求。使用者明確要求直接發布到 `main` 時，若目前帳號權限與 remote branch policy 允許，可直接 commit／push，不必先建立 PR；若 remote 要求 PR、review 或其他檢查，或拒絕直接更新，須遵守該限制並改走必要流程。不得 force-push 或以 bypass 繞過遠端保護。
-- 使用者只要求 `commit` 時，只提交目前任務中可獨立理解的 checkpoint，並**維持在目前分支**；不得 merge、刪除 branch、push、建立 PR、release 或 deployment。
-- 使用者要求**合併進 `main`**時，視為目前任務收尾；安全檢查後可提交同一任務必要且範圍清楚的剩餘變更，再安全合併並驗證 `main`。若混有無關或不明變更，停止並詢問。
-- 「合併進 `main` 並 push」可授權必要 commit、merge 與遠端同步，但**不代表已授權部署**或 release；仍須依 remote 模式使用既有安全流程。
-- 合併成功、`main` 驗證通過，且任務 branch 已完整合併、沒有獨有 commit 或待續工作時，才使用 `git branch -d <branch>`；**不得使用 `git branch -D`**。Conflict、驗證失敗、dirty worktree 或任務未完成時保留 branch。
-- 成功關閉後回到 `main`；**下一個獨立任務**從最新 `main` 建立新 branch，不混入已完成任務。
+- 本專案直接在 `main` 開發、提交與推送，不建立或使用工作分支，也不建立 Pull Request。
+- 每次 commit 或 push 前，先執行 `git status --short --branch`、`git branch --show-current` 與 `git remote -v`，確認目前位於 `main`、工作樹狀態、變更範圍及 remote。
+- 只有使用者明確要求時才可 commit 或 push；這些授權不包含 release 或部署。
+- 若目前不在 `main`，先確認切回 `main` 不會丟失或覆蓋變更；有未提交或不明變更時停止並整理清楚。
+- 若遠端要求 PR、review 或其他檢查，或拒絕直接更新，遵守遠端限制並回報，不得 force-push 或以 bypass 繞過保護。
 - commit 採 Conventional Commits：`<type>(<scope>): <繁體中文描述>`；`type`／`scope` 維持英文，Commit subject 描述與 Commit body 預設使用繁體中文，一次提交只包含一個可理解、可回滾的目的。
-- 建立 Pull Request 時，title 使用 `<type>(<scope>): <繁體中文描述>`；內文使用繁體中文並記錄目的、範圍、驗證、文件同步、風險、資料／環境、部署與 rollback 影響。
 - 建議類型：`feat`、`fix`、`docs`、`chore`、`refactor`、`test`、`build`、`ci`、`style`、`perf`、`revert`。
 - 提交前必須檢查 staged、unstaged、untracked 與 diff，排除秘密、`.env`、憑證、個資、內部文件、合約、報價與其他不應提交內容。
-- 發現敏感內容時不得 commit 或 push：先 unstage、更新 `.gitignore`、改用 `.env.example`／placeholder；疑似外洩的憑證需提醒輪替。不確定檔案性質時先詢問。
-- 只 stage 明確路徑，不使用 `git add .`；是否使用 PR 依使用者指示與遠端保護規則決定。即使使用者要求直接 push，仍不得 force-push 或 bypass 遠端保護。
+- 只 stage 明確路徑，不使用 `git add .`。發現敏感內容時不得 commit 或 push；疑似外洩的憑證需提醒輪替。不確定檔案性質時先詢問。
 
 ## 部署與交接
 
