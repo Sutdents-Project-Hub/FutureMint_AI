@@ -76,13 +76,19 @@ Apple 的「其他財務資訊」涵蓋收入等資料；不連銀行不等於�
 - 新版 API／migration 與 App 內監護人流程、AI 資料處理條款與功能、通知真機驗收，以及新版審查帳號完整流程。
 - 免費價格及臺灣供應已保存；內容權利聲明已保存；仍須 App Privacy、年齡問卷、加密、build 選擇與提交檢查。
 
-## 剩餘人工資料與接續操作（2026-10-03）
+## 剩餘人工資料與接續操作（2026-10-04）
 
-- **Apple 登入**：使用者已完成 Xcode 登入，顯示已確認的 MIN HSIEN LI 團隊。Runner 已配置已確認的開發團隊及 Automatic signing；尚無本機有效簽章憑證；網站已有雲端管理的 Distribution 憑證。仍須取得本機簽章／profile、正式 archive 與 Apple 上傳驗證，不把 Team 設定視為已簽章。不要將密碼或驗證碼寫入文件。
+使用者已暫停上架流程，待學生確認自行申請的開發者帳號。現有 ASC record 仍屬 MIN HSIEN LI 團隊；後續改用學生團隊時需重新核對 Team、Bundle ID、商店 record 與簽章，既有程式、文案及截圖可沿用。本輪保留現有 Apple 資源，沒有移轉、刪除或送審。
+
+- **Apple 登入與簽章**：Xcode 顯示 MIN HSIEN LI 團隊，Runner 已配置 Automatic signing。使用者已允許建立憑證；2026-10-04 實際建立 Apple Development 時，Apple 回覆登入名稱或密碼不正確。使用者完成重新登入後，Xcode 憑證列表顯示 `Missing Private Key`，本機仍為 0 valid identities，未取得可用本機簽章。既有雲端 Distribution 憑證未撤銷、私鑰未匯出；簽章處理依暫停指示停止，不把 Team 設定視為已簽章。密碼或驗證碼不保存於文件。
 - **公開名稱**：名稱已確認為「FutureMint AI 團隊」；ASC 已保存「2026 FutureMint AI 團隊」；本機 App 公開配置已更新並通過格式驗證；production 政策仍待同步。
 - **原插圖**：使用者確認紫色、黃色等角色由團隊使用 ChatGPT 生成，非學生自繪或第三方下載；已核對 OpenAI 條款中的輸出權利，詳見 Design README。新 App icon 的生成來源不涵蓋其他角色。
 - **年齡問卷**：App 有自行選擇年齡及服務資格門檻，不查驗身分證件；是否依 Apple 當前定義填入「年齡確認」已請營運者確認。問卷尚未保存，不能將準備中的回答視為完成。
 - **App Privacy**：程式端收集項目已整理於上節；正式 API／平台請求日誌的欄位、保存期限及供應商處理用途仍待證據。診斷資料與用途分類尚未保存或發布。
+
+2026-10-04 公開配置檢查：正式 API health、hosted／postgres、現行 App 內監護人政策及註冊能力通過；繁中／英文 privacy／support 均可讀取，但營運資訊與本機已確認名稱不一致，正式 build gate 仍阻擋。待取得 Coolify 管理頁及部署授權後，在 `futuremint-ai-api` 的 Environment Variables 將 runtime `SERVICE_OPERATOR` 設為 `FutureMint AI 團隊`，保存並重新部署 API，再重跑 `app/tool/check_release_readiness.py`。管理頁登入及部署尚未執行，不公開秘密值。
+
+Xcode 與 iPhone 17 Pro Max 模擬器已重新開啟；模擬器仍可顯示既有 FutureMint AI 訪客畫面。ASC 起初導向登入且 Chrome 擴充功能視窗阻擋操作；使用者處理後，已重新讀取 FutureMint AI 的 App 資訊頁，確認登入恢復、狀態仍是準備提交。這些恢復操作不代表 signed build、問卷或送審完成。
 
 可向量界客服提供以下詢問文字；本輪未代寄：
 

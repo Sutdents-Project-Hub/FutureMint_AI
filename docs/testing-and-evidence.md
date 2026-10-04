@@ -1,5 +1,16 @@
 # 測試與證據
 
+## 簽章授權後接續檢查（2026-10-04）
+
+分類：上架現況釐清與既有流程恢復；沒有修改 App／API 程式、資料庫或 production 設定。
+
+- Xcode 重新開啟後可見已確認團隊；依使用者明確授權選擇建立 Apple Development 憑證，Apple 回覆登入名稱或密碼不正確。使用者重新登入後，憑證列表顯示 `Missing Private Key`；再次執行 `security find-identity -v -p codesigning` 仍為 0 valid identities，沒有可用本機簽章。既有憑證未撤銷、私鑰未匯出。
+- 使用忽略的正式 App 公開配置執行 `python3 app/tool/check_release_readiness.py`：正式 HTTPS、API health、hosted／postgres、現行年齡／App 內監護人政策、註冊／寄信能力及公開 AI 說明格式通過。四個語系頁面都可讀取，但 privacy／support 的公開營運資訊與 App 配置不符，共四項 BLOCK、exit 1；未執行正式 archive，不略過 gate。
+- 上述 AI 格式檢查仍不證明供應商保存／訓練／上游用途已查核；家庭寫入、正式 AI 與真機通知未重新驗收。
+- 已重新開啟 Xcode、App Store Connect 及 iPhone 17 Pro Max 模擬器。ASC 起初導向登入、Chrome 擴充功能視窗阻擋操作；使用者處理後，已重新讀取 App 資訊頁，登入恢復、App 仍是準備提交。模擬器既有訪客畫面仍正常顯示，沒有新增帳號或送出虛擬訂單。
+- 已準備公開名稱的確切 runtime 修改，見 [商店資料接續操作](app-store-metadata.md)。未登入 Coolify、保存設定或部署；尚無 signed IPA、TestFlight、已完成的 App Privacy／年齡問卷或正式送審。
+- 使用者隨後暫停上架，待學生確認自行申請的開發者帳號；Apple 資源保留，停止簽章／上傳／送審與 Coolify 操作。後續 Git 提交及同步不代表恢復上架流程。
+
 ## 公開團隊、素材來源與行情顯名（2026-10-03）
 
 分類：上架資料釐清與既有行情授權聲明補齊，不改 API／資料庫或投資計算。
