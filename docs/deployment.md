@@ -1,5 +1,15 @@
 # Coolify 部署說明
 
+## 2026-10-29 資安維護
+
+使用者已授權本輪安全修版提交 main 與既有 API Resource 正式部署；以下較早未部署／不做還原指當時範圍。測試 Web 必須維持 stopped、Auto Deploy=false，不新增 Resource、不調 provider／model。API 18 項既有設定已關閉 build-time 旗標，runtime 與原加密值保持；不得把 runtime secrets 重新設為 build arguments。這不代表歷史 build cache 已清除或憑證已輪替。
+
+PostgreSQL 已沿原卷採用 `postgres:17.11-futuremint-security-20261029`，固定本機 image `sha256:0ee7ce21a6f7f5351fe88e29d21bc5ccc2aaba5c555cf62f2178467c221e4328`。僅更新 libssl3／libcrypto3 3.5.9-r0、zlib 1.3.2-r1 與相依 musl 1.2.6-r3；Postgres／plpgsql binary 不變。冷副本與正式切換前完整資料、schema、roles、序列、large objects、collation 及 Unicode／實際文字排序相等，恢復 API 寫入後禁止回灌升前副本。舊 PG 保全容器 stopped、restart=no，不得啟動。
+
+**本機映像限制**：Coolify standalone Database 的 start／restart 工作會強制 pull，此 tag 不在公開 registry；不得盲按 UI 啟動或重啟。既有 Compose 已保存安全 tag 與 `pull_policy: never`，後續維護須先核現機 image／卷／身分，沿保留的本機映像進行受控啟動。原基底無 RepoDigest，已將精確舊 image 保存為 `postgres:17.11-futuremint-base-20261029`；此 base 與安全 image 都須保留。異機重建需另取得原材料並重新驗證，不保證可從公開 registry 直接重建。
+
+本輪僅為單次維護建立 VPS 上加密備份及隔離還原；不增加定期備份、不改 BACKUP_RETENTION_DAYS=0、不改供應商、公開政策或費用。正式客戶資料／憑證不下載工作站。正式部署完成須另核對 commit、實際 runtime、原卷、migration registry、公開 TLS／權限與 Web 停止狀態；CI 成功不代替此驗收。
+
 ## 目標與目前狀態
 
 正式以原生 iPhone 為主，只啟動 `futuremint-ai-api`（backend/Dockerfile）與 `futuremint-ai-postgres`（Coolify managed PostgreSQL 17）。`futuremint-ai-web` 保留為測試 Resource，維持停止並關閉其 Auto Deploy；不需刪除。根 compose.yaml 僅供本機三容器整合，不作 production 入口。

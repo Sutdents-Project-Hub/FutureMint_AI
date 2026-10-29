@@ -1,5 +1,18 @@
 # 測試與證據
 
+## 2026-10-29 資安維護
+
+分類：依賴／runtime 安全修補與部署設定缺陷修正。保留 Node.js 22、npm、Fastify、PostgreSQL 17、API／App 業務來源與全部歷史 migrations；未啟測試 Web。
+
+- Node.js 22.23.4／npm 10.9.9 frozen `npm ci`、`npm run typecheck`、`npm run build` 通過；完整 `npm audit` 0 項，合成 capture 評估 30／30、225 欄位通過。
+- 本機 Vitest 210 通過／24 PostgreSQL 測試因未提供專用 DB 跳過；VPS Linux 使用不可變 test image、internal network 與隔離 localhost `futuremint_test`，原測試 33 檔 **234／234 通過**，沒有修改測試或放寬 DB guard。後續只調整維護測試 harness，該 image／產品來源未變，沿用這份完整結果。
+- 本輪 VPS 單次加密備份的解密 hash、真 PostgreSQL 隔離還原與原生 production startup 通過；19 張表逐值及 12 筆原 migration metadata 保持。第一次完整路由檢查正常寫入一筆限流計數，被嚴格 fingerprint 攔下；保留原失敗，將公開路由／合成操作改到另一空白 DB，真還原區只做 startup／health，未忽略資料表。
+- PostgreSQL 新安全映像與原映像引擎／plpgsql binary 相同；新卷冷副本及正式原卷在恢復寫入前完整資料／schema／roles／序列／large objects／collation、代表 Unicode 及實際文字欄位排序相等。不是回灌正式資料，也沒有宣稱異機重建已驗。
+- App 的 84 個 hosted Pub lock 套件本次 OSV 查核無命中；App 原碼、lock、簽章與發布流程未改。遠端 CI 與 Coolify 正式部署必須以本次 main commit 的實際回執另外確認，不能從候選成功推定已部署。
+
+原 npm 10 peer resolver 更新 lock 的 `edgesOut` 失敗留存；隔離 npm 11 解算後已回 npm 10 frozen 安裝，沒有 legacy-peer-deps。維護合成負向測試初次錯誤密碼不合原字數／數字規則而回 422，已修正 fixture；未修改產品規則。未呼叫真 AI／SMTP、不使用真帳號、不測 signed iOS／TestFlight／App Store，不代表完整產品營運接受。安全 PG 本機 tag／UI 強制 pull 與材料保存限制見[部署維護](deployment.md#2026-10-29-資安維護)。
+
+
 ## 簽章授權後接續檢查（2026-10-04）
 
 分類：上架現況釐清與既有流程恢復；沒有修改 App／API 程式、資料庫或 production 設定。

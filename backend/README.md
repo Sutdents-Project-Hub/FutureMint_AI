@@ -1,5 +1,11 @@
 # FutureMint Fastify API
 
+## 2026-10-29 資安維護
+
+既有 Node.js 22／Fastify／npm 不變，使用 `.nvmrc` 的 22.23.4。Fastify 5.12.6、Nodemailer 10.1.4、Zod 4.6.7、Vitest 4.1.12、tsx 4.23.15 與 lock 內間接安全修版，完整 npm audit 為 0。Docker base 固定官方 Node 22.23.4 bookworm-slim digest，保留 Debian 12 並更新 OS 套件；npm 自有 Undici 明示修至 6.29.1，不偽造 npm 版號。production 仍為 UID 1000，原 preflight → migration → server／DB readiness 流程不變。
+
+未修改 schema、歷史 migrations、供應商／model 或業務邏輯；驗證與限制見[測試證據](../docs/testing-and-evidence.md#2026-10-29-資安維護)。Node 22 隨附 npm 10.9.9 可直接 `npm ci`；本輪 npm 10 peer resolver 更新 lock 時出錯，以隔離 npm 11 解算後已回 npm 10 frozen 安裝驗證，無需 legacy-peer-deps 或修改全域 npm。
+
 Node.js 22／TypeScript 後端，提供帳號與 session、Zod 契約、確定性財務計算、量界智算／官方 OpenAI／Demo AI providers、證交所市場資料 adapter，以及 PostgreSQL／Memory repositories。正式部署為 Coolify 中獨立的 `futuremint-ai-api` Application。
 
 ## Runtime

@@ -1,5 +1,11 @@
 # FutureMint AI
 
+## 2026-10-29 資安維護接續
+
+分類為既有依賴與 runtime 安全修補；保留 Node.js 22／Fastify／npm、既有 API、資料 schema 與量界設定。API 固定 Node.js 22.23.4、Fastify 5.12.6、Nodemailer 10.1.4、Zod 4.6.7；完整 npm audit 為 0 項。PostgreSQL 17.11 沿原卷更新 OS 安全套件，不升資料庫大版、不回灌舊快照。測試 Web 持續停止且 Auto Deploy 關閉，API 部署不代表手機 App 發布。
+
+10/29 維護的單次加密保存、Linux／還原驗證與正式部署判讀，以[測試證據](docs/testing-and-evidence.md#2026-10-29-資安維護)及[部署維護限制](docs/deployment.md#2026-10-29-資安維護)為準；下方歷史「本輪未驗證」敘述保留原日期範圍。正式流程、SMTP、外部 AI 與 Apple 上架不因安全修版自動通過。
+
 > 由黑客松原型轉為正式產品準備｜iPhone App Store 上架準備｜Flutter iPhone + Fastify + PostgreSQL（Web 僅供測試）｜目標由私人 GitHub repository 自動部署到 Coolify
 
 FutureMint AI 是青少年的 AI 金錢決策教練。使用者以繁體中文主動輸入收入、支出或訂閱（目前只接受文字／貼上，不提供圖片上傳或 OCR），系統先整理成可修改草稿與「需要／想要」建議；只有確認後才保存，並以確定性程式更新收支分析、訂閱提醒、個人學習規劃、FutureSeed 複利比較與延遲行情投資練習場。

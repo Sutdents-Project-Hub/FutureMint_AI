@@ -1,5 +1,13 @@
 # 安全、身份與隱私
 
+## 2026-10-29 資安維護接續
+
+保留既有 auth／年齡／監護人／AI 同意及資料權限，僅修補 Node 22、Fastify、Nodemailer、Zod 與間接依賴。完整 npm audit 由 7 項降至 0；這是本次套件圖結果，不表示完整產品或所有供應鏈均無風險。Node 22.23.4 含官方 Brotli 安全回補；Docker Debian 12 更新 `libbrotli1` 至 `1.0.9-2+deb12u1`，npm 自有 Undici 明示修至 6.29.1。
+
+既有 18 項 API runtime 設定關閉 build-time 旗標，含資料庫及模型 key，原加密值與 runtime flag 保持，無憑證輪替；不宣稱歷史 image／build cache 的秘密風險已消除。本輪備份、真還原與證據僅在 VPS 私有區處理及加密，正式 DB／憑證不下載工作站。外部 AI／SMTP／真人帳號不作安全回歸測試；供應商條款、身份與上架限制仍沿原規則。
+
+來源：[Node 22.23.4 安全發行](https://nodejs.org/en/blog/release/v22.23.4)、[Debian Brotli 修版](https://security-tracker.debian.org/tracker/CVE-2026-111497)。驗證與限制見[測試證據](testing-and-evidence.md#2026-10-29-資安維護)。
+
 ## 身份與授權
 
 - Email/password registration 與 login 由 Fastify API 處理。

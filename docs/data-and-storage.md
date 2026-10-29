@@ -1,5 +1,11 @@
 # 資料與儲存
 
+## 2026-10-29 資安維護接續
+
+本輪沒有新增／改寫 schema 或歷史 migration checksum。PostgreSQL 17.11 更新 OS 安全套件，原持久卷、env／連線身分保持；新引擎與 plpgsql binary 同原版，切換前冷副本與正式環境完整資料／schema／roles／collation 及文字排序一致才恢復 API。原資料與最小刪除 journal 不清除，升前副本不得回灌到恢復寫入後環境。
+
+本次維護單次建立加密備份與 VPS 內隔離還原，不改原「不建立定期備份」、BACKUP_RETENTION_DAYS=0 或資料保存政策；下方較早尚未還原指當時任務。真備份還原只用於隔離環境，不接外網、不使用真帳號測試，與合成整合測試 DB 分離；詳[測試證據](testing-and-evidence.md#2026-10-29-資安維護)。原基底與安全 PG image 保留及重建／UI 限制見[部署維護](deployment.md#2026-10-29-資安維護)。
+
 ## 資料原則
 
 - 正式帳號資料目標保存於 Coolify PostgreSQL 17（production 尚未驗收）；Client 不直接連資料庫。

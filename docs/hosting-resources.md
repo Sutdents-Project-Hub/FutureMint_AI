@@ -1,5 +1,11 @@
 # Hosting Resources
 
+## 2026-10-29 資安維護接續
+
+仍只有 API／PostgreSQL 為正式啟用資源，選用測試 Web 保持停止且 Auto Deploy=false。API 維持 Node.js 22，安全版為 22.23.4；PostgreSQL 17.11 沿原資料卷使用本機安全映像，沒有新增公開 DB port 或 Resource。API 既有 18 項 runtime 設定已停用 build-time 旗標，原加密值保持。
+
+PostgreSQL 本機 tag、Coolify 強制 pull 的操作限制、原基底保存及異機重建未驗證，見[部署維護](deployment.md#2026-10-29-資安維護)。本輪單次加密保存不代表建立定期備份，原 retention=0 保留。下方較早「目前未驗證」敘述屬原紀錄，10/29 實際驗證另見[證據](testing-and-evidence.md#2026-10-29-資安維護)。
+
 ## 正式兩個 Resources，Web 為選用測試
 
 主辦方 Azure 環境已關閉後，FutureMint AI 改為團隊 VPS 的 Coolify。API／PostgreSQL 與選用 Web 各自維持獨立生命週期，正式 iPhone 不需啟動 Web，不需要開 Azure VM，也不使用 Azure Functions、Cosmos DB、Static Web Apps 或 Azure OpenAI。
